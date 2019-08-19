@@ -1,0 +1,5 @@
+libtadio: Support for the following file formats
+- CSV
+- HDF5
+- Remote Sensing Data (via GDAL)
+- DICOM (via DCMTK)
