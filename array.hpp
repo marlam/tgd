@@ -719,7 +719,7 @@ public:
         assert(elementValue.size() == componentCount());
         T* ptr = get<T>(elementIndex);
         for (size_t c = 0; c < componentCount(); c++)
-            ptr[c] = elementValue[c];
+            ptr[c] = elementValue.begin()[c];
     }
 
     /*! \brief Sets the components of the element with index \a elementIndex to the given \a values. */
