@@ -188,6 +188,11 @@ template<typename T> Array<T> load(const std::string& fileName, const TagList& h
     return load(fileName, hints, error).convert(typeFromTemplate<T>());
 }
 
+/*! \brief Flag to be used for the append parameter of TAD::save() */
+const bool Append = true;
+/*! \brief Flag to be used for the append parameter of TAD::save() */
+const bool Overwrite = false;
+
 /*! \brief Shortcut to write a single array to a file in a single line of code. */
 inline bool save(const ArrayContainer& A, const std::string& fileName, bool append = false, Error* error = nullptr, const TagList& hints = TagList())
 {
