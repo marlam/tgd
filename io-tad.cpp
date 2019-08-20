@@ -137,19 +137,21 @@ static Error readTadTagList(FILE* f, TagList& tl)
         return ErrorSysErrno;
     if (n > std::numeric_limits<size_t>::max())
         return ErrorInvalidData;
-    std::vector<char> data(n);
-    if (std::fread(data.data(), data.size(), 1, f) != 1)
-        return ErrorSysErrno;
-    for (size_t i = 0; i < data.size(); ) {
-        std::string key, value;
-        size_t keyLen, valueLen;
-        if (!readString(data.data() + i, key, keyLen)
-                || i + keyLen + 1 >= data.size()
-                || !readString(data.data() + i + keyLen + 1, value, valueLen)) {
-            return ErrorInvalidData;
+    if (n > 0) {
+        std::vector<char> data(n);
+        if (std::fread(data.data(), data.size(), 1, f) != 1)
+            return std::feof(f) ? ErrorInvalidData : ErrorSysErrno;
+        for (size_t i = 0; i < data.size(); ) {
+            std::string key, value;
+            size_t keyLen, valueLen;
+            if (!readString(data.data() + i, key, keyLen)
+                    || i + keyLen + 1 >= data.size()
+                    || !readString(data.data() + i + keyLen, value, valueLen)) {
+                return ErrorInvalidData;
+            }
+            i += keyLen + 1 + valueLen + 1;
+            tl.set(key, value);
         }
-        i += keyLen + 1 + valueLen + 1;
-        tl.set(key, value);
     }
     return ErrorNone;
 }
@@ -228,8 +230,11 @@ int FormatImportExportTAD::arrayCount()
         }
         ArrayContainer array;
         Error e = readTadHeader(_f, array);
-        if (e != ErrorNone || !skipTadData(_f, array))
+        if (e != ErrorNone || !skipTadData(_f, array)) {
+            _arrayOffsets.clear();
+            _arrayCount = -1;
             return -1;
+        }
         _arrayOffsets.push_back(arrayPos);
         if (_arrayOffsets.size() == size_t(std::numeric_limits<int>::max()) && hasMore()) {
             _arrayOffsets.clear();
