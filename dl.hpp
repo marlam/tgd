@@ -38,17 +38,21 @@
 #elif defined(_WIN32)
 #  include <windows.h>
 #  define DOT_SO_STR ".dll"
+#  ifndef RTLD_NOW
+#    define RTLD_NOW 0
+#  endif
    void* dlopen(const char* filename, int /* flags */)
    {
        return LoadLibrary(filename);
    }
    int dlclose(void* handle)
    {
-       FreeLibrary(handle);
+       FreeLibrary((HMODULE)handle);
+       return 0;
    }
    void* dlsym(void* handle, const char* symbol)
    {
-       return GetProcAddress(handle, symbol);
+       return (void*)GetProcAddress((HMODULE)handle, symbol);
    }
 #endif
 
