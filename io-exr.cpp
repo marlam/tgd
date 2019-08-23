@@ -43,13 +43,18 @@ FormatImportExportEXR::~FormatImportExportEXR()
 
 Error FormatImportExportEXR::openForReading(const std::string& fileName, const TagList&)
 {
-    FILE* f = fopen(fileName.c_str(), "rb");
-    if (f) {
-        fclose(f);
-        _fileName = fileName;
-        return ErrorNone;
-    } else {
+    if (fileName == "-") {
+        errno = EINVAL;
         return ErrorSysErrno;
+    } else {
+        FILE* f = fopen(fileName.c_str(), "rb");
+        if (f) {
+            fclose(f);
+            _fileName = fileName;
+            return ErrorNone;
+        } else {
+            return ErrorSysErrno;
+        }
     }
 }
 
@@ -57,13 +62,18 @@ Error FormatImportExportEXR::openForWriting(const std::string& fileName, bool ap
 {
     if (append)
         return ErrorFeaturesUnsupported;
-    FILE* f = fopen(fileName.c_str(), "wb");
-    if (f) {
-        fclose(f);
-        _fileName = fileName;
-        return ErrorNone;
-    } else {
+    if (fileName == "-") {
+        errno = EINVAL;
         return ErrorSysErrno;
+    } else {
+        FILE* f = fopen(fileName.c_str(), "wb");
+        if (f) {
+            fclose(f);
+            _fileName = fileName;
+            return ErrorNone;
+        } else {
+            return ErrorSysErrno;
+        }
     }
 }
 

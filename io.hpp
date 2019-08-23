@@ -99,8 +99,10 @@ public:
     /*! \brief Constructor. This must be initialized with \a initialize(). */
     Importer();
 
-    /*! \brief Constructor. The file name is required. The optional \a hints may be useful depending on
-     * the file format. For example, raw files contain no information about array dimension or type,
+    /*! \brief Constructor. The file name is required.
+     * The special file name "-" is interpreted as standard input.
+     * The optional \a hints may be useful depending on the file format.
+     * For example, raw files contain no information about array dimension or type,
      * so the hints must contain the tags COMPONENTS and TYPE as well as SIZE (for 1D arrays),
      * WIDTH and HEIGHT (for 2D arrays), WIDTH, HEIGHT and DEPTH (for 3D arrays) or DIMENSIONS,
      * DIMENSION0, DIMENSION1, ... (for arrays of arbitrary dimension).
@@ -139,6 +141,11 @@ public:
     bool hasMore(Error* error = nullptr);
 };
 
+/*! \brief Flag to be used for the append parameter of TAD::save() */
+const bool Append = true;
+/*! \brief Flag to be used for the append parameter of TAD::save() */
+const bool Overwrite = false;
+
 /*! \brief The exporter class exports arrays to files or streams. */
 class Exporter {
 private:
@@ -153,17 +160,19 @@ public:
     /*! \brief Constructor. This must be initialized with \a initialize(). */
     Exporter();
 
-    /*! \brief Constructor. The file name is required. If the \a append flag is set, new arrays
+    /*! \brief Constructor. The file name is required.
+     * The special file name "-" is interpreted as standard output.
+     * If the \a append flag is set, new arrays
      * will be appended to the file (if the file format supports it) instead of overwriting the
      * old file contents. The optional \a hints may include parameters for the file format,
      * e.g. about compression level. */
-    Exporter(const std::string& fileName, bool append = false, const TagList& hints = TagList());
+    Exporter(const std::string& fileName, bool append = Overwrite, const TagList& hints = TagList());
 
     /*!\brief Destructor. */
     ~Exporter();
 
     /*! \brief Initialize. See the constructor documentation. */
-    void initialize(const std::string& fileName, bool append = false, const TagList& hints = TagList());
+    void initialize(const std::string& fileName, bool append = Overwrite, const TagList& hints = TagList());
 
     /*! \brief Returns the file name. */
     std::string fileName() const
@@ -188,13 +197,8 @@ template<typename T> Array<T> load(const std::string& fileName, const TagList& h
     return load(fileName, hints, error).convert(typeFromTemplate<T>());
 }
 
-/*! \brief Flag to be used for the append parameter of TAD::save() */
-const bool Append = true;
-/*! \brief Flag to be used for the append parameter of TAD::save() */
-const bool Overwrite = false;
-
 /*! \brief Shortcut to write a single array to a file in a single line of code. */
-inline bool save(const ArrayContainer& A, const std::string& fileName, bool append = false, Error* error = nullptr, const TagList& hints = TagList())
+inline bool save(const ArrayContainer& A, const std::string& fileName, bool append = Overwrite, Error* error = nullptr, const TagList& hints = TagList())
 {
     Error e = Exporter(fileName, append, hints).writeArray(A);
     if (error)

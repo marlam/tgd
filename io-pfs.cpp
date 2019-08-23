@@ -38,28 +38,35 @@ FormatImportExportPFS::FormatImportExportPFS() :
 
 FormatImportExportPFS::~FormatImportExportPFS()
 {
-    if (_f)
-        fclose(_f);
+    close();
 }
 
 Error FormatImportExportPFS::openForReading(const std::string& fileName, const TagList&)
 {
-    _f = fopen(fileName.c_str(), "rb");
+    if (fileName == "-")
+        _f = stdin;
+    else
+        _f = fopen(fileName.c_str(), "rb");
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
 Error FormatImportExportPFS::openForWriting(const std::string& fileName, bool append, const TagList&)
 {
-    _f = fopen(fileName.c_str(), append ? "ab" : "wb");
+    if (fileName == "-")
+        _f = stdout;
+    else
+        _f = fopen(fileName.c_str(), append ? "ab" : "wb");
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
 Error FormatImportExportPFS::close()
 {
     if (_f) {
-        if (fclose(_f) != 0) {
-            _f = nullptr;
-            return ErrorSysErrno;
+        if (_f != stdin && _f != stdout) {
+            if (fclose(_f) != 0) {
+                _f = nullptr;
+                return ErrorSysErrno;
+            }
         }
         _f = nullptr;
     }
@@ -170,6 +177,12 @@ ArrayContainer FormatImportExportPFS::readArray(Error* error, int arrayIndex)
             r.componentTagList(componentIndex).set("INTERPRETATION", "GREEN");
         else if (strcmp(channel->getName(), "B") == 0)
             r.componentTagList(componentIndex).set("INTERPRETATION", "BLUE");
+        else if (strcmp(channel->getName(), "SRGB/R") == 0)
+            r.componentTagList(componentIndex).set("INTERPRETATION", "SRGB/R");
+        else if (strcmp(channel->getName(), "SRGB/G") == 0)
+            r.componentTagList(componentIndex).set("INTERPRETATION", "SRGB/G");
+        else if (strcmp(channel->getName(), "SRGB/B") == 0)
+            r.componentTagList(componentIndex).set("INTERPRETATION", "SRGB/B");
         else if (strcmp(channel->getName(), "ALPHA") == 0)
             r.componentTagList(componentIndex).set("INTERPRETATION", "ALPHA");
         else

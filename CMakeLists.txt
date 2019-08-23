@@ -11,7 +11,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR} ${CMAKE_MODULE_PATH})
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # Project
-project(libtad)
+project(tad)
 set(TAD_VERSION 0.0.0)
 set(TAD_LIBVERSION 0.0.0)
 set(TAD_SOVERSION 0)
@@ -41,6 +41,7 @@ find_package(PNG QUIET)
 find_package(JPEG QUIET)
 
 # The input/output library
+add_definitions(-DTAD_VERSION="${TAD_VERSION}")
 set(libtad_SOURCES
 	taglist.hpp
 	array.hpp
@@ -214,3 +215,8 @@ if(TAD_BUILD_DOCUMENTATION)
   add_custom_target(doc ALL DEPENDS "${CMAKE_BINARY_DIR}/html/index.html")
   install(DIRECTORY "${CMAKE_BINARY_DIR}/html" DESTINATION share/doc/libtad)
 endif()
+
+# The tool
+add_executable(tad tad.cpp cmdline.hpp cmdline.cpp)
+target_link_libraries(tad -lstdc++fs libtad)
+install(TARGETS tad RUNTIME DESTINATION bin)

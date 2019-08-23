@@ -41,8 +41,7 @@ FormatImportExportRAW::FormatImportExportRAW() :
 
 FormatImportExportRAW::~FormatImportExportRAW()
 {
-    if (_f)
-        fclose(_f);
+    close();
 }
 
 Error FormatImportExportRAW::openForReading(const std::string& fileName, const TagList& hints)
@@ -88,7 +87,10 @@ Error FormatImportExportRAW::openForReading(const std::string& fileName, const T
     _template = ArrayDescription(dimensions, components, type);
 
     // We have the metadata, now try and open the file
-    _f = fopen(fileName.c_str(), "rb");
+    if (fileName == "-")
+        _f = stdin;
+    else
+        _f = fopen(fileName.c_str(), "rb");
     if (_f) {
         struct stat statbuf;
         if (fstat(fileno(_f), &statbuf) != 0) {
@@ -102,16 +104,21 @@ Error FormatImportExportRAW::openForReading(const std::string& fileName, const T
 
 Error FormatImportExportRAW::openForWriting(const std::string& fileName, bool append, const TagList&)
 {
-    _f = fopen(fileName.c_str(), append ? "ab" : "wb");
+    if (fileName == "-")
+        _f = stdout;
+    else
+        _f = fopen(fileName.c_str(), append ? "ab" : "wb");
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
 Error FormatImportExportRAW::close()
 {
     if (_f) {
-        if (fclose(_f) != 0) {
-            _f = nullptr;
-            return ErrorSysErrno;
+        if (_f != stdin && _f != stdout) {
+            if (fclose(_f) != 0) {
+                _f = nullptr;
+                return ErrorSysErrno;
+            }
         }
         _f = nullptr;
     }

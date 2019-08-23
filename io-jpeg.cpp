@@ -50,13 +50,15 @@ FormatImportExportJPEG::FormatImportExportJPEG() :
 
 FormatImportExportJPEG::~FormatImportExportJPEG()
 {
-    if (_f)
-        fclose(_f);
+    close();
 }
 
 Error FormatImportExportJPEG::openForReading(const std::string& fileName, const TagList&)
 {
-    _f = fopen(fileName.c_str(), "rb");
+    if (fileName == "-")
+        _f = stdin;
+    else
+        _f = fopen(fileName.c_str(), "rb");
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
@@ -64,16 +66,21 @@ Error FormatImportExportJPEG::openForWriting(const std::string& fileName, bool a
 {
     if (append)
         return ErrorFeaturesUnsupported;
-    _f = fopen(fileName.c_str(), "wb");
+    if (fileName == "-")
+        _f = stdout;
+    else
+        _f = fopen(fileName.c_str(), "wb");
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
 Error FormatImportExportJPEG::close()
 {
     if (_f) {
-        if (fclose(_f) != 0) {
-            _f = nullptr;
-            return ErrorSysErrno;
+        if (_f != stdin && _f != stdout) {
+            if (fclose(_f) != 0) {
+                _f = nullptr;
+                return ErrorSysErrno;
+            }
         }
         _f = nullptr;
     }

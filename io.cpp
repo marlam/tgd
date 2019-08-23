@@ -43,28 +43,28 @@ const char* strerror(Error e)
     const char* str = "";
     switch (e) {
     case ErrorNone:
-        str = "Success";
+        str = "success";
         break;
     case ErrorFormatUnsupported:
-        str = "Unsupported file format";
+        str = "unsupported file format";
         break;
     case ErrorFeaturesUnsupported:
-        str = "Unsupported file features";
+        str = "unsupported file features";
         break;
     case ErrorMissingHints:
-        str = "Required hints are missing";
+        str = "required hints are missing";
         break;
     case ErrorInvalidData:
-        str = "Invalid data";
+        str = "invalid data";
         break;
     case ErrorSeekingNotSupported:
-        str = "Seeking not supported";
+        str = "seeking not supported";
         break;
     case ErrorAppendingNotSupported:
-        str = "Appending not supported";
+        str = "appending not supported";
         break;
     case ErrorLibrary:
-        str = "A library function failed";
+        str = "a library function failed";
         break;
     case ErrorSysErrno:
         str = std::strerror(errno);
@@ -181,7 +181,9 @@ void Importer::initialize(const std::string& fileName, const TagList& hints)
 {
     _fileName = fileName;
     _hints = hints;
-    _format = (hints.contains("FORMAT") ? hints.value("FORMAT") : getExtension(_fileName));
+    _format = (hints.contains("FORMAT") ? hints.value("FORMAT")
+            : fileName == "-" ? "tad"
+            : getExtension(_fileName));
     _fie = std::shared_ptr<FormatImportExport>(openFormatImportExport(_format));
     _fileIsOpened = false;
 }
@@ -264,7 +266,9 @@ void Exporter::initialize(const std::string& fileName, bool append, const TagLis
     _fileName = fileName;
     _append = append;
     _hints = hints;
-    _format = (hints.contains("FORMAT") ? hints.value("FORMAT") : getExtension(_fileName));
+    _format = (hints.contains("FORMAT") ? hints.value("FORMAT")
+            : fileName == "-" ? "tad"
+            : getExtension(_fileName));
     _fie = std::shared_ptr<FormatImportExport>(openFormatImportExport(_format));
     _fileIsOpened = false;
 }
