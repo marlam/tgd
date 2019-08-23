@@ -17,7 +17,7 @@ DOC
     "OpenEXR headers path"
 )
 
-foreach(OPENEXR_LIB Half Iex Imath IlmImf IlmThread)
+foreach(OPENEXR_LIB IlmImf Half Iex Imath IlmThread)
     find_library(OPENEXR_${OPENEXR_LIB}_LIBRARY
 	NAMES
 	    ${OPENEXR_LIB}

@@ -218,5 +218,5 @@ endif()
 
 # The tool
 add_executable(tad tad.cpp cmdline.hpp cmdline.cpp)
-target_link_libraries(tad -lstdc++fs libtad)
+target_link_libraries(tad libtad)
 install(TARGETS tad RUNTIME DESTINATION bin)

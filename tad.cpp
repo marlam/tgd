@@ -25,6 +25,9 @@
 #include <cstring>
 #include <cstdio>
 #include <cmath>
+#ifdef _WIN32
+# include <fcntl.h>
+#endif
 
 #include "array.hpp"
 #include "io.hpp"
