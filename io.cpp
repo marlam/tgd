@@ -25,9 +25,16 @@
 #include <cctype>
 
 #include "io.hpp"
+#include "dl.hpp"
 #include "io-raw.hpp"
 #include "io-tad.hpp"
-#include "dl.hpp"
+#include "io-gta.hpp"
+#include "io-pnm.hpp"
+#include "io-exr.hpp"
+#include "io-pfs.hpp"
+#include "io-png.hpp"
+#include "io-jpeg.hpp"
+
 
 namespace TAD {
 
@@ -116,7 +123,34 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
         return new FormatImportExportRAW;
     } else if (fieName == "tad") {
         return new FormatImportExportTAD;
+#ifdef TAD_STATIC
+#  ifdef TAD_WITH_GTA
+    } else if (fieName == "gta") {
+        return new FormatImportExportGTA;
+#  endif
+#  ifdef TAD_WITH_NETPBM
+    } else if (fieName == "pnm") {
+        return new FormatImportExportPNM;
+#  endif
+#  ifdef TAD_WITH_OPENEXR
+    } else if (fieName == "exr") {
+        return new FormatImportExportEXR;
+#  endif
+#  ifdef TAD_WITH_PFS
+    } else if (fieName == "pfs") {
+        return new FormatImportExportPFS;
+#  endif
+#  ifdef TAD_WITH_PNG
+    } else if (fieName == "png") {
+        return new FormatImportExportPNG;
+#  endif
+#  ifdef TAD_WITH_JPEG
+    } else if (fieName == "jpeg") {
+        return new FormatImportExportJPEG;
+#  endif
+#endif
     } else {
+#ifndef TAD_STATIC
         // ... then plugin formats
         std::string pluginName = std::string("libtadio-") + fieName + DOT_SO_STR;
         void* plugin = dlopen(pluginName.c_str(), RTLD_NOW);
@@ -124,8 +158,13 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
             return nullptr;
         std::string factoryName = std::string("FormatImportExportFactory_") + fieName;
         void* factory = dlsym(plugin, factoryName.c_str());
+        if (!factory)
+            return nullptr;
         FormatImportExport* (*fieFactory)() = reinterpret_cast<FormatImportExport* (*)()>(factory);
         return fieFactory();
+#else
+        return nullptr;
+#endif
     }
 }
 

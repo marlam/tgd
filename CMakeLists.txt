@@ -18,6 +18,10 @@ set(TAD_SOVERSION 0)
 
 # Build options
 option(TAD_BUILD_DOCUMENTATION "Build API reference documentation (requires Doxygen)" OFF)
+option(TAD_STATIC "Build static libtad" OFF)
+if(TAD_STATIC)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+endif()
 
 # The TAD library (header only)
 install(FILES taglist.hpp array.hpp foreach.hpp operators.hpp tools.hpp io.hpp DESTINATION include/tad)
@@ -35,10 +39,8 @@ find_package(OpenEXR QUIET)
 find_package(PFS QUIET)
 find_package(PNG QUIET)
 find_package(JPEG QUIET)
-#find_package(HDF5 COMPONENTS CXX QUIET)
 
-# The TAD library (only required for input/output)
-add_library(libtad SHARED
+set(libtad_SOURCES
 	taglist.hpp
 	array.hpp
 	foreach.hpp
@@ -48,7 +50,120 @@ add_library(libtad SHARED
 	io-tad.hpp io-tad.cpp
 	io-raw.hpp io-raw.cpp
 	dl.hpp)
-target_link_libraries(libtad dl)
+set(libtad_OPT_SOURCES "")
+set(libtad_OPT_LIBRARIES "")
+if(TAD_STATIC)
+    add_definitions(-DTAD_STATIC)
+    if(GTA_FOUND)
+	add_definitions(-DTAD_WITH_GTA)
+	set(libtad_OPT_SOURCES ${libtad_OPT_SOURCES} io-gta.hpp io-gta.cpp)
+	set(libtad_OPT_LIBRARIES ${libtad_OPT_LIBRARIES} ${GTA_LIBRARIES})
+	include_directories(${GTA_INCLUDE_DIRS})
+    endif()
+    if(NETPBM_FOUND)
+	add_definitions(-DTAD_WITH_NETPBM)
+	set(libtad_OPT_SOURCES ${libtad_OPT_SOURCES} io-pnm.hpp io-pnm.cpp)
+	set(libtad_OPT_LIBRARIES ${libtad_OPT_LIBRARIES} ${NETPBM_LIBRARIES})
+	include_directories(${NETPBM_INCLUDE_DIRS})
+    endif()
+    if(OPENEXR_FOUND)
+	add_definitions(-DTAD_WITH_OPENEXR)
+	set(libtad_OPT_SOURCES ${libtad_OPT_SOURCES} io-exr.hpp io-exr.cpp)
+	set(libtad_OPT_LIBRARIES ${libtad_OPT_LIBRARIES} ${OPENEXR_LIBRARIES})
+	include_directories(${OPENEXR_INCLUDE_DIRS})
+    endif()
+    if(PFS_FOUND)
+	add_definitions(-DTAD_WITH_PFS)
+	set(libtad_OPT_SOURCES ${libtad_OPT_SOURCES} io-pfs.hpp io-pfs.cpp)
+	set(libtad_OPT_LIBRARIES ${libtad_OPT_LIBRARIES} ${PFS_LIBRARIES})
+	include_directories(${PFS_INCLUDE_DIRS})
+    endif()
+    if(PNG_FOUND)
+	add_definitions(-DTAD_WITH_PNG)
+	set(libtad_OPT_SOURCES ${libtad_OPT_SOURCES} io-png.hpp io-png.cpp)
+	set(libtad_OPT_LIBRARIES ${libtad_OPT_LIBRARIES} ${PNG_LIBRARIES})
+	add_definitions(${PNG_DEFINITIONS})
+	include_directories(${PNG_INCLUDE_DIRS})
+    endif()
+    if(JPEG_FOUND)
+	add_definitions(-DTAD_WITH_JPEG)
+	set(libtad_OPT_SOURCES ${libtad_OPT_SOURCES} io-jpeg.hpp io-jpeg.cpp)
+	set(libtad_OPT_LIBRARIES ${libtad_OPT_LIBRARIES} ${JPEG_LIBRARIES})
+	include_directories(${JPEG_INCLUDE_DIR})
+    endif()
+    add_library(libtad STATIC ${libtad_SOURCES} ${libtad_OPT_SOURCES})
+    target_link_libraries(libtad ${libtad_OPT_LIBRARIES} "-static")
+else()
+    add_library(libtad SHARED ${libtad_SOURCES})
+    target_link_libraries(libtad dl)
+    if(GTA_FOUND)
+	add_library(libtadio-gta SHARED io-gta.hpp io-gta.cpp)
+	set_target_properties(libtadio-gta PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+	set_target_properties(libtadio-gta PROPERTIES OUTPUT_NAME tadio-gta)
+	include_directories(${GTA_INCLUDE_DIRS})
+	target_link_libraries(libtadio-gta ${GTA_LIBRARIES})
+	install(TARGETS libtadio-gta
+	    RUNTIME DESTINATION bin
+	    LIBRARY DESTINATION lib${LIB_SUFFIX}
+	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
+    endif()
+    if(NETPBM_FOUND)
+	add_library(libtadio-pnm SHARED io-pnm.hpp io-pnm.cpp)
+	set_target_properties(libtadio-pnm PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+	set_target_properties(libtadio-pnm PROPERTIES OUTPUT_NAME tadio-pnm)
+	include_directories(${NETPBM_INCLUDE_DIRS})
+	target_link_libraries(libtadio-pnm ${NETPBM_LIBRARIES})
+	install(TARGETS libtadio-pnm
+	    RUNTIME DESTINATION bin
+	    LIBRARY DESTINATION lib${LIB_SUFFIX}
+	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
+    endif()
+    if(OPENEXR_FOUND)
+	add_library(libtadio-exr SHARED io-exr.hpp io-exr.cpp)
+	set_target_properties(libtadio-exr PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+	set_target_properties(libtadio-exr PROPERTIES OUTPUT_NAME tadio-exr)
+	include_directories(${OPENEXR_INCLUDE_DIRS})
+	target_link_libraries(libtadio-exr ${OPENEXR_LIBRARIES})
+	install(TARGETS libtadio-exr
+	    RUNTIME DESTINATION bin
+	    LIBRARY DESTINATION lib${LIB_SUFFIX}
+	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
+    endif()
+    if(PFS_FOUND)
+	add_library(libtadio-pfs SHARED io-pfs.hpp io-pfs.cpp)
+	set_target_properties(libtadio-pfs PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+	set_target_properties(libtadio-pfs PROPERTIES OUTPUT_NAME tadio-pfs)
+	include_directories(${PFS_INCLUDE_DIRS})
+	target_link_libraries(libtadio-pfs ${PFS_LIBRARIES})
+	install(TARGETS libtadio-pfs
+	    RUNTIME DESTINATION bin
+	    LIBRARY DESTINATION lib${LIB_SUFFIX}
+	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
+    endif()
+    if(PNG_FOUND)
+	add_library(libtadio-png SHARED io-png.hpp io-png.cpp)
+	set_target_properties(libtadio-png PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+	set_target_properties(libtadio-png PROPERTIES OUTPUT_NAME tadio-png)
+	add_definitions(${PNG_DEFINITIONS})
+	include_directories(${PNG_INCLUDE_DIRS})
+	target_link_libraries(libtadio-png ${PNG_LIBRARIES})
+	install(TARGETS libtadio-png
+	    RUNTIME DESTINATION bin
+	    LIBRARY DESTINATION lib${LIB_SUFFIX}
+	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
+    endif()
+    if(JPEG_FOUND)
+	add_library(libtadio-jpeg SHARED io-jpeg.hpp io-jpeg.cpp)
+	set_target_properties(libtadio-jpeg PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+	set_target_properties(libtadio-jpeg PROPERTIES OUTPUT_NAME tadio-jpeg)
+	include_directories(${JPEG_INCLUDE_DIR})
+	target_link_libraries(libtadio-jpeg ${JPEG_LIBRARIES})
+	install(TARGETS libtadio-jpeg
+	    RUNTIME DESTINATION bin
+	    LIBRARY DESTINATION lib${LIB_SUFFIX}
+	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
+    endif()
+endif()
 set_target_properties(libtad PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 set_target_properties(libtad PROPERTIES OUTPUT_NAME tad)
 set_target_properties(libtad PROPERTIES VERSION ${TAD_LIBVERSION})
@@ -78,81 +193,6 @@ install(FILES
     DESTINATION ${LIB_INSTALL_DIR}/cmake/libtad-${TAD_VERSION}
 )
 
-# Optional importers/exporters
-if(GTA_FOUND)
-    add_library(libtadio-gta SHARED io-gta.hpp io-gta.cpp)
-    set_target_properties(libtadio-gta PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-    set_target_properties(libtadio-gta PROPERTIES OUTPUT_NAME tadio-gta)
-    include_directories(${GTA_INCLUDE_DIRS})
-    target_link_libraries(libtadio-gta ${GTA_LIBRARIES})
-    install(TARGETS libtadio-gta
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib${LIB_SUFFIX}
-        ARCHIVE DESTINATION lib${LIB_SUFFIX})
-endif()
-if(NETPBM_FOUND)
-    add_library(libtadio-pnm SHARED io-pnm.hpp io-pnm.cpp)
-    set_target_properties(libtadio-pnm PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-    set_target_properties(libtadio-pnm PROPERTIES OUTPUT_NAME tadio-pnm)
-    include_directories(${NETPBM_INCLUDE_DIRS})
-    target_link_libraries(libtadio-pnm ${NETPBM_LIBRARIES})
-    install(TARGETS libtadio-pnm
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib${LIB_SUFFIX}
-        ARCHIVE DESTINATION lib${LIB_SUFFIX})
-endif()
-if(OPENEXR_FOUND)
-    add_library(libtadio-exr SHARED io-exr.hpp io-exr.cpp)
-    set_target_properties(libtadio-exr PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-    set_target_properties(libtadio-exr PROPERTIES OUTPUT_NAME tadio-exr)
-    include_directories(${OPENEXR_INCLUDE_DIRS})
-    target_link_libraries(libtadio-exr ${OPENEXR_LIBRARIES})
-    install(TARGETS libtadio-exr
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib${LIB_SUFFIX}
-        ARCHIVE DESTINATION lib${LIB_SUFFIX})
-endif()
-if(PFS_FOUND)
-    add_library(libtadio-pfs SHARED io-pfs.hpp io-pfs.cpp)
-    set_target_properties(libtadio-pfs PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-    set_target_properties(libtadio-pfs PROPERTIES OUTPUT_NAME tadio-pfs)
-    include_directories(${PFS_INCLUDE_DIRS})
-    target_link_libraries(libtadio-pfs ${PFS_LIBRARIES})
-    install(TARGETS libtadio-pfs
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib${LIB_SUFFIX}
-        ARCHIVE DESTINATION lib${LIB_SUFFIX})
-endif()
-if(PNG_FOUND)
-    add_library(libtadio-png SHARED io-png.hpp io-png.cpp)
-    set_target_properties(libtadio-png PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-    set_target_properties(libtadio-png PROPERTIES OUTPUT_NAME tadio-png)
-    add_definitions(${PNG_DEFINITIONS})
-    include_directories(${PNG_INCLUDE_DIRS})
-    target_link_libraries(libtadio-png ${PNG_LIBRARIES})
-    install(TARGETS libtadio-png
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib${LIB_SUFFIX}
-        ARCHIVE DESTINATION lib${LIB_SUFFIX})
-endif()
-if(JPEG_FOUND)
-    add_library(libtadio-jpeg SHARED io-jpeg.hpp io-jpeg.cpp)
-    set_target_properties(libtadio-jpeg PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-    set_target_properties(libtadio-jpeg PROPERTIES OUTPUT_NAME tadio-jpeg)
-    include_directories(${JPEG_INCLUDE_DIR})
-    target_link_libraries(libtadio-jpeg ${JPEG_LIBRARIES})
-    install(TARGETS libtadio-jpeg
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib${LIB_SUFFIX}
-        ARCHIVE DESTINATION lib${LIB_SUFFIX})
-endif()
-#if(HDF5_FOUND)
-#    add_definitions(-DHAVE_HDF5 ${HDF5_CXX_DEFINITIONS})
-#    include_directories(${HDF5_CXX_INCLUDE_DIRS})
-#    include_directories(${HDF5_INCLUDE_DIRS})
-#    target_link_libraries(libtadio ${HDF5_CXX_LIBRARIES})
-#endif()
-
 # Optional target: reference documentation
 if(TAD_BUILD_DOCUMENTATION)
   find_package(Doxygen REQUIRED)
@@ -162,7 +202,7 @@ if(TAD_BUILD_DOCUMENTATION)
     COMMAND ${DOXYGEN_EXECUTABLE} "${CMAKE_BINARY_DIR}/Doxyfile"
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
     DEPENDS "${CMAKE_SOURCE_DIR}/Doxyfile.in"
-            "${CMAKE_SOURCE_DIR}/array.hpp"
+	    "${CMAKE_SOURCE_DIR}/array.hpp"
 	    "${CMAKE_SOURCE_DIR}/io.hpp"
 	    "${CMAKE_SOURCE_DIR}/taglist.hpp"
 	    "${CMAKE_SOURCE_DIR}/foreach.hpp"
