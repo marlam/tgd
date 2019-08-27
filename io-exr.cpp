@@ -33,7 +33,7 @@
 
 namespace TAD {
 
-FormatImportExportEXR::FormatImportExportEXR() 
+FormatImportExportEXR::FormatImportExportEXR() : _arrayWasRead(false)
 {
 }
 
@@ -166,12 +166,13 @@ ArrayContainer FormatImportExportEXR::readArray(Error* error, int arrayIndex)
     file.readPixels(dw.min.y, dw.max.y);
 
     reverseY(r);
+    _arrayWasRead = true;
     return r;
 }
 
 bool FormatImportExportEXR::hasMore()
 {
-    return true;
+    return !_arrayWasRead;
 }
 
 Error FormatImportExportEXR::writeArray(const ArrayContainer& array)

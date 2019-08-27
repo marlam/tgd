@@ -31,6 +31,7 @@ namespace TAD {
 class FormatImportExportEXR : public FormatImportExport {
 private:
     std::string _fileName;
+    bool _arrayWasRead;
 
 public:
     FormatImportExportEXR();
