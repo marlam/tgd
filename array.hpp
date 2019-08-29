@@ -330,6 +330,117 @@ public:
     /*@}*/
 
     /**
+     * \name Index management
+     */
+    /*@{*/
+
+    /*! \brief Convert the given multidimensional element index to a linear
+     * element index. For example, for a 800x600 array, the multidimensional
+     * index { 1, 1 } is converted to linear index 601.
+     */
+    size_t toLinearIndex(const std::vector<size_t>& elementIndex) const
+    {
+        assert(elementIndex.size() == dimensionCount());
+        for (size_t d = 0; d < elementIndex.size(); d++)
+            assert(elementIndex[d] < dimension(d));
+
+        size_t dimProduct = 1;
+        size_t index = elementIndex[0];
+        for (size_t i = 1; i < elementIndex.size(); i++) {
+            dimProduct *= dimension(i - 1);
+            index += elementIndex[i] * dimProduct;
+        }
+
+        return index;
+    }
+
+    /*! \brief Convert the given multidimensional element index to a linear
+     * element index. For example, for a 800x600 array, the multidimensional
+     * index { 1, 1 } is converted to linear index 601.
+     */
+    size_t toLinearIndex(const std::initializer_list<size_t>& elementIndex) const
+    {
+        assert(elementIndex.size() == dimensionCount());
+        for (size_t d = 0; d < elementIndex.size(); d++)
+            assert(elementIndex.begin()[d] < dimension(d));
+
+        size_t dimProduct = 1;
+        size_t index = elementIndex.begin()[0];
+        for (size_t i = 1; i < elementIndex.size(); i++) {
+            dimProduct *= dimension(i - 1);
+            index += elementIndex.begin()[i] * dimProduct;
+        }
+
+        return index;
+    }
+
+    /*! \brief Convert the given linear element index to a multidimensional
+     * index. For example, for a 800x600 array, the linear index 601 is
+     * converted to the multidimensional index { 1, 1 }.
+     */
+    void toVectorIndex(size_t elementIndex, size_t* vectorIndex) const
+    {
+        assert(elementIndex < elementCount());
+
+        size_t multipliedDimSizes = elementCount();
+        for (size_t i = 0; i < dimensionCount(); i++) {
+            size_t j = dimensionCount() - 1 - i;
+            multipliedDimSizes /= dimension(j);
+            vectorIndex[j] = elementIndex / multipliedDimSizes;
+            elementIndex -= vectorIndex[j] * multipliedDimSizes;
+        }
+    }
+
+    /*! \brief Returns the offset of the element with index \a elementIndex within the data. */
+    size_t elementOffset(size_t elementIndex) const
+    {
+        assert(elementIndex < elementCount());
+        return elementIndex * elementSize();
+    }
+
+    /*! \brief Returns the offset of the element with index \a elementIndex within the data. */
+    size_t elementOffset(const std::vector<size_t>& elementIndex) const
+    {
+        return elementOffset(toLinearIndex(elementIndex));
+    }
+
+    /*! \brief Returns the offset of the element with index \a elementIndex within the data. */
+    size_t elementOffset(const std::initializer_list<size_t>& elementIndex) const
+    {
+        return elementOffset(toLinearIndex(elementIndex));
+    }
+
+    /*! \brief Returns the offset of the component with index \a componentIndex within an array element. */
+    size_t componentOffset(size_t componentIndex) const
+    {
+        assert(componentIndex < componentCount());
+        return componentIndex * componentSize();
+    }
+
+    /*! \brief Returns the offset of the component with index \a componentIndex
+     * in the element with index \a elementIndex within an array element. */
+    size_t componentOffset(size_t elementIndex, size_t componentIndex) const
+    {
+        return elementOffset(elementIndex) + componentOffset(componentIndex);
+    }
+
+    /*! \brief Returns the offset of the component with index \a componentIndex
+     * in the element with index \a elementIndex within an array element. */
+    size_t componentOffset(const std::vector<size_t>& elementIndex, size_t componentIndex) const
+    {
+        return elementOffset(elementIndex) + componentOffset(componentIndex);
+    }
+
+    /*! \brief Returns the offset of the component with index \a componentIndex
+     * in the element with index \a elementIndex within an array element. */
+    size_t componentOffset(const std::initializer_list<size_t>& elementIndex, size_t componentIndex) const
+    {
+        return elementOffset(elementIndex) + componentOffset(componentIndex);
+    }
+
+    /*@}*/
+
+    /**
      * \name Metadata management
      */
     /*@{*/
@@ -463,6 +574,34 @@ public:
         return r;
     }
 
+    /*! \brief Construct an array with transposed data layout */
+    ArrayContainer transposed() const
+    {
+        std::vector<size_t> vi = dimensions();
+        for (size_t i = 0; i < vi.size() / 2; i++) {
+            size_t tmp = vi[i];
+            vi[i] = vi[vi.size() - 1 - i];
+            vi[vi.size() - 1 - i] = tmp;
+        }
+        ArrayContainer r(vi, componentCount(), componentType());
+        r.globalTagList() = globalTagList();
+        for (size_t i = 0; i < dimensionCount(); i++)
+            r.dimensionTagList(i) = dimensionTagList(dimensionCount() - 1 - i);
+        for (size_t i = 0; i < componentCount(); i++)
+            r.componentTagList(i) = componentTagList(i);
+        std::vector<size_t> original(dimensionCount());
+        for (size_t i = 0; i < elementCount(); i++) {
+            r.toVectorIndex(i, vi.data());
+            for (size_t i = 0; i < vi.size() / 2; i++) {
+                size_t tmp = vi[i];
+                vi[i] = vi[vi.size() - 1 - i];
+                vi[vi.size() - 1 - i] = tmp;
+            }
+            std::memcpy(r.get(i), get(vi), elementSize());
+        }
+        return r;
+    }
+
     /*! \brief Construct an array from another array with a different component type.
      * The data will be converted automatically if necessary, or shared if the new
      * and original component types are identical. */
@@ -534,112 +673,6 @@ public:
         return static_cast<void*>(_data.get());
     }
 
-    /*! \brief Convert the given multidimensional element index to a linear
-     * element index. For example, for a 800x600 array, the multidimensional
-     * index { 1, 1 } is converted to linear index 601.
-     */
-    size_t toLinearIndex(const std::vector<size_t>& elementIndex) const
-    {
-        assert(elementIndex.size() == dimensionCount());
-        for (size_t d = 0; d < elementIndex.size(); d++)
-            assert(elementIndex[d] < dimension(d));
-
-        size_t dimProduct = 1;
-        size_t index = elementIndex[0];
-        for (size_t i = 1; i < elementIndex.size(); i++) {
-            dimProduct *= dimension(i - 1);
-            index += elementIndex[i] * dimProduct;
-        }
-
-        return index;
-    }
-
-    /*! \brief Convert the given multidimensional element index to a linear
-     * element index. For example, for a 800x600 array, the multidimensional
-     * index { 1, 1 } is converted to linear index 601.
-     */
-    size_t toLinearIndex(const std::initializer_list<size_t>& elementIndex) const
-    {
-        assert(elementIndex.size() == dimensionCount());
-        for (size_t d = 0; d < elementIndex.size(); d++)
-            assert(elementIndex.begin()[d] < dimension(d));
-
-        size_t dimProduct = 1;
-        size_t index = elementIndex.begin()[0];
-        for (size_t i = 1; i < elementIndex.size(); i++) {
-            dimProduct *= dimension(i - 1);
-            index += elementIndex.begin()[i] * dimProduct;
-        }
-
-        return index;
-    }
-
-    /*! \brief Convert the given linear element index to a multidimensional
-     * index. For example, for a 800x600 array, the linear index 601 is
-     * converted to the multidimensional index { 1, 1 }.
-     */
-    std::vector<size_t> toVectorIndex(size_t elementIndex) const
-    {
-        assert(elementIndex < elementCount());
-
-        std::vector<size_t> indexVector(dimensionCount());
-        size_t multipliedDimSizes = elementCount();
-        for (size_t i = 0; i < dimensionCount(); i++) {
-            size_t j = dimensionCount() - 1 - i;
-            multipliedDimSizes /= dimension(j);
-            indexVector[j] = elementIndex / multipliedDimSizes;
-            elementIndex -= indexVector[j] * multipliedDimSizes;
-        }
-        return indexVector;
-    }
-
-    /*! \brief Returns the offset of the element with index \a elementIndex within the data. */
-    size_t elementOffset(size_t elementIndex) const
-    {
-        assert(elementIndex < elementCount());
-        return elementIndex * elementSize();
-    }
-
-    /*! \brief Returns the offset of the element with index \a elementIndex within the data. */
-    size_t elementOffset(const std::vector<size_t>& elementIndex) const
-    {
-        return elementOffset(toLinearIndex(elementIndex));
-    }
-
-    /*! \brief Returns the offset of the element with index \a elementIndex within the data. */
-    size_t elementOffset(const std::initializer_list<size_t>& elementIndex) const
-    {
-        return elementOffset(toLinearIndex(elementIndex));
-    }
-
-    /*! \brief Returns the offset of the component with index \a componentIndex within an array element. */
-    size_t componentOffset(size_t componentIndex) const
-    {
-        assert(componentIndex < componentCount());
-        return componentIndex * componentSize();
-    }
-
-    /*! \brief Returns the offset of the component with index \a componentIndex
-     * in the element with index \a elementIndex within an array element. */
-    size_t componentOffset(size_t elementIndex, size_t componentIndex) const
-    {
-        return elementOffset(elementIndex) + componentOffset(componentIndex);
-    }
-
-    /*! \brief Returns the offset of the component with index \a componentIndex
-     * in the element with index \a elementIndex within an array element. */
-    size_t componentOffset(const std::vector<size_t>& elementIndex, size_t componentIndex) const
-    {
-        return elementOffset(elementIndex) + componentOffset(componentIndex);
-    }
-
-    /*! \brief Returns the offset of the component with index \a componentIndex
-     * in the element with index \a elementIndex within an array element. */
-    size_t componentOffset(const std::initializer_list<size_t>& elementIndex, size_t componentIndex) const
-    {
-        return elementOffset(elementIndex) + componentOffset(componentIndex);
-    }
-
     /*! \brief Returns a pointer to the element with index \a elementIndex.
      * Note that the data must be allocated, see \a createData(). */
     template<typename T>
@@ -662,6 +695,12 @@ public:
     {
         return get<T>(toLinearIndex(elementIndex));
     }
+    /*! \cond */
+    const void* get(const std::vector<size_t>& elementIndex) const
+    {
+        return get(toLinearIndex(elementIndex));
+    }
+    /*! \endcond */
 
     /*! \brief Returns a pointer to the element with index \a elementIndex.
      * Note that the data must be allocated, see \a createData(). */
@@ -670,6 +709,12 @@ public:
     {
         return get<T>(toLinearIndex(elementIndex));
     }
+    /*! \cond */
+    const void* get(const std::initializer_list<size_t>& elementIndex) const
+    {
+        return get(toLinearIndex(elementIndex));
+    }
+    /*! \endcond */
 
     /*! \brief Returns a pointer to the element with index \a elementIndex.
      * Note that the data must be allocated, see \a createData(). */
@@ -693,6 +738,12 @@ public:
     {
         return get<T>(toLinearIndex(elementIndex));
     }
+    /*! \cond */
+    void* get(const std::vector<size_t>& elementIndex)
+    {
+        return get(toLinearIndex(elementIndex));
+    }
+    /*! \endcond */
 
     /*! \brief Returns a pointer to the element with index \a elementIndex.
      * Note that the data must be allocated, see \a createData(). */
@@ -701,6 +752,12 @@ public:
     {
         return get<T>(toLinearIndex(elementIndex));
     }
+    /*! \cond */
+    void* get(const std::initializer_list<size_t>& elementIndex)
+    {
+        return get(toLinearIndex(elementIndex));
+    }
+    /*! \endcond */
 
     /*! \brief Sets the components of the element with index \a elementIndex to the given \a values. */
     template<typename T>
