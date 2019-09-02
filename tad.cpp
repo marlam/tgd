@@ -269,7 +269,7 @@ int tad_info(int argc, char* argv[])
     for (;;) {
         if (!importer.hasMore(&err)) {
             if (err != TAD::ErrorNone) {
-                fprintf(stderr, "tad info : %s: %s\n", inFileName.c_str(), TAD::strerror(err));
+                fprintf(stderr, "tad info: %s: %s\n", inFileName.c_str(), TAD::strerror(err));
             }
             break;
         }
