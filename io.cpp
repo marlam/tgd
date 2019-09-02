@@ -34,6 +34,7 @@
 #include "io-pfs.hpp"
 #include "io-png.hpp"
 #include "io-jpeg.hpp"
+#include "io-hdf5.hpp"
 
 
 namespace TAD {
