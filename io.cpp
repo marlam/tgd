@@ -21,8 +21,9 @@
  * SOFTWARE.
  */
 
-#include <string>
+#include <cstdio>
 #include <cctype>
+#include <string>
 
 #include "io.hpp"
 #include "dl.hpp"
@@ -191,6 +192,21 @@ Importer::~Importer()
 {
 }
 
+Error Importer::checkAccess() const
+{
+    if (!_fie) {
+        return ErrorFormatUnsupported;
+    }
+    if (fileName() != "-") {
+        FILE* f = std::fopen(fileName().c_str(), "rb");
+        if (!f) {
+            return ErrorSysErrno;
+        }
+        std::fclose(f);
+    }
+    return ErrorNone;
+}
+
 int Importer::arrayCount()
 {
     if (!_fie)
@@ -274,6 +290,21 @@ void Exporter::initialize(const std::string& fileName, bool append, const TagLis
 
 Exporter::~Exporter()
 {
+}
+
+Error Exporter::checkAccess() const
+{
+    if (!_fie) {
+        return ErrorFormatUnsupported;
+    }
+    if (fileName() != "-") {
+        FILE* f = std::fopen(fileName().c_str(), "r+b");
+        if (!f) {
+            return ErrorSysErrno;
+        }
+        std::fclose(f);
+    }
+    return ErrorNone;
 }
 
 Error Exporter::writeArray(const ArrayContainer& array)
