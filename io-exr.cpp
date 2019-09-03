@@ -125,42 +125,67 @@ ArrayContainer FormatImportExportEXR::readArray(Error* error, int arrayIndex)
     }
     const ChannelList &channellist = file.header().channels();
     size_t channelCount = 0;
-    for (ChannelList::ConstIterator iter = channellist.begin(); iter != channellist.end(); iter++)
+    for (ChannelList::ConstIterator iter = channellist.begin(); iter != channellist.end(); iter++) {
         channelCount++;
-    if (channelCount < 1 || channelCount > 4) {
+    }
+    if (channelCount < 1) {
         *error = ErrorInvalidData;
         return ArrayContainer();
     }
 
-    size_t w = width;
-    size_t h = height;
-    ArrayContainer r({ w, h }, channelCount, float32);
+    ArrayContainer r({ size_t(width), size_t(height) }, channelCount, float32);
     char* charData = static_cast<char*>(r.data());
     FrameBuffer framebuffer;
-    if ((channelCount == 3 || channelCount == 4)
-            && channellist.findChannel("R") && channellist.findChannel("G") && channellist.findChannel("B")
-            && (channelCount == 3 || channellist.findChannel("A"))) {
-        r.componentTagList(0).set("INTERPRETATION", "RED");
-        framebuffer.insert("R", Slice(FLOAT, charData + 0 * sizeof(float),
+    int channelIndex = 0;
+    if (channellist.findChannel("Y")) {
+        r.componentTagList(channelIndex).set("INTERPRETATION", "XYZ/Y");
+        framebuffer.insert("Y", Slice(FLOAT, charData + channelIndex * sizeof(float),
                     channelCount * sizeof(float), channelCount * width * sizeof(float), 1, 1, 0.0f));
-        r.componentTagList(1).set("INTERPRETATION", "GREEN");
-        framebuffer.insert("G", Slice(FLOAT, charData + 1 * sizeof(float),
+        channelIndex++;
+    }
+    if (channellist.findChannel("R")) {
+        r.componentTagList(channelIndex).set("INTERPRETATION", "RED");
+        framebuffer.insert("R", Slice(FLOAT, charData + channelIndex * sizeof(float),
                     channelCount * sizeof(float), channelCount * width * sizeof(float), 1, 1, 0.0f));
-        r.componentTagList(2).set("INTERPRETATION", "BLUE");
-        framebuffer.insert("B", Slice(FLOAT, charData + 2 * sizeof(float),
+        channelIndex++;
+    }
+    if (channellist.findChannel("G")) {
+        r.componentTagList(channelIndex).set("INTERPRETATION", "GREEN");
+        framebuffer.insert("G", Slice(FLOAT, charData + channelIndex * sizeof(float),
                     channelCount * sizeof(float), channelCount * width * sizeof(float), 1, 1, 0.0f));
-        if (channelCount == 4) {
-            r.componentTagList(3).set("INTERPRETATION", "ALPHA");
-            framebuffer.insert("A", Slice(FLOAT, charData + 3 * sizeof(float),
-                        channelCount * sizeof(float), channelCount * width * sizeof(float), 1, 1, 0.0f));
+        channelIndex++;
+    }
+    if (channellist.findChannel("B")) {
+        r.componentTagList(channelIndex).set("INTERPRETATION", "BLUE");
+        framebuffer.insert("B", Slice(FLOAT, charData + channelIndex * sizeof(float),
+                    channelCount * sizeof(float), channelCount * width * sizeof(float), 1, 1, 0.0f));
+        channelIndex++;
+    }
+    if (channellist.findChannel("A")) {
+        r.componentTagList(channelIndex).set("INTERPRETATION", "ALPHA");
+        framebuffer.insert("A", Slice(FLOAT, charData + channelIndex * sizeof(float),
+                    channelCount * sizeof(float), channelCount * width * sizeof(float), 1, 1, 0.0f));
+        channelIndex++;
+    }
+    if (channellist.findChannel("Z")) {
+        r.componentTagList(channelIndex).set("INTERPRETATION", "DEPTH");
+        framebuffer.insert("Z", Slice(FLOAT, charData + channelIndex * sizeof(float),
+                    channelCount * sizeof(float), channelCount * width * sizeof(float), 1, 1, 0.0f));
+        channelIndex++;
+    }
+    for (ChannelList::ConstIterator iter = channellist.begin(); iter != channellist.end(); iter++) {
+        if (std::strcmp(iter.name(), "Y") == 0
+                || std::strcmp(iter.name(), "R") == 0
+                || std::strcmp(iter.name(), "G") == 0
+                || std::strcmp(iter.name(), "B") == 0
+                || std::strcmp(iter.name(), "A") == 0
+                || std::strcmp(iter.name(), "Z") == 0) {
+            continue;
         }
-    } else {
-        int c = 0;
-        for (ChannelList::ConstIterator iter = channellist.begin(); iter != channellist.end(); iter++) {
-            framebuffer.insert(iter.name(), Slice(FLOAT, charData + c * sizeof(float),
-                        channelCount * sizeof(float), channelCount * width * sizeof(float), 1, 1, 0.0f));
-            c++;
-        }
+        r.componentTagList(channelIndex).set("INTERPRETATION", iter.name());
+        framebuffer.insert(iter.name(), Slice(FLOAT, charData + channelIndex * sizeof(float),
+                    channelCount * sizeof(float), channelCount * width * sizeof(float), 1, 1, 0.0f));
+        channelIndex++;
     }
     file.setFrameBuffer(framebuffer);
     file.readPixels(dw.min.y, dw.max.y);
@@ -180,30 +205,34 @@ Error FormatImportExportEXR::writeArray(const ArrayContainer& array)
     if (array.dimensionCount() != 2
             || array.dimension(0) <= 0 || array.dimension(1) <= 0
             || array.dimension(0) > 65535 || array.dimension(1) > 65535
-            || array.componentCount() < 1 || array.componentCount() > 4
+            || array.componentCount() < 1
             || array.componentType() != float32) {
         return ErrorFeaturesUnsupported;
     }
 
     Header header(array.dimension(0), array.dimension(1), 1.0f, Imath::V2f(0, 0), 1.0f, INCREASING_Y, PIZ_COMPRESSION);
-    std::string channel_names[4] = { "U0", "U1", "U2", "U3" };
-    if (array.componentCount() == 1) {
-        channel_names[0] = "Y";
-    } else if (array.componentCount() == 2) {
-        channel_names[0] = "Y";
-        channel_names[1] = "A";
-    } else if (array.componentCount() == 3) {
-        channel_names[0] = "R";
-        channel_names[1] = "G";
-        channel_names[2] = "B";
-    } else {
-        channel_names[0] = "R";
-        channel_names[1] = "G";
-        channel_names[2] = "B";
-        channel_names[3] = "A";
-    }
-    for (size_t c = 0; c < array.componentCount(); c++) {
-        header.channels().insert(channel_names[c].c_str(), Channel(FLOAT));
+    std::vector<std::string> channelNames(array.componentCount());
+    for (size_t c = 0; c < channelNames.size(); c++) {
+        std::string channelName;
+        std::string interpretationValue = array.componentTagList(c).value("INTERPRETATION");
+        if (interpretationValue == "RED")
+            channelName = "R";
+        else if (interpretationValue == "GREEN")
+            channelName = "G";
+        else if (interpretationValue == "BLUE")
+            channelName = "B";
+        else if (interpretationValue == "ALPHA")
+            channelName = "A";
+        else if (interpretationValue == "XYZ/Y")
+            channelName = "Y";
+        else if (interpretationValue == "DEPTH")
+            channelName = "Z";
+        else if (interpretationValue.size() > 0)
+            channelName = interpretationValue;
+        else
+            channelName = std::string("U") + std::to_string(c);
+        channelNames[c] = channelName;
+        header.channels().insert(channelName.c_str(), Channel(FLOAT));
     }
     OutputFile file(_fileName.c_str(), header);
     FrameBuffer framebuffer;
@@ -211,7 +240,7 @@ Error FormatImportExportEXR::writeArray(const ArrayContainer& array)
     reverseY(reversedArray);
     char* charData = static_cast<char*>(reversedArray.data());
     for (size_t c = 0; c < array.componentCount(); c++) {
-        framebuffer.insert(channel_names[c].c_str(),
+        framebuffer.insert(channelNames[c].c_str(),
                 Slice(FLOAT, charData + c * sizeof(float),
                     array.componentCount() * sizeof(float),
                     array.componentCount() * array.dimension(0) * sizeof(float)));
