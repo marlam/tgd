@@ -90,8 +90,10 @@ static std::string getExtension(const std::string& fileName)
 static FormatImportExport* openFormatImportExport(const std::string& format)
 {
     std::string fieName;
-    if (format == "csv") {
-        fieName = "csv";
+    if (format == "tad") {
+        fieName = "tad";
+    } else if (format == "raw") {
+        fieName = "raw";
     } else if (format == "exr") {
         fieName = "exr";
     } else if (format == "gta") {
@@ -100,37 +102,35 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
         fieName = "hdf5";
     } else if (format == "jpg" || format == "jpeg") {
         fieName = "jpeg";
-    } else if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam") {
-        fieName = "pnm";
     } else if (format == "pfs") {
         fieName = "pfs";
     } else if (format == "png") {
         fieName = "png";
-    } else if (format == "raw") {
-        fieName = "raw";
-    } else if (format == "tad") {
-        fieName = "tad";
+    } else if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam") {
+        fieName = "pnm";
     }
 
     // first builtin formats...
-    if (fieName == "csv") {
-        return nullptr;// TODO: new FormatImportExportCSV;
+    if (fieName == "tad") {
+        return new FormatImportExportTAD;
     } else if (fieName == "raw") {
         return new FormatImportExportRAW;
-    } else if (fieName == "tad") {
-        return new FormatImportExportTAD;
 #ifdef TAD_STATIC
+#  ifdef TAD_WITH_OPENEXR
+    } else if (fieName == "exr") {
+        return new FormatImportExportEXR;
+#  endif
 #  ifdef TAD_WITH_GTA
     } else if (fieName == "gta") {
         return new FormatImportExportGTA;
 #  endif
-#  ifdef TAD_WITH_NETPBM
-    } else if (fieName == "pnm") {
-        return new FormatImportExportPNM;
+#  ifdef TAD_WITH_HDF5
+    } else if (fieName == "hdf5") {
+        return new FormatImportExportHDF5;
 #  endif
-#  ifdef TAD_WITH_OPENEXR
-    } else if (fieName == "exr") {
-        return new FormatImportExportEXR;
+#  ifdef TAD_WITH_JPEG
+    } else if (fieName == "jpeg") {
+        return new FormatImportExportJPEG;
 #  endif
 #  ifdef TAD_WITH_PFS
     } else if (fieName == "pfs") {
@@ -140,13 +140,9 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
     } else if (fieName == "png") {
         return new FormatImportExportPNG;
 #  endif
-#  ifdef TAD_WITH_JPEG
-    } else if (fieName == "jpeg") {
-        return new FormatImportExportJPEG;
-#  endif
-#  ifdef TAD_WITH_HDF5
-    } else if (fieName == "hdf5") {
-        return new FormatImportExportHDF5;
+#  ifdef TAD_WITH_NETPBM
+    } else if (fieName == "pnm") {
+        return new FormatImportExportPNM;
 #  endif
 #endif
     } else {
