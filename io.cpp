@@ -172,6 +172,12 @@ Importer::Importer()
 {
 }
 
+Importer::~Importer()
+{
+    if (_fie && _fileIsOpened)
+        _fie->close();
+}
+
 Importer::Importer(const std::string& fileName, const TagList& hints)
 {
     initialize(fileName, hints);
@@ -186,10 +192,6 @@ void Importer::initialize(const std::string& fileName, const TagList& hints)
             : getExtension(_fileName));
     _fie = std::shared_ptr<FormatImportExport>(openFormatImportExport(_format));
     _fileIsOpened = false;
-}
-
-Importer::~Importer()
-{
 }
 
 Error Importer::checkAccess() const
@@ -271,6 +273,12 @@ Exporter::Exporter()
 {
 }
 
+Exporter::~Exporter()
+{
+    if (_fie && _fileIsOpened)
+        _fie->close();
+}
+
 Exporter::Exporter(const std::string& fileName, bool append, const TagList& hints)
 {
     initialize(fileName, append, hints);
@@ -286,25 +294,6 @@ void Exporter::initialize(const std::string& fileName, bool append, const TagLis
             : getExtension(_fileName));
     _fie = std::shared_ptr<FormatImportExport>(openFormatImportExport(_format));
     _fileIsOpened = false;
-}
-
-Exporter::~Exporter()
-{
-}
-
-Error Exporter::checkAccess() const
-{
-    if (!_fie) {
-        return ErrorFormatUnsupported;
-    }
-    if (fileName() != "-") {
-        FILE* f = std::fopen(fileName().c_str(), "r+b");
-        if (!f) {
-            return ErrorSysErrno;
-        }
-        std::fclose(f);
-    }
-    return ErrorNone;
 }
 
 Error Exporter::writeArray(const ArrayContainer& array)

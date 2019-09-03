@@ -181,9 +181,7 @@ public:
      *
      * Note that this initialization does not try to open the file yet, it merely
      * sets up the necessary information (and thus cannot fail). The functions that
-     * access the data will report any errors that might occur. If you want to
-     * perform some lightweight checks without accessing the file contents, use the
-     * checkAccess() function.
+     * access the data will report any errors that might occur.
      */
     Exporter(const std::string& fileName, bool append = Overwrite, const TagList& hints = TagList());
 
@@ -198,10 +196,6 @@ public:
     {
         return _fileName;
     }
-
-    /*! \brief Checks if the file is accessible and the format is supported. This function
-     * does not access the file contents yet, and does not result in an open file descriptor. */
-    Error checkAccess() const;
 
     /*! \brief Writes the \a array to the file. */
     Error writeArray(const ArrayContainer& array);
