@@ -26,6 +26,7 @@
 #include <limits>
 
 #include "io-pnm.hpp"
+#include "io-utils.hpp"
 
 extern "C"
 {
@@ -112,11 +113,22 @@ int FormatImportExportPNM::arrayCount()
 #else
         pnm_readpaminit(_f, &inpam, sizeof(struct pam));
 #endif
-        tuplerow = pnm_allocpamrow(&inpam);
-        for (int y = 0; y < inpam.height; y++)
-            pnm_readpamrow(&inpam, tuplerow);
-        pnm_freepamrow(tuplerow);
-
+        if (inpam.plainformat) {
+            tuplerow = pnm_allocpamrow(&inpam);
+            for (int y = 0; y < inpam.height; y++)
+                pnm_readpamrow(&inpam, tuplerow);
+            pnm_freepamrow(tuplerow);
+            int pnmEof;
+            pnm_nextimage(_f, &pnmEof);
+        } else {
+            off_t bytes = off_t(inpam.width) * off_t(inpam.height)
+                * off_t(inpam.depth) * off_t(inpam.bytes_per_sample);
+            if (fseeko(_f, bytes, SEEK_CUR) < 0) {
+                _arrayOffsets.clear();
+                _arrayCount = -1;
+                return -1;
+            }
+        }
         _arrayOffsets.push_back(arrayPos);
         if (_arrayOffsets.size() == size_t(std::numeric_limits<int>::max()) && hasMore()) {
             _arrayOffsets.clear();
@@ -199,23 +211,33 @@ ArrayContainer FormatImportExportPNM::readArray(Error* error, int arrayIndex)
         break;
     }
 
-    tuplerow = pnm_allocpamrow(&inpam);
-    for (int pamrow = 0; pamrow < inpam.height; pamrow++) {
-        pnm_readpamrow(&inpam, tuplerow);
-        size_t arrayrow = inpam.height - 1 - pamrow;
-        for (size_t x = 0; x < r.dimension(0); x++) {
-            for (size_t c = 0; c < r.componentCount(); c++) {
-                if (r.componentType() == uint8) {
-                    r.set<uint8_t>({ x, arrayrow }, c, tuplerow[x][c]);
-                } else if (r.componentType() == uint16) {
-                    r.set<uint16_t>({ x, arrayrow }, c, tuplerow[x][c]);
-                } else {
-                    r.set<uint32_t>({ x, arrayrow }, c, tuplerow[x][c]);
+    if (inpam.plainformat) {
+        tuplerow = pnm_allocpamrow(&inpam);
+        for (int pamrow = 0; pamrow < inpam.height; pamrow++) {
+            pnm_readpamrow(&inpam, tuplerow);
+            size_t arrayrow = inpam.height - 1 - pamrow;
+            for (size_t x = 0; x < r.dimension(0); x++) {
+                for (size_t c = 0; c < r.componentCount(); c++) {
+                    if (r.componentType() == uint8) {
+                        r.set<uint8_t>({ x, arrayrow }, c, tuplerow[x][c]);
+                    } else if (r.componentType() == uint16) {
+                        r.set<uint16_t>({ x, arrayrow }, c, tuplerow[x][c]);
+                    } else {
+                        r.set<uint32_t>({ x, arrayrow }, c, tuplerow[x][c]);
+                    }
                 }
             }
         }
+        pnm_freepamrow(tuplerow);
+        int pnmEof;
+        pnm_nextimage(_f, &pnmEof);
+    } else {
+        if (fread(r.data(), r.dataSize(), 1, _f) != 1) {
+            *error = ErrorInvalidData;
+            return ArrayContainer();
+        }
+        reverseY(r);
     }
-    pnm_freepamrow(tuplerow);
 
     // Return the array
     return r;
@@ -277,6 +299,7 @@ Error FormatImportExportPNM::writeArray(const ArrayContainer& array)
     }
     pnm_writepaminit(&outpam);
 
+#if 0
     tuplerow = pnm_allocpamrow(&outpam);
     for (int pamrow = 0; pamrow < outpam.height; pamrow++) {
         size_t arrayrow = outpam.height - 1 - pamrow;
@@ -294,6 +317,13 @@ Error FormatImportExportPNM::writeArray(const ArrayContainer& array)
         pnm_writepamrow(&outpam, tuplerow);
     }
     pnm_freepamrow(tuplerow);
+#else
+    ArrayContainer data = array.deepCopy();
+    reverseY(data);
+    if (fwrite(data.data(), data.dataSize(), 1, _f) != 1) {
+        return ErrorSysErrno;
+    }
+#endif
     return ErrorNone;
 }
 

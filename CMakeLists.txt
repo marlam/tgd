@@ -49,7 +49,7 @@ set(libtad_SOURCES
 	foreach.hpp
 	operators.hpp
 	tools.hpp
-	io.hpp io.cpp
+	io.hpp io.cpp io-utils.hpp
 	io-tad.hpp io-tad.cpp
 	io-raw.hpp io-raw.cpp
 	dl.hpp)

@@ -29,6 +29,7 @@
 #include <ImfOutputFile.h>
 
 #include "io-exr.hpp"
+#include "io-utils.hpp"
 
 
 namespace TAD {
@@ -85,24 +86,6 @@ Error FormatImportExportEXR::close()
 int FormatImportExportEXR::arrayCount()
 {
     return (_fileName.length() == 0 ? -1 : 1);
-}
-
-static void reverseY(size_t height, size_t line_size, unsigned char* data)
-{
-    std::vector<unsigned char> tmp_line(line_size);
-    for (size_t y = 0; y < height / 2; y++) {
-        size_t ty = height - 1 - y;
-        std::memcpy(&(tmp_line[0]), &(data[ty * line_size]), line_size);
-        std::memcpy(&(data[ty * line_size]), &(data[y * line_size]), line_size);
-        std::memcpy(&(data[y * line_size]), &(tmp_line[0]), line_size);
-    }
-}
-
-static void reverseY(ArrayContainer& array)
-{
-    reverseY(array.dimension(1),
-            array.dimension(0) * array.elementSize(),
-            static_cast<unsigned char*>(array.data()));
 }
 
 using namespace Imf;
