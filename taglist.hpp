@@ -120,22 +120,6 @@ private:
 public:
     /*! \brief Constructor. */
     TagList() {}
-    /*! \brief Copy Constructor. */
-    TagList(const TagList& tl) : _tags(tl._tags) {}
-    /*! \brief Move Constructor. */
-    TagList(TagList&& tl) : _tags(std::move(tl._tags)) {}
-    /*! Assignment operator. */
-    TagList& operator=(const TAD::TagList& tl)
-    {
-        _tags = tl._tags;
-        return *this;
-    }
-    /*! Move assignment operator. */
-    TagList& operator=(TAD::TagList&& tl)
-    {
-        _tags = std::move(tl._tags);
-        return *this;
-    }
     /*! \brief Construct a tag list from a list of key/value pairs */
     TagList(std::initializer_list<std::pair<std::string, std::string>> tags)
     {
