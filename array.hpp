@@ -62,8 +62,8 @@
  * to handle array data of any type, and finally \a TAD::Array to handle arrays with
  * a specific data type so that convenient operations on the data are possible.
  *
- * All array data is shared by default when using the copy constructor. If you want
- * to copy array data, use \a TAD::ArrayContainer::deepCopy() or \a TAD::Array::deepCopy().
+ * All array data is shared by default when making copies of an array. If you want
+ * a copy of the data, use \a TAD::ArrayContainer::deepCopy() or \a TAD::Array::deepCopy().
  *
  * Input and output are managed by the \a TAD::Importer and \a TAD::Exporter classes,
  * and there are shortcuts \a TAD::load() and \a TAD::save() to read and write arrays
