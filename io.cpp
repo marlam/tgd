@@ -92,6 +92,8 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
     std::string fieName;
     if (format == "tad") {
         fieName = "tad";
+    } else if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam" || format == "pfm") {
+        fieName = "pnm";
     } else if (format == "raw") {
         fieName = "raw";
     } else if (format == "exr") {
@@ -106,8 +108,6 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
         fieName = "pfs";
     } else if (format == "png") {
         fieName = "png";
-    } else if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam") {
-        fieName = "pnm";
     }
 
     // first builtin formats...
@@ -115,6 +115,8 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
         return new FormatImportExportTAD;
     } else if (fieName == "raw") {
         return new FormatImportExportRAW;
+    } else if (fieName == "pnm") {
+        return new FormatImportExportPNM;
 #ifdef TAD_STATIC
 #  ifdef TAD_WITH_OPENEXR
     } else if (fieName == "exr") {
@@ -139,10 +141,6 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
 #  ifdef TAD_WITH_PNG
     } else if (fieName == "png") {
         return new FormatImportExportPNG;
-#  endif
-#  ifdef TAD_WITH_NETPBM
-    } else if (fieName == "pnm") {
-        return new FormatImportExportPNM;
 #  endif
 #endif
     } else {

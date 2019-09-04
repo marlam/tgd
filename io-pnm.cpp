@@ -28,13 +28,6 @@
 #include "io-pnm.hpp"
 #include "io-utils.hpp"
 
-extern "C"
-{
-/* This header must come last because it contains so much junk that
- * it messes up other headers. */
-#include <pam.h>
-#undef max
-}
 
 namespace TAD {
 
@@ -42,7 +35,6 @@ FormatImportExportPNM::FormatImportExportPNM() :
     _f(nullptr),
     _arrayCount(-2)
 {
-    pm_init("libtadio-netpbm", 0);
 }
 
 FormatImportExportPNM::~FormatImportExportPNM()
@@ -82,6 +74,276 @@ Error FormatImportExportPNM::close()
     return ErrorNone;
 }
 
+typedef struct
+{
+    Error error;
+    int width;
+    int height;
+    int depth;
+    int maxval; // negative means floating point
+    bool plain;
+    float factor;
+    bool needsEndianFix;
+} PNMInfo;
+
+static bool readPnmWhitespaceAndComments(FILE *f)
+{
+    int c;
+    bool inComment = false;
+    for (;;) {
+        c = fgetc(f);
+        if (c == EOF) {
+            return !ferror(f);
+        } else {
+            if (inComment && c == '\n') {
+                inComment = false;
+            } else {
+                if (c == '#')
+                    inComment = true;
+                else if (!(c == ' ' || c == '\t' || c == '\r' || c == '\n'))
+                    return !(ungetc(c, f) == EOF);
+            }
+        }
+    }
+}
+
+static bool readPnmWidthHeight(FILE* f, PNMInfo* info)
+{
+    return (readPnmWhitespaceAndComments(f)
+            && fscanf(f, "%d", &info->width) == 1 && info->width > 0
+            && readPnmWhitespaceAndComments(f)
+            && fscanf(f, "%d", &info->height) == 1 && info->height > 0);
+}
+
+static bool readPnmMaxval(FILE* f, PNMInfo* info)
+{
+    bool ret = (readPnmWhitespaceAndComments(f)
+            && fscanf(f, "%d", &info->maxval) == 1
+            && info->maxval >= 1 && info->maxval <= 65535);
+    info->needsEndianFix = (info->maxval > 255);
+    return ret;
+}
+
+static bool readPfmFactor(FILE* f, PNMInfo* info)
+{
+    bool ret = (readPnmWhitespaceAndComments(f)
+            && fscanf(f, "%f", &info->factor) == 1);
+    info->needsEndianFix = (info->factor > 0.0f);
+    if (info->factor < 0.0f)
+        info->factor = -info->factor;
+    return ret;
+}
+
+static bool readWhitespaceUntilNewline(FILE* f)
+{
+    for (;;) {
+        int c = fgetc(f);
+        if (c == '\n')
+            return true;
+        else if (c == ' ' || c == '\t' || c == '\r')
+            continue;
+        else
+            return false;
+    }
+}
+
+static bool readAnythingUntilNewline(FILE* f)
+{
+    for (;;) {
+        int c = fgetc(f);
+        if (c == '\n')
+            return true;
+        else if (c == EOF)
+            return false;
+        else
+            continue;
+    }
+}
+
+static bool readNonNewlineWhitespace(FILE* f)
+{
+    for (;;) {
+        int c = fgetc(f);
+        if (c == ' ' || c == '\t' || c == '\r') {
+            continue;
+        } else if (c == EOF) {
+            return false;
+        } else {
+            return (ungetc(c, f) != EOF);
+        }
+    }
+}
+
+static bool readWhitespace(FILE* f)
+{
+    for (;;) {
+        int c = fgetc(f);
+        if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+            continue;
+        } else if (c == EOF) {
+            return false;
+        } else {
+            return (ungetc(c, f) != EOF);
+        }
+    }
+}
+
+static bool readPamHeader(FILE* f, PNMInfo* info)
+{
+    for (;;) {
+        if (!readNonNewlineWhitespace(f))
+            return false;
+        int c = fgetc(f);
+        if (c == '\n') {
+            // empty line
+        } else if (c == '#') {
+            if (!readAnythingUntilNewline(f))
+                return false;
+        } else if (c == 'W') {
+            if (fscanf(f, "IDTH %d", &info->width) != 1 || !readWhitespaceUntilNewline(f))
+                return false;
+        } else if (c == 'H') {
+            if (fscanf(f, "EIGHT %d", &info->height) != 1 || !readWhitespaceUntilNewline(f))
+                return false;
+        } else if (c == 'D') {
+            if (fscanf(f, "EPTH %d", &info->depth) != 1 || !readWhitespaceUntilNewline(f))
+                return false;
+        } else if (c == 'M') {
+            if (fscanf(f, "AXVAL %d", &info->maxval) != 1 || !readWhitespaceUntilNewline(f))
+                return false;
+        } else if (c == 'T') {
+            if (!readAnythingUntilNewline(f))
+                return false;
+        } else if (c == 'E') {
+            char ndhdr[5];
+            if (fread(ndhdr, 5, 1, f) != 1
+                    || strncmp(ndhdr, "NDHDR", 5) != 0
+                    || !readWhitespaceUntilNewline(f))
+                return false;
+            break;
+        }
+    }
+    if (info->width < 1 || info->height < 1
+            || info->depth < 1 || info->depth > 4
+            || info->maxval < 1 || info->maxval > 65535) {
+        return false;
+    }
+    info->needsEndianFix = (info->maxval > 255);
+    return true;
+}
+
+static PNMInfo readPnmHeader(FILE* f)
+{
+    PNMInfo info;
+    info.error = ErrorNone;
+    info.width = -1;
+    info.height = -1;
+    info.depth = -1;
+    info.maxval = 0;
+    info.plain = false;
+    info.factor = 1.0f;
+    info.needsEndianFix = false;
+
+    int c = fgetc(f);
+    if (c == EOF) {
+        info.error = ErrorSysErrno;
+    } else if (c != 'P') {
+        info.error = ErrorInvalidData;
+    } else {
+        c = fgetc(f);
+        if (c == EOF) {
+            info.error = ErrorSysErrno;
+        } else if (c == '2') {
+            info.depth = 1;
+            info.plain = true;
+            if (!readPnmWidthHeight(f, &info) || !readPnmMaxval(f, &info) || !readWhitespaceUntilNewline(f))
+                info.error = ErrorInvalidData;
+        } else if (c == '3') {
+            info.depth = 3;
+            info.plain = true;
+            if (!readPnmWidthHeight(f, &info) || !readPnmMaxval(f, &info) || !readWhitespaceUntilNewline(f))
+                info.error = ErrorInvalidData;
+        } else if (c == '5') {
+            info.depth = 1;
+            if (!readPnmWidthHeight(f, &info) || !readPnmMaxval(f, &info) || !readWhitespaceUntilNewline(f))
+                info.error = ErrorInvalidData;
+        } else if (c == '6') {
+            info.depth = 3;
+            if (!readPnmWidthHeight(f, &info) || !readPnmMaxval(f, &info) || !readWhitespaceUntilNewline(f))
+                info.error = ErrorInvalidData;
+        } else if (c == 'f') {
+            info.depth = 1;
+            info.maxval = -1;
+            if (!readPnmWidthHeight(f, &info) || !readPfmFactor(f, &info) || !readWhitespaceUntilNewline(f))
+                info.error = ErrorInvalidData;
+        } else if (c == 'F') {
+            info.depth = 3;
+            info.maxval = -1;
+            if (!readPnmWidthHeight(f, &info) || !readPfmFactor(f, &info) || !readWhitespaceUntilNewline(f))
+                info.error = ErrorInvalidData;
+        } else if (c == '7') {
+            if (!readPamHeader(f, &info))
+                info.error = ErrorInvalidData;
+        } else {
+            info.error = ErrorInvalidData;
+        }
+    }
+    return info;
+}
+
+bool readPnmData(FILE* f, const PNMInfo& info, ArrayContainer& array)
+{
+    if (info.plain) {
+        for (size_t e = 0; e < array.elementCount(); e++) {
+            for (size_t c = 0; c < array.componentCount(); c++) {
+                int val;
+                if (!readWhitespace(f)
+                        || fscanf(f, "%d", &val) != 1
+                        || val < 0 || val > 65535
+                        || (array.componentType() == uint8 && val > 255)) {
+                    return false;
+                }
+                if (array.componentType() == uint8) {
+                    array.set<uint8_t>(e, c, uint8_t(val));
+                } else {
+                    array.set<uint16_t>(e, c, uint16_t(val));
+                }
+            }
+        }
+        readWhitespace(f); // ignore EOF
+        return true;
+    } else {
+        return (fread(array.data(), array.dataSize(), 1, f) == 1);
+    }
+}
+
+bool skipPnmData(FILE* f, const PNMInfo& info)
+{
+    if (info.plain) {
+        size_t valueCount = info.width * info.height * info.depth;
+        for (size_t i = 0; i < valueCount; i++) {
+            int val;
+            if (!readWhitespace(f)
+                    || fscanf(f, "%d", &val) != 1
+                    || val < 0 || val > 65535
+                    || (info.maxval <= 255 && val > 255)) {
+                return false;
+            }
+        }
+        readWhitespace(f); // ignore EOF
+    } else {
+        off_t bytes =
+              off_t(info.width)
+            * off_t(info.height)
+            * off_t(info.depth)
+            * off_t(info.maxval < 0 ? 4 : info.maxval > 255 ? 2 : 1);
+        if (fseeko(f, bytes, SEEK_CUR) < 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
 int FormatImportExportPNM::arrayCount()
 {
     if (_arrayCount >= -1)
@@ -98,9 +360,6 @@ int FormatImportExportPNM::arrayCount()
     }
     rewind(_f);
 
-    struct pam inpam;
-    tuple *tuplerow;
-
     while (hasMore()) {
         off_t arrayPos = ftello(_f);
         if (arrayPos < 0) {
@@ -108,26 +367,16 @@ int FormatImportExportPNM::arrayCount()
             _arrayCount = -1;
             return -1;
         }
-#ifdef PAM_STRUCT_SIZE
-        pnm_readpaminit(_f, &inpam, PAM_STRUCT_SIZE(tuple_type));
-#else
-        pnm_readpaminit(_f, &inpam, sizeof(struct pam));
-#endif
-        if (inpam.plainformat) {
-            tuplerow = pnm_allocpamrow(&inpam);
-            for (int y = 0; y < inpam.height; y++)
-                pnm_readpamrow(&inpam, tuplerow);
-            pnm_freepamrow(tuplerow);
-            int pnmEof;
-            pnm_nextimage(_f, &pnmEof);
-        } else {
-            off_t bytes = off_t(inpam.width) * off_t(inpam.height)
-                * off_t(inpam.depth) * off_t(inpam.bytes_per_sample);
-            if (fseeko(_f, bytes, SEEK_CUR) < 0) {
-                _arrayOffsets.clear();
-                _arrayCount = -1;
-                return -1;
-            }
+        PNMInfo pnminfo = readPnmHeader(_f);
+        if (pnminfo.error != ErrorNone) {
+            _arrayOffsets.clear();
+            _arrayCount = -1;
+            return -1;
+        }
+        if (!skipPnmData(_f, pnminfo)) {
+            _arrayOffsets.clear();
+            _arrayCount = -1;
+            return -1;
         }
         _arrayOffsets.push_back(arrayPos);
         if (_arrayOffsets.size() == size_t(std::numeric_limits<int>::max()) && hasMore()) {
@@ -164,82 +413,52 @@ ArrayContainer FormatImportExportPNM::readArray(Error* error, int arrayIndex)
     }
 
     // Read the PNM
-    struct pam inpam;
-    tuple *tuplerow;
-#ifdef PAM_STRUCT_SIZE
-    pnm_readpaminit(_f, &inpam, PAM_STRUCT_SIZE(tuple_type));
-#else
-    pnm_readpaminit(_f, &inpam, sizeof(struct pam));
-#endif
-    if (inpam.width < 1 || inpam.height < 1 || inpam.depth < 1
-            || (inpam.bytes_per_sample != 1 && inpam.bytes_per_sample != 2
-                && inpam.bytes_per_sample != 4)) {
-        *error = ErrorInvalidData;
+    PNMInfo pnminfo = readPnmHeader(_f);
+    if (pnminfo.error != ErrorNone) {
+        *error = pnminfo.error;
         return ArrayContainer();
     }
-    Type type = (inpam.bytes_per_sample == 1 ? uint8
-            : inpam.bytes_per_sample == 2 ? uint16
-            : uint32);
-    ArrayContainer r({ static_cast<size_t>(inpam.width), static_cast<size_t>(inpam.height) },
-            static_cast<size_t>(inpam.depth), type);
-    switch (inpam.depth) {
-    case 1:
-    case 2:
-        if (type == uint8) {
-            r.componentTagList(0).set("INTERPRETATION", "SRGB/LUM");
-        } else {
+    Type type = (pnminfo.maxval < 0 ? float32
+            : pnminfo.maxval <= 255 ? uint8
+            : uint16);
+    ArrayContainer r({ size_t(pnminfo.width), size_t(pnminfo.height) },
+            size_t(pnminfo.depth), type);
+    if (pnminfo.depth <= 2) {
+        if (pnminfo.maxval < 0)
             r.componentTagList(0).set("INTERPRETATION", "GRAY");
-        }
-        if (inpam.depth == 2) {
+        else
+            r.componentTagList(0).set("INTERPRETATION", "SRGB/LUM");
+        if (pnminfo.depth == 2) {
             r.componentTagList(1).set("INTERPRETATION", "ALPHA");
         }
-        break;
-    case 3:
-    case 4:
-        if (type == uint8) {
-            r.componentTagList(0).set("INTERPRETATION", "SRGB/R");
-            r.componentTagList(1).set("INTERPRETATION", "SRGB/G");
-            r.componentTagList(2).set("INTERPRETATION", "SRGB/B");
-        } else {
+    } else {
+        if (pnminfo.maxval < 0) {
             r.componentTagList(0).set("INTERPRETATION", "RED");
             r.componentTagList(1).set("INTERPRETATION", "GREEN");
             r.componentTagList(2).set("INTERPRETATION", "BLUE");
+        } else {
+            r.componentTagList(0).set("INTERPRETATION", "SRGB/R");
+            r.componentTagList(1).set("INTERPRETATION", "SRGB/G");
+            r.componentTagList(2).set("INTERPRETATION", "SRGB/B");
         }
-        if (inpam.depth == 4) {
+        if (pnminfo.depth == 4) {
             r.componentTagList(3).set("INTERPRETATION", "ALPHA");
         }
-        break;
     }
-
-    if (inpam.plainformat) {
-        tuplerow = pnm_allocpamrow(&inpam);
-        for (int pamrow = 0; pamrow < inpam.height; pamrow++) {
-            pnm_readpamrow(&inpam, tuplerow);
-            size_t arrayrow = inpam.height - 1 - pamrow;
-            for (size_t x = 0; x < r.dimension(0); x++) {
-                for (size_t c = 0; c < r.componentCount(); c++) {
-                    if (r.componentType() == uint8) {
-                        r.set<uint8_t>({ x, arrayrow }, c, tuplerow[x][c]);
-                    } else if (r.componentType() == uint16) {
-                        r.set<uint16_t>({ x, arrayrow }, c, tuplerow[x][c]);
-                    } else {
-                        r.set<uint32_t>({ x, arrayrow }, c, tuplerow[x][c]);
-                    }
-                }
-            }
-        }
-        pnm_freepamrow(tuplerow);
-        int pnmEof;
-        pnm_nextimage(_f, &pnmEof);
+    if (!readPnmData(_f, pnminfo, r)) {
+        *error = ErrorInvalidData;
+        return ArrayContainer();
+    }
+    if (pnminfo.needsEndianFix) {
+        swapEndianness(r);
+    }
+    if (type == float32) {
+        for (size_t e = 0; e < r.elementCount(); e++)
+            for (size_t c = 0; c < r.componentCount(); c++)
+                r.set<float>(e, c, r.get<float>(e, c) * pnminfo.factor);
     } else {
-        if (fread(r.data(), r.dataSize(), 1, _f) != 1) {
-            *error = ErrorInvalidData;
-            return ArrayContainer();
-        }
         reverseY(r);
     }
-
-    // Return the array
     return r;
 }
 
@@ -262,68 +481,53 @@ Error FormatImportExportPNM::writeArray(const ArrayContainer& array)
             || array.dimension(0) > intmax || array.dimension(1) > intmax
             || array.componentCount() <= 0 || array.componentCount() > 4
             || (array.componentType() != uint8 && array.componentType() != uint16
-                && array.componentType() != uint32)) {
+                && !(array.componentType() == float32
+                    && (array.componentCount() == 1 || array.componentCount() == 3)))) {
         return ErrorFeaturesUnsupported;
     }
 
-    struct pam outpam;
-    tuple *tuplerow;
-    std::memset(&outpam, 0, sizeof(outpam));
-    outpam.size = sizeof(struct pam);
-#ifdef PAM_STRUCT_SIZE
-    outpam.len = PAM_STRUCT_SIZE(tuple_type);
-#else
-    outpam.len = outpam.size;
-#endif
-    outpam.file = _f;
-    outpam.width = array.dimension(0);
-    outpam.height = array.dimension(1);
-    outpam.depth = array.componentCount();
-    outpam.maxval = (array.componentType() == uint8 ? std::numeric_limits<uint8_t>::max()
-            : array.componentType() == uint16 ? std::numeric_limits<uint16_t>::max()
-            : std::numeric_limits<uint32_t>::max());
-    outpam.bytes_per_sample = array.componentSize();
-    outpam.plainformat = 0;
-    if (array.componentCount() == 1) {
-        outpam.format = RPGM_FORMAT;
-        std::strcpy(outpam.tuple_type, PAM_PGM_TUPLETYPE);
-    } else if (array.componentCount() == 2) {
-        outpam.format = PAM_FORMAT;
-        std::strcpy(outpam.tuple_type, "GRAYSCALE_ALPHA");
-    } else if (array.componentCount() == 3) {
-        outpam.format = RPPM_FORMAT;
-        std::strcpy(outpam.tuple_type, PAM_PPM_TUPLETYPE);
+    int width = array.dimension(0);
+    int height = array.dimension(1);
+    int depth = array.componentCount();
+    int maxval =
+        (  array.componentType() == uint8 ? std::numeric_limits<uint8_t>::max()
+         : array.componentType() == uint16 ? std::numeric_limits<uint16_t>::max()
+         : -1);
+    std::string header;
+    if (array.componentSize() <= 2 && array.componentCount() == 1) {
+        header = std::string("P5\n")
+            + std::to_string(width) + ' ' + std::to_string(height) + '\n'
+            + std::to_string(maxval) + '\n';
+    } else if (array.componentSize() <= 2 && array.componentCount() == 3) {
+        header = std::string("P6\n")
+            + std::to_string(width) + ' ' + std::to_string(height) + '\n'
+            + std::to_string(maxval) + '\n';
+    } else if (array.componentSize() <= 2) {
+        const char* tupltypes[4] = { "GRAYSCALE", "GRAYSCALE_ALPHA", "RGB", "RGB_ALPHA" };
+        header = std::string("P7\n")
+            + "WIDTH "    + std::to_string(width)  + '\n'
+            + "HEIGHT "   + std::to_string(height) + '\n'
+            + "DEPTH "    + std::to_string(depth)  + '\n'
+            + "MAXVAL "   + std::to_string(maxval) + '\n'
+            + "TUPLTYPE " + tupltypes[depth]       + '\n'
+            + "ENDHDR\n";
     } else {
-        outpam.format = PAM_FORMAT;
-        std::strcpy(outpam.tuple_type, "RGB_ALPHA");
+        header = std::string("P") + (depth == 1 ? 'f' : 'F') + '\n'
+            + std::to_string(width) + ' ' + std::to_string(height) + '\n'
+            + "-1.0\n";
     }
-    pnm_writepaminit(&outpam);
-
-#if 0
-    tuplerow = pnm_allocpamrow(&outpam);
-    for (int pamrow = 0; pamrow < outpam.height; pamrow++) {
-        size_t arrayrow = outpam.height - 1 - pamrow;
-        for (size_t x = 0; x < array.dimension(0); x++) {
-            for (size_t c = 0; c < array.componentCount(); c++) {
-                if (array.componentType() == uint8) {
-                    tuplerow[x][c] = array.get<uint8_t>({ x, arrayrow }, c);
-                } else if (array.componentType() == uint16) {
-                    tuplerow[x][c] = array.get<uint16_t>({ x, arrayrow }, c);
-                } else {
-                    tuplerow[x][c] = array.get<uint32_t>({ x, arrayrow }, c);
-                }
-            }
-        }
-        pnm_writepamrow(&outpam, tuplerow);
+    ArrayContainer data;
+    if (array.componentType() == float32) {
+        data = array;
+    } else {
+        data = array.deepCopy();
+        reverseY(data);
+        if (array.componentType() == uint16)
+            swapEndianness(data);
     }
-    pnm_freepamrow(tuplerow);
-#else
-    ArrayContainer data = array.deepCopy();
-    reverseY(data);
-    if (fwrite(data.data(), data.dataSize(), 1, _f) != 1) {
+    if (fputs(header.c_str(), _f) == EOF || fwrite(data.data(), data.dataSize(), 1, _f) != 1) {
         return ErrorSysErrno;
     }
-#endif
     return ErrorNone;
 }
 

@@ -34,7 +34,6 @@ endif()
 
 # Optional libraries for input/output modules
 find_package(GTA QUIET)
-find_package(NetPBM QUIET)
 find_package(OpenEXR QUIET)
 find_package(PFS QUIET)
 find_package(PNG QUIET)
@@ -52,6 +51,7 @@ set(libtad_SOURCES
 	io.hpp io.cpp io-utils.hpp
 	io-tad.hpp io-tad.cpp
 	io-raw.hpp io-raw.cpp
+	io-pnm.hpp io-pnm.cpp
 	dl.hpp)
 if(TAD_STATIC)
     add_definitions(-DTAD_STATIC)
@@ -62,12 +62,6 @@ if(TAD_STATIC)
 	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-gta.hpp io-gta.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${GTA_LIBRARIES})
 	include_directories(${GTA_INCLUDE_DIRS})
-    endif()
-    if(NETPBM_FOUND)
-	add_definitions(-DTAD_WITH_NETPBM)
-	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-pnm.hpp io-pnm.cpp)
-	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${NETPBM_LIBRARIES})
-	include_directories(${NETPBM_INCLUDE_DIRS})
     endif()
     if(OPENEXR_FOUND)
 	add_definitions(-DTAD_WITH_OPENEXR)
@@ -111,17 +105,6 @@ else()
 	include_directories(${GTA_INCLUDE_DIRS})
 	target_link_libraries(libtadio-gta ${GTA_LIBRARIES})
 	install(TARGETS libtadio-gta
-	    RUNTIME DESTINATION bin
-	    LIBRARY DESTINATION lib${LIB_SUFFIX}
-	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
-    endif()
-    if(NETPBM_FOUND)
-	add_library(libtadio-pnm SHARED io-pnm.hpp io-pnm.cpp)
-	set_target_properties(libtadio-pnm PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
-	set_target_properties(libtadio-pnm PROPERTIES OUTPUT_NAME tadio-pnm)
-	include_directories(${NETPBM_INCLUDE_DIRS})
-	target_link_libraries(libtadio-pnm ${NETPBM_LIBRARIES})
-	install(TARGETS libtadio-pnm
 	    RUNTIME DESTINATION bin
 	    LIBRARY DESTINATION lib${LIB_SUFFIX}
 	    ARCHIVE DESTINATION lib${LIB_SUFFIX})

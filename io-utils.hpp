@@ -24,6 +24,8 @@
 #ifndef TAD_IO_UTILS_HPP
 #define TAD_IO_UTILS_HPP
 
+#include <cstdint>
+
 namespace TAD {
 
 inline void reverseY(size_t height, size_t line_size, unsigned char* data)
@@ -42,6 +44,43 @@ inline void reverseY(ArrayContainer& array)
     reverseY(array.dimension(1),
             array.dimension(0) * array.elementSize(),
             static_cast<unsigned char*>(array.data()));
+}
+
+inline void swapEndianness(ArrayContainer& array)
+{
+    size_t n = array.elementCount() * array.componentCount();
+    if (array.componentSize() == 8) {
+        uint64_t* data = static_cast<uint64_t*>(array.data());
+        for (size_t i = 0; i < n; i++) {
+            uint64_t x = data[i];
+            x =   ((x                               ) << UINT64_C(56))
+                | ((x & UINT64_C(0x000000000000ff00)) << UINT64_C(40))
+                | ((x & UINT64_C(0x0000000000ff0000)) << UINT64_C(24))
+                | ((x & UINT64_C(0x00000000ff000000)) << UINT64_C(8))
+                | ((x & UINT64_C(0x000000ff00000000)) >> UINT64_C(8))
+                | ((x & UINT64_C(0x0000ff0000000000)) >> UINT64_C(24))
+                | ((x & UINT64_C(0x00ff000000000000)) >> UINT64_C(40))
+                | ((x                               ) >> UINT64_C(56));
+            data[i] = x;
+        }
+    } else if (array.componentSize() == 4) {
+        uint32_t* data = static_cast<uint32_t*>(array.data());
+        for (size_t i = 0; i < n; i++) {
+            uint32_t x = data[i];
+            x =   ((x                       ) << UINT32_C(24))
+                | ((x & UINT32_C(0x0000ff00)) << UINT32_C(8))
+                | ((x & UINT32_C(0x00ff0000)) >> UINT32_C(8))
+                | ((x                       ) >> UINT32_C(24));
+            data[i] = x;
+        }
+    } else if (array.componentSize() == 2) {
+        uint16_t* data = static_cast<uint16_t*>(array.data());
+        for (size_t i = 0; i < n; i++) {
+            uint16_t x = data[i];
+            x = (x << UINT16_C(8)) | (x >> UINT16_C(8));
+            data[i] = x;
+        }
+    }
 }
 
 }
