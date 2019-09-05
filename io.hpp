@@ -71,7 +71,7 @@ public:
 
     virtual Error openForReading(const std::string& fileName, const TagList& hints) = 0;
     virtual Error openForWriting(const std::string& fileName, bool append, const TagList& hints) = 0;
-    virtual Error close() = 0;
+    virtual void close() = 0;
 
     // for reading: (it is guaranteed that the file is opened for reading when one of these is called)
     virtual int arrayCount() = 0;

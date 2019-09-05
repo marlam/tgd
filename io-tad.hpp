@@ -68,7 +68,7 @@ public:
 
     virtual Error openForReading(const std::string& fileName, const TagList& hints) override;
     virtual Error openForWriting(const std::string& fileName, bool append, const TagList& hints) override;
-    virtual Error close() override;
+    virtual void close() override;
 
     // for reading:
     virtual int arrayCount() override;

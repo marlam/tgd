@@ -61,18 +61,14 @@ Error FormatImportExportTAD::openForWriting(const std::string& fileName, bool ap
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
-Error FormatImportExportTAD::close()
+void FormatImportExportTAD::close()
 {
     if (_f) {
         if (_f != stdin && _f != stdout) {
-            if (fclose(_f) != 0) {
-                _f = nullptr;
-                return ErrorSysErrno;
-            }
+            fclose(_f);
         }
         _f = nullptr;
     }
-    return ErrorNone;
 }
 
 static bool writeTadTagList(FILE* f, const TagList& tl)
@@ -116,7 +112,7 @@ static bool writeTad(FILE* f, const ArrayContainer& array)
         if (!writeTadTagList(f, array.dimensionTagList(d)))
             return false;
     }
-    if (std::fwrite(array.data(), array.dataSize(), 1, f) != 1) {
+    if (std::fwrite(array.data(), array.dataSize(), 1, f) != 1 || std::fflush(f) != 0) {
         return false;
     }
     return true;
@@ -167,7 +163,7 @@ static Error readTadHeader(FILE* f, ArrayContainer& array)
 {
     uint8_t start[5 + 2 * sizeof(uint64_t)];
     if (std::fread(start, 5 + 2 * sizeof(uint64_t), 1, f) != 1)
-        return ErrorSysErrno;
+        return std::ferror(f) ? ErrorSysErrno : ErrorInvalidData;
     uint64_t compCount;
     uint64_t dimCount;
     std::memcpy(&compCount, start + 5, sizeof(uint64_t));
@@ -181,7 +177,7 @@ static Error readTadHeader(FILE* f, ArrayContainer& array)
     std::vector<size_t> dimensions(dimCount);
     if (sizeof(uint64_t) == sizeof(size_t)) {
         if (std::fread(dimensions.data(), sizeof(size_t), dimCount, f) != dimCount)
-            return ErrorSysErrno;
+            return std::ferror(f) ? ErrorSysErrno : ErrorInvalidData;
     } else {
         std::vector<uint64_t> origDimensions(dimCount);
         if (std::fread(origDimensions.data(), sizeof(uint64_t), dimCount, f) != dimCount)

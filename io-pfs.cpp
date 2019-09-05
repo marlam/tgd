@@ -59,18 +59,14 @@ Error FormatImportExportPFS::openForWriting(const std::string& fileName, bool ap
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
-Error FormatImportExportPFS::close()
+void FormatImportExportPFS::close()
 {
     if (_f) {
         if (_f != stdin && _f != stdout) {
-            if (fclose(_f) != 0) {
-                _f = nullptr;
-                return ErrorSysErrno;
-            }
+            fclose(_f);
         }
         _f = nullptr;
     }
-    return ErrorNone;
 }
 
 int FormatImportExportPFS::arrayCount()
@@ -270,6 +266,9 @@ Error FormatImportExportPFS::writeArray(const ArrayContainer& array)
 
     pfsio.writeFrame(frame, _f);
     pfsio.freeFrame(frame);
+    if (fflush(_f) != 0) {
+        return ErrorSysErrno;
+    }
     return ErrorNone;
 }
 

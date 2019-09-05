@@ -45,8 +45,7 @@ FormatImportExportEXR::~FormatImportExportEXR()
 Error FormatImportExportEXR::openForReading(const std::string& fileName, const TagList&)
 {
     if (fileName == "-") {
-        errno = EINVAL;
-        return ErrorSysErrno;
+        return ErrorInvalidData;
     } else {
         FILE* f = fopen(fileName.c_str(), "rb");
         if (f) {
@@ -64,8 +63,7 @@ Error FormatImportExportEXR::openForWriting(const std::string& fileName, bool ap
     if (append)
         return ErrorFeaturesUnsupported;
     if (fileName == "-") {
-        errno = EINVAL;
-        return ErrorSysErrno;
+        return ErrorInvalidData;
     } else {
         FILE* f = fopen(fileName.c_str(), "wb");
         if (f) {
@@ -78,9 +76,8 @@ Error FormatImportExportEXR::openForWriting(const std::string& fileName, bool ap
     }
 }
 
-Error FormatImportExportEXR::close()
+void FormatImportExportEXR::close()
 {
-    return ErrorNone;
 }
 
 int FormatImportExportEXR::arrayCount()

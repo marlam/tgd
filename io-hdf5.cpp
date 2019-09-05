@@ -84,15 +84,13 @@ Error FormatImportExportHDF5::openForWriting(const std::string& fileName, bool a
     }
 }
 
-Error FormatImportExportHDF5::close()
+void FormatImportExportHDF5::close()
 {
     try {
         _f.close();
     }
     catch (H5::Exception& error) {
-        return ErrorLibrary;
     }
-    return ErrorNone;
 }
 
 static herr_t datasetVisitor(hid_t /* loc_id */, const char* name, const H5L_info_t* /* linfo */, void* opdata)

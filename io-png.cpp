@@ -70,18 +70,13 @@ Error FormatImportExportPNG::openForWriting(const std::string& fileName, bool ap
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
-Error FormatImportExportPNG::close()
+void FormatImportExportPNG::close()
 {
     if (_f) {
         if (_f != stdin && _f != stdout) {
-            if (fclose(_f) != 0) {
-                _f = nullptr;
-                return ErrorSysErrno;
-            }
+            fclose(_f);
         }
-        _f = nullptr;
     }
-    return ErrorNone;
 }
 
 int FormatImportExportPNG::arrayCount()
@@ -251,6 +246,9 @@ Error FormatImportExportPNG::writeArray(const ArrayContainer& array)
     for (size_t i = 0; i < text.size(); i++) {
         std::free(text[i].key);
         std::free(text[i].text);
+    }
+    if (fflush(_f) != 0) {
+        return ErrorSysErrno;
     }
     return ErrorNone;
 }

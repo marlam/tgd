@@ -73,18 +73,14 @@ Error FormatImportExportJPEG::openForWriting(const std::string& fileName, bool a
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
-Error FormatImportExportJPEG::close()
+void FormatImportExportJPEG::close()
 {
     if (_f) {
         if (_f != stdin && _f != stdout) {
-            if (fclose(_f) != 0) {
-                _f = nullptr;
-                return ErrorSysErrno;
-            }
+            fclose(_f);
         }
         _f = nullptr;
     }
-    return ErrorNone;
 }
 
 int FormatImportExportJPEG::arrayCount()
@@ -180,7 +176,9 @@ Error FormatImportExportJPEG::writeArray(const ArrayContainer& array)
     jpeg_write_scanlines(&cinfo, jrows.data(), cinfo.image_height);
     jpeg_finish_compress(&cinfo);
     jpeg_destroy_compress(&cinfo);
-
+    if (fflush(_f) != 0) {
+        return ErrorSysErrno;
+    }
     return ErrorNone;
 }
 

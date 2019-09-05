@@ -59,18 +59,14 @@ Error FormatImportExportGTA::openForWriting(const std::string& fileName, bool ap
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
-Error FormatImportExportGTA::close()
+void FormatImportExportGTA::close()
 {
     if (_f) {
         if (_f != stdin && _f != stdout) {
-            if (fclose(_f) != 0) {
-                _f = nullptr;
-                return ErrorSysErrno;
-            }
+            fclose(_f);
         }
         _f = nullptr;
     }
-    return ErrorNone;
 }
 
 int FormatImportExportGTA::arrayCount()
@@ -370,6 +366,9 @@ Error FormatImportExportGTA::writeArray(const ArrayContainer& array)
         }
     }
     catch (std::exception& exc) {
+        e = ErrorSysErrno;
+    }
+    if (e == ErrorNone && fflush(_f) != 0) {
         e = ErrorSysErrno;
     }
     return e;

@@ -60,18 +60,14 @@ Error FormatImportExportPNM::openForWriting(const std::string& fileName, bool ap
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
-Error FormatImportExportPNM::close()
+void FormatImportExportPNM::close()
 {
     if (_f) {
         if (_f != stdin && _f != stdout) {
-            if (fclose(_f) != 0) {
-                _f = nullptr;
-                return ErrorSysErrno;
-            }
+            fclose(_f);
         }
         _f = nullptr;
     }
-    return ErrorNone;
 }
 
 typedef struct
@@ -525,7 +521,7 @@ Error FormatImportExportPNM::writeArray(const ArrayContainer& array)
         if (array.componentType() == uint16)
             swapEndianness(data);
     }
-    if (fputs(header.c_str(), _f) == EOF || fwrite(data.data(), data.dataSize(), 1, _f) != 1) {
+    if (fputs(header.c_str(), _f) == EOF || fwrite(data.data(), data.dataSize(), 1, _f) != 1 || fflush(_f) != 0) {
         return ErrorSysErrno;
     }
     return ErrorNone;

@@ -111,18 +111,14 @@ Error FormatImportExportRAW::openForWriting(const std::string& fileName, bool ap
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
-Error FormatImportExportRAW::close()
+void FormatImportExportRAW::close()
 {
     if (_f) {
         if (_f != stdin && _f != stdout) {
-            if (fclose(_f) != 0) {
-                _f = nullptr;
-                return ErrorSysErrno;
-            }
+            fclose(_f);
         }
         _f = nullptr;
     }
-    return ErrorNone;
 }
 
 int FormatImportExportRAW::arrayCount()
@@ -159,7 +155,7 @@ bool FormatImportExportRAW::hasMore()
 
 Error FormatImportExportRAW::writeArray(const ArrayContainer& array)
 {
-    if (fwrite(array.data(), array.dataSize(), 1, _f) != 1)
+    if (fwrite(array.data(), array.dataSize(), 1, _f) != 1 || fflush(_f) != 0)
         return ErrorSysErrno;
     return ErrorNone;
 }
