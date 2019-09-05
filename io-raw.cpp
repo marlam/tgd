@@ -136,7 +136,7 @@ ArrayContainer FormatImportExportRAW::readArray(Error* error, int arrayIndex)
     }
     ArrayContainer r(_template);
     if (fread(r.data(), r.dataSize(), 1, _f) != 1) {
-        *error = ErrorSysErrno;
+        *error = ferror(_f) ? ErrorSysErrno : ErrorInvalidData;
         return ArrayContainer();
     }
     return r;

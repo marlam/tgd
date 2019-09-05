@@ -137,13 +137,13 @@ static Error readTadTagList(FILE* f, TagList& tl)
 {
     uint64_t n;
     if (std::fread(&n, sizeof(uint64_t), 1, f) != 1)
-        return ErrorSysErrno;
+        return std::ferror(f) ? ErrorSysErrno : ErrorInvalidData;
     if (n > std::numeric_limits<size_t>::max())
         return ErrorInvalidData;
     if (n > 0) {
         std::vector<char> data(n);
         if (std::fread(data.data(), data.size(), 1, f) != 1)
-            return std::feof(f) ? ErrorInvalidData : ErrorSysErrno;
+            return std::ferror(f) ? ErrorSysErrno : ErrorInvalidData;
         for (size_t i = 0; i < data.size(); ) {
             std::string key, value;
             size_t keyLen, valueLen;
@@ -181,7 +181,7 @@ static Error readTadHeader(FILE* f, ArrayContainer& array)
     } else {
         std::vector<uint64_t> origDimensions(dimCount);
         if (std::fread(origDimensions.data(), sizeof(uint64_t), dimCount, f) != dimCount)
-            return ErrorSysErrno;
+            return std::ferror(f) ? ErrorSysErrno : ErrorInvalidData;
         for (size_t d = 0; d < dimCount; d++)
             dimensions[d] = origDimensions[d];
     }
@@ -282,7 +282,7 @@ ArrayContainer FormatImportExportTAD::readArray(Error* error, int arrayIndex)
 
     // Read the data
     if (!readTadData(_f, array)) {
-        e = ErrorSysErrno;
+        e = (std::ferror(_f) ? ErrorSysErrno : ErrorInvalidData);
     }
     if (e != ErrorNone) {
         *error = e;

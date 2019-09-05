@@ -94,7 +94,7 @@ ArrayContainer FormatImportExportPNG::readArray(Error* error, int arrayIndex)
 
     png_byte header[8];
     if (std::fread(header, 8, 1, _f) != 1) {
-        *error = ErrorSysErrno;
+        *error = std::ferror(_f) ? ErrorSysErrno : ErrorInvalidData;
         return ArrayContainer();
     }
     if (png_sig_cmp(header, 0, 8)) {

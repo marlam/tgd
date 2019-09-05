@@ -41,8 +41,7 @@ FormatImportExportHDF5::~FormatImportExportHDF5()
 Error FormatImportExportHDF5::openForReading(const std::string& fileName, const TagList&)
 {
     if (fileName == "-") {
-        errno = EINVAL;
-        return ErrorSysErrno;
+        return ErrorInvalidData;
     } else {
         FILE* f = fopen(fileName.c_str(), "rb");
         if (!f) {
@@ -64,8 +63,7 @@ Error FormatImportExportHDF5::openForWriting(const std::string& fileName, bool a
     if (append)
         return ErrorFeaturesUnsupported;
     if (fileName == "-") {
-        errno = EINVAL;
-        return ErrorSysErrno;
+        return ErrorInvalidData;
     } else {
         FILE* f = fopen(fileName.c_str(), "wb");
         if (!f) {

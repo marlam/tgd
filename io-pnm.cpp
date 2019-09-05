@@ -242,13 +242,13 @@ static PNMInfo readPnmHeader(FILE* f)
 
     int c = fgetc(f);
     if (c == EOF) {
-        info.error = ErrorSysErrno;
+        info.error = ferror(f) ? ErrorSysErrno : ErrorInvalidData;
     } else if (c != 'P') {
         info.error = ErrorInvalidData;
     } else {
         c = fgetc(f);
         if (c == EOF) {
-            info.error = ErrorSysErrno;
+            info.error = ferror(f) ? ErrorSysErrno : ErrorInvalidData;
         } else if (c == '2') {
             info.depth = 1;
             info.plain = true;
@@ -521,7 +521,9 @@ Error FormatImportExportPNM::writeArray(const ArrayContainer& array)
         if (array.componentType() == uint16)
             swapEndianness(data);
     }
-    if (fputs(header.c_str(), _f) == EOF || fwrite(data.data(), data.dataSize(), 1, _f) != 1 || fflush(_f) != 0) {
+    if (fputs(header.c_str(), _f) == EOF
+            || fwrite(data.data(), data.dataSize(), 1, _f) != 1
+            || fflush(_f) != 0) {
         return ErrorSysErrno;
     }
     return ErrorNone;
