@@ -98,7 +98,7 @@ ArrayContainer FormatImportExportPNG::readArray(Error* error, int arrayIndex)
         return ArrayContainer();
     }
     if (png_sig_cmp(header, 0, 8)) {
-        *error = ErrorFormatUnsupported;
+        *error = ErrorInvalidData;
         return ArrayContainer();
     }
     png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
