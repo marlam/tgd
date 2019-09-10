@@ -76,6 +76,7 @@ void FormatImportExportPNG::close()
         if (_f != stdin && _f != stdout) {
             fclose(_f);
         }
+        _f = nullptr;
     }
 }
 
