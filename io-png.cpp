@@ -199,28 +199,16 @@ Error FormatImportExportPNG::writeArray(const ArrayContainer& array)
 
     png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png_ptr) {
-        for (size_t i = 0; i < text.size(); i++) {
-            std::free(text[i].key);
-            std::free(text[i].text);
-        }
         return ErrorLibrary;
     }
     png_infop info_ptr = png_create_info_struct(png_ptr);
     if (!info_ptr) {
         png_destroy_write_struct(&png_ptr, NULL);
-        for (size_t i = 0; i < text.size(); i++) {
-            std::free(text[i].key);
-            std::free(text[i].text);
-        }
         return ErrorLibrary;
     }
     png_set_error_fn(png_ptr, NULL, my_png_error, my_png_warning);
     if (setjmp(png_jmpbuf(png_ptr))) {
         png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-        for (size_t i = 0; i < text.size(); i++) {
-            std::free(text[i].key);
-            std::free(text[i].text);
-        }
         return ErrorLibrary;
     }
     png_set_user_limits(png_ptr, 0x7fffffffL, 0x7fffffffL);
@@ -244,10 +232,6 @@ Error FormatImportExportPNG::writeArray(const ArrayContainer& array)
             PNG_TRANSFORM_IDENTITY, // TODO: endianness::endianness == endianness::big ? PNG_TRANSFORM_SWAP_ENDIAN,
             NULL);
     png_destroy_write_struct(&png_ptr, &info_ptr);
-    for (size_t i = 0; i < text.size(); i++) {
-        std::free(text[i].key);
-        std::free(text[i].text);
-    }
     if (fflush(_f) != 0) {
         return ErrorSysErrno;
     }
