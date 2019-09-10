@@ -39,6 +39,7 @@ find_package(PFS QUIET)
 find_package(PNG QUIET)
 find_package(JPEG QUIET)
 find_package(HDF5 COMPONENTS CXX QUIET)
+find_package(MATIO QUIET)
 
 # The input/output library
 add_definitions(-DTAD_VERSION="${TAD_VERSION}")
@@ -92,6 +93,12 @@ if(TAD_STATIC)
 	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-hdf5.hpp io-hdf5.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${HDF5_CXX_LIBRARIES})
 	include_directories(${HDF5_CXX_INCLUDE_DIRS} ${HDF5_INCLUDE_DIRS})
+    endif()
+    if(MATIO_FOUND)
+	add_definitions(-DTAD_WITH_MATIO)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-mat.hpp io-mat.cpp)
+	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${MATIO_LIBRARIES})
+	include_directories(${MATIO_INCLUDE_DIRS})
     endif()
     add_library(libtad STATIC ${libtad_SOURCES} ${libtad_STATIC_EXTRA_SOURCES})
     target_link_libraries(libtad ${libtad_STATIC_EXTRA_LIBRARIES} "-static")
@@ -162,6 +169,18 @@ else()
 	include_directories(${HDF5_CXX_INCLUDE_DIRS} ${HDF5_INCLUDE_DIRS})
 	target_link_libraries(libtadio-hdf5 ${HDF5_CXX_LIBRARIES})
 	install(TARGETS libtadio-hdf5
+	    RUNTIME DESTINATION bin
+	    LIBRARY DESTINATION lib${LIB_SUFFIX}
+	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
+
+    endif()
+    if(MATIO_FOUND)
+        add_library(libtadio-mat SHARED io-mat.hpp io-mat.cpp)
+	set_target_properties(libtadio-mat PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+	set_target_properties(libtadio-mat PROPERTIES OUTPUT_NAME tadio-mat)
+	include_directories(${MATIO_INCLUDE_DIRS})
+	target_link_libraries(libtadio-mat ${MATIO_LIBRARIES})
+	install(TARGETS libtadio-mat
 	    RUNTIME DESTINATION bin
 	    LIBRARY DESTINATION lib${LIB_SUFFIX}
 	    ARCHIVE DESTINATION lib${LIB_SUFFIX})

@@ -100,10 +100,12 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
         fieName = "exr";
     } else if (format == "gta") {
         fieName = "gta";
-    } else if (format == "h5" || format == "he5" || format == "hdf5" || format == "mat") {
+    } else if (format == "h5" || format == "he5" || format == "hdf5") {
         fieName = "hdf5";
     } else if (format == "jpg" || format == "jpeg") {
         fieName = "jpeg";
+    } else if (format == "mat") {
+        fieName = "mat";
     } else if (format == "pfs") {
         fieName = "pfs";
     } else if (format == "png") {
@@ -133,6 +135,10 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
 #  ifdef TAD_WITH_JPEG
     } else if (fieName == "jpeg") {
         return new FormatImportExportJPEG;
+#  endif
+#  ifdef TAD_WITH_MATIO
+    } else if (fieName == "mat") {
+        return new FormatImportExportMAT;
 #  endif
 #  ifdef TAD_WITH_PFS
     } else if (fieName == "pfs") {

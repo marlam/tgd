@@ -83,6 +83,62 @@ inline void swapEndianness(ArrayContainer& array)
     }
 }
 
+inline ArrayContainer reorderMatlabInputData(const std::vector<size_t>& dims, Type t, const void *data)
+{
+    ArrayContainer r;
+    if (dims.size() > 2 && dims[dims.size() - 1] <= 4) {
+        // heuristic: the first dim is probably a component count
+        std::vector<size_t> dataIndex(dims.size());
+        ArrayDescription dataArray(dims, 1, t);
+        std::vector<size_t> rIndex(dims.size() - 1);
+        for (size_t i = 0; i < rIndex.size(); i++)
+            rIndex[i] = dims[dims.size() - 2 - i];
+        r = ArrayContainer(rIndex, dims[dims.size() - 1], t);
+        for (size_t i = 0; i < r.elementCount(); i++) {
+            r.toVectorIndex(i, rIndex.data());
+            for (size_t d = 0; d < rIndex.size(); d++)
+                dataIndex[d] = rIndex[rIndex.size() - 1 - d];
+            if (r.dimensionCount() == 2) // flip images in y
+                dataIndex[0] = r.dimension(1) - 1 - dataIndex[0];
+            for (size_t c = 0; c < r.componentCount(); c++) {
+                dataIndex[2] = c;
+                std::memcpy(static_cast<unsigned char*>(r.data()) + r.componentOffset(i, c),
+                        static_cast<const unsigned char*>(data) + dataArray.elementOffset(dataIndex),
+                        r.componentSize());
+            }
+        }
+    } else {
+        r = ArrayContainer(dims, 1, t);
+        std::memcpy(r.data(), data, r.dataSize());
+        r = r.transposed();
+    }
+    return r;
+}
+
+inline ArrayContainer reorderMatlabOutputData(const ArrayContainer& array)
+{
+    std::vector<size_t> dataDims(array.dimensionCount() + 1);
+    for (size_t i = 0; i < array.dimensionCount(); i++)
+        dataDims[i] = array.dimension(array.dimensionCount() - 1 - i);
+    dataDims[array.dimensionCount()] = array.componentCount();
+    ArrayContainer dataArray(dataDims, 1, array.componentType());
+    std::vector<size_t> dataIndex(dataArray.dimensionCount());
+    std::vector<size_t> arrayIndex(array.dimensionCount());
+    for (size_t i = 0; i < dataArray.elementCount(); i++) {
+        dataArray.toVectorIndex(i, dataIndex.data());
+        for (size_t d = 0; d < array.dimensionCount(); d++)
+            arrayIndex[array.dimensionCount() - 1 - d] = dataIndex[d];
+        if (array.dimensionCount() == 2) // flip images in y
+            arrayIndex[1] = array.dimension(1) - 1 - arrayIndex[1];
+        size_t arrayComponentIndex = dataIndex[dataArray.dimensionCount() - 1];
+        std::memcpy(dataArray.get(i),
+                static_cast<const unsigned char*>(array.data())
+                + array.componentOffset(arrayIndex, arrayComponentIndex),
+                array.componentSize());
+    }
+    return dataArray;
+}
+
 }
 
 #endif

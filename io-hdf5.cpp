@@ -24,6 +24,7 @@
 #include <cstdio>
 
 #include "io-hdf5.hpp"
+#include "io-utils.hpp"
 
 
 namespace TAD {
@@ -188,53 +189,20 @@ ArrayContainer FormatImportExportHDF5::readArray(Error* error, int arrayIndex)
         *error = ErrorFeaturesUnsupported;
         return ArrayContainer();
     }
-    std::vector<hsize_t> dims(dimCount);
-    dataspace.getSimpleExtentDims(dims.data(), nullptr);
-    ArrayContainer r;
-    if (dimCount > 1 && dims[0] <= 4) {
-        // heuristic: the first dim is probably a component count
-        std::vector<size_t> dataIndex(dimCount);
-        for (size_t i = 0; i < dataIndex.size(); i++)
-            dataIndex[i] = dims[dimCount - 1 - i];
-        ArrayContainer data(dataIndex, 1, rType);
-        try {
-            dataset.read(data.data(), type, dataspace, dataspace);
-        }
-        catch (H5::Exception& e) {
-            *error = ErrorLibrary;
-            return ArrayContainer();
-        }
-        std::vector<size_t> rIndex(dimCount - 1);
-        for (size_t i = 0; i < rIndex.size(); i++)
-            rIndex[i] = dims[i + 1];
-        r = ArrayContainer(rIndex, dims[0], rType);
-        for (size_t i = 0; i < r.elementCount(); i++) {
-            r.toVectorIndex(i, rIndex.data());
-            for (size_t d = 0; d < rIndex.size(); d++)
-                dataIndex[d] = rIndex[rIndex.size() - 1 - d];
-            if (r.dimensionCount() == 2) // flip images in y
-                dataIndex[0] = r.dimension(1) - 1 - dataIndex[0];
-            for (size_t c = 0; c < r.componentCount(); c++) {
-                dataIndex[2] = c;
-                std::memcpy(static_cast<unsigned char*>(r.data()) + r.componentOffset(i, c),
-                        static_cast<const unsigned char*>(data.data()) + data.elementOffset(dataIndex),
-                        r.componentSize());
-            }
-        }
-    } else {
-        std::vector<size_t> rDims(dimCount);
-        for (int i = 0; i < dimCount; i++)
-            rDims[i] = dims[i];
-        r = ArrayContainer(rDims, 1, rType);
-        try {
-            dataset.read(r.data(), type, dataspace, dataspace);
-        }
-        catch (H5::Exception& e) {
-            *error = ErrorLibrary;
-            return ArrayContainer();
-        }
-        r = r.transposed();
+    std::vector<hsize_t> hdims(dimCount);
+    dataspace.getSimpleExtentDims(hdims.data(), nullptr);
+    std::vector<size_t> dims(dimCount);
+    for (size_t i = 0; i < dims.size(); i++)
+        dims[i] = hdims[dims.size() - 1 - i];
+    ArrayContainer dataArray(dims, 1, rType);
+    try {
+        dataset.read(dataArray.data(), type, dataspace, dataspace);
     }
+    catch (H5::Exception& e) {
+        *error = ErrorLibrary;
+        return ArrayContainer();
+    }
+    ArrayContainer r = reorderMatlabInputData(dims, rType, dataArray.data());
     return r;
 }
 
@@ -279,25 +247,7 @@ Error FormatImportExportHDF5::writeArray(const ArrayContainer& array)
         type = H5::FloatType(H5::PredType::NATIVE_DOUBLE);
         break;
     }
-    std::vector<size_t> dataDims(array.dimensionCount() + 1);
-    for (size_t i = 0; i < array.dimensionCount(); i++)
-        dataDims[i] = array.dimension(array.dimensionCount() - 1 - i);
-    dataDims[array.dimensionCount()] = array.componentCount();
-    ArrayContainer dataArray(dataDims, 1, array.componentType());
-    std::vector<size_t> dataIndex(dataArray.dimensionCount());
-    std::vector<size_t> arrayIndex(array.dimensionCount());
-    for (size_t i = 0; i < dataArray.elementCount(); i++) {
-        dataArray.toVectorIndex(i, dataIndex.data());
-        for (size_t d = 0; d < array.dimensionCount(); d++)
-            arrayIndex[array.dimensionCount() - 1 - d] = dataIndex[d];
-        if (array.dimensionCount() == 2) // flip images in y
-            arrayIndex[1] = array.dimension(1) - 1 - arrayIndex[1];
-        size_t arrayComponentIndex = dataIndex[dataArray.dimensionCount() - 1];
-        std::memcpy(dataArray.get(i),
-                static_cast<const unsigned char*>(array.data())
-                + array.componentOffset(arrayIndex, arrayComponentIndex),
-                array.componentSize());
-    }
+    ArrayContainer dataArray = reorderMatlabOutputData(array);
     std::vector<hsize_t> dims(dataArray.dimensionCount());
     dims[0] = dataArray.dimension(dataArray.dimensionCount() - 1);
     for (size_t i = 1; i < dataArray.dimensionCount(); i++) {
