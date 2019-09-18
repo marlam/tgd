@@ -423,7 +423,7 @@ ArrayContainer FormatImportExportPNM::readArray(Error* error, int arrayIndex)
         if (pnminfo.maxval < 0)
             r.componentTagList(0).set("INTERPRETATION", "GRAY");
         else
-            r.componentTagList(0).set("INTERPRETATION", "SRGB/LUM");
+            r.componentTagList(0).set("INTERPRETATION", "SRGB/GRAY");
         if (pnminfo.depth == 2) {
             r.componentTagList(1).set("INTERPRETATION", "ALPHA");
         }

@@ -141,9 +141,9 @@ ArrayContainer FormatImportExportPNG::readArray(Error* error, int arrayIndex)
     for (unsigned int i = 0; i < num_text; i++)
         r.globalTagList().set(text_ptr[i].key, text_ptr[i].text);
     if (channels == 1) {
-        r.componentTagList(0).set("INTERPRETATION", "SRGB/LUM");
+        r.componentTagList(0).set("INTERPRETATION", "SRGB/GRAY");
     } else if (channels == 2) {
-        r.componentTagList(0).set("INTERPRETATION", "SRGB/LUM");
+        r.componentTagList(0).set("INTERPRETATION", "SRGB/GRAY");
         r.componentTagList(1).set("INTERPRETATION", "ALPHA");
     } else if (channels == 3) {
         r.componentTagList(0).set("INTERPRETATION", "SRGB/R");

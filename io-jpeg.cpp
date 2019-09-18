@@ -112,7 +112,7 @@ ArrayContainer FormatImportExportJPEG::readArray(Error* error, int arrayIndex)
 
     ArrayContainer r({cinfo.image_width, cinfo.image_height}, cinfo.num_components, uint8);
     if (cinfo.num_components == 1) {
-        r.componentTagList(0).set("INTERPRETATION", "SRGB/LUM");
+        r.componentTagList(0).set("INTERPRETATION", "SRGB/GRAY");
     } else {
         r.componentTagList(0).set("INTERPRETATION", "SRGB/R");
         r.componentTagList(1).set("INTERPRETATION", "SRGB/G");
