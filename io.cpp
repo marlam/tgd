@@ -27,15 +27,16 @@
 
 #include "io.hpp"
 #include "dl.hpp"
-#include "io-raw.hpp"
 #include "io-tad.hpp"
-#include "io-gta.hpp"
 #include "io-pnm.hpp"
+#include "io-raw.hpp"
 #include "io-exr.hpp"
+#include "io-gta.hpp"
+#include "io-hdf5.hpp"
+#include "io-jpeg.hpp"
 #include "io-pfs.hpp"
 #include "io-png.hpp"
-#include "io-jpeg.hpp"
-#include "io-hdf5.hpp"
+#include "io-tiff.hpp"
 
 
 namespace TAD {
@@ -110,15 +111,17 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
         fieName = "pfs";
     } else if (format == "png") {
         fieName = "png";
+    } else if (format == "tif" || format == "tiff") {
+        fieName = "tiff";
     }
 
     // first builtin formats...
     if (fieName == "tad") {
         return new FormatImportExportTAD;
-    } else if (fieName == "raw") {
-        return new FormatImportExportRAW;
     } else if (fieName == "pnm") {
         return new FormatImportExportPNM;
+    } else if (fieName == "raw") {
+        return new FormatImportExportRAW;
 #ifdef TAD_STATIC
 #  ifdef TAD_WITH_OPENEXR
     } else if (fieName == "exr") {
@@ -147,6 +150,10 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
 #  ifdef TAD_WITH_PNG
     } else if (fieName == "png") {
         return new FormatImportExportPNG;
+#  endif
+#  ifdef TAD_WITH_TIFF
+    } else if (fieName == "tiff") {
+        return new FormatImportExportTIFF;
 #  endif
 #endif
     } else {
