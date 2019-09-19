@@ -491,53 +491,22 @@ public:
 /*! \brief The ArrayContainer class manages arrays with arbitrary component data types. */
 class ArrayContainer : public ArrayDescription
 {
-protected:
     /*! \cond */
+private:
+    template<typename TO, typename FROM>
+    static void convertData(TO* dst, const FROM* src, size_t n)
+    {
+        for (size_t i = 0; i < n; i++)
+            dst[i] = src[i];
+    }
+
+protected:
     std::shared_ptr<unsigned char[]> _data;
 
     template<typename T>
     bool typeMatchesTemplate() const
     {
         return (typeFromTemplate<T>() == _componentType);
-    }
-
-    template<typename TO>
-    TO convertComponent(size_t i, size_t j) const
-    {
-        TO r = 0;
-        switch (componentType()) {
-        case int8:
-            r = get<int8_t>(i, j);
-            break;
-        case uint8:
-            r = get<uint8_t>(i, j);
-            break;
-        case int16:
-            r = get<int16_t>(i, j);
-            break;
-        case uint16:
-            r = get<uint16_t>(i, j);
-            break;
-        case int32:
-            r = get<int32_t>(i, j);
-            break;
-        case uint32:
-            r = get<uint32_t>(i, j);
-            break;
-        case int64:
-            r = get<int64_t>(i, j);
-            break;
-        case uint64:
-            r = get<uint64_t>(i, j);
-            break;
-        case float32:
-            r = get<float>(i, j);
-            break;
-        case float64:
-            r = get<double>(i, j);
-            break;
-        }
-        return r;
     }
     /*! \endcond */
 
@@ -612,41 +581,350 @@ public:
         } else {
             ArrayDescription rDescr(*this, newType);
             ArrayContainer r(rDescr);
-            for (size_t i = 0; i < elementCount(); i++) {
-                for (size_t j = 0; j < componentCount(); j++) {
-                    switch (newType) {
-                    case int8:
-                        r.set<int8_t>(i, j, convertComponent<int8_t>(i, j));
-                        break;
-                    case uint8:
-                        r.set<uint8_t>(i, j, convertComponent<uint8_t>(i, j));
-                        break;
-                    case int16:
-                        r.set<int16_t>(i, j, convertComponent<int16_t>(i, j));
-                        break;
-                    case uint16:
-                        r.set<uint16_t>(i, j, convertComponent<uint16_t>(i, j));
-                        break;
-                    case int32:
-                        r.set<int32_t>(i, j, convertComponent<int32_t>(i, j));
-                        break;
-                    case uint32:
-                        r.set<uint32_t>(i, j, convertComponent<uint32_t>(i, j));
-                        break;
-                    case int64:
-                        r.set<int64_t>(i, j, convertComponent<int64_t>(i, j));
-                        break;
-                    case uint64:
-                        r.set<uint64_t>(i, j, convertComponent<uint64_t>(i, j));
-                        break;
-                    case float32:
-                        r.set<float>(i, j, convertComponent<float>(i, j));
-                        break;
-                    case float64:
-                        r.set<double>(i, j, convertComponent<double>(i, j));
-                        break;
-                    }
+            void* dst = r.data();
+            const void* src = data();
+            size_t n = r.elementCount() * r.componentCount();
+            switch (newType) {
+            case int8:
+                switch (componentType()) {
+                case int8:
+                    convertData(static_cast<int8_t*>(dst), static_cast<const int8_t*>(src), n);
+                    break;
+                case uint8:
+                    convertData(static_cast<int8_t*>(dst), static_cast<const uint8_t*>(src), n);
+                    break;
+                case int16:
+                    convertData(static_cast<int8_t*>(dst), static_cast<const int16_t*>(src), n);
+                    break;
+                case uint16:
+                    convertData(static_cast<int8_t*>(dst), static_cast<const uint16_t*>(src), n);
+                    break;
+                case int32:
+                    convertData(static_cast<int8_t*>(dst), static_cast<const int32_t*>(src), n);
+                    break;
+                case uint32:
+                    convertData(static_cast<int8_t*>(dst), static_cast<const uint32_t*>(src), n);
+                    break;
+                case int64:
+                    convertData(static_cast<int8_t*>(dst), static_cast<const int64_t*>(src), n);
+                    break;
+                case uint64:
+                    convertData(static_cast<int8_t*>(dst), static_cast<const uint64_t*>(src), n);
+                    break;
+                case float32:
+                    convertData(static_cast<int8_t*>(dst), static_cast<const float*>(src), n);
+                    break;
+                case float64:
+                    convertData(static_cast<int8_t*>(dst), static_cast<const double*>(src), n);
+                    break;
                 }
+                break;
+            case uint8:
+                switch (componentType()) {
+                case int8:
+                    convertData(static_cast<uint8_t*>(dst), static_cast<const int8_t*>(src), n);
+                    break;
+                case uint8:
+                    convertData(static_cast<uint8_t*>(dst), static_cast<const uint8_t*>(src), n);
+                    break;
+                case int16:
+                    convertData(static_cast<uint8_t*>(dst), static_cast<const int16_t*>(src), n);
+                    break;
+                case uint16:
+                    convertData(static_cast<uint8_t*>(dst), static_cast<const uint16_t*>(src), n);
+                    break;
+                case int32:
+                    convertData(static_cast<uint8_t*>(dst), static_cast<const int32_t*>(src), n);
+                    break;
+                case uint32:
+                    convertData(static_cast<uint8_t*>(dst), static_cast<const uint32_t*>(src), n);
+                    break;
+                case int64:
+                    convertData(static_cast<uint8_t*>(dst), static_cast<const int64_t*>(src), n);
+                    break;
+                case uint64:
+                    convertData(static_cast<uint8_t*>(dst), static_cast<const uint64_t*>(src), n);
+                    break;
+                case float32:
+                    convertData(static_cast<uint8_t*>(dst), static_cast<const float*>(src), n);
+                    break;
+                case float64:
+                    convertData(static_cast<uint8_t*>(dst), static_cast<const double*>(src), n);
+                    break;
+                }
+                break;
+            case int16:
+                switch (componentType()) {
+                case int8:
+                    convertData(static_cast<int16_t*>(dst), static_cast<const int8_t*>(src), n);
+                    break;
+                case uint8:
+                    convertData(static_cast<int16_t*>(dst), static_cast<const uint8_t*>(src), n);
+                    break;
+                case int16:
+                    convertData(static_cast<int16_t*>(dst), static_cast<const int16_t*>(src), n);
+                    break;
+                case uint16:
+                    convertData(static_cast<int16_t*>(dst), static_cast<const uint16_t*>(src), n);
+                    break;
+                case int32:
+                    convertData(static_cast<int16_t*>(dst), static_cast<const int32_t*>(src), n);
+                    break;
+                case uint32:
+                    convertData(static_cast<int16_t*>(dst), static_cast<const uint32_t*>(src), n);
+                    break;
+                case int64:
+                    convertData(static_cast<int16_t*>(dst), static_cast<const int64_t*>(src), n);
+                    break;
+                case uint64:
+                    convertData(static_cast<int16_t*>(dst), static_cast<const uint64_t*>(src), n);
+                    break;
+                case float32:
+                    convertData(static_cast<int16_t*>(dst), static_cast<const float*>(src), n);
+                    break;
+                case float64:
+                    convertData(static_cast<int16_t*>(dst), static_cast<const double*>(src), n);
+                    break;
+                }
+                break;
+            case uint16:
+                switch (componentType()) {
+                case int8:
+                    convertData(static_cast<uint16_t*>(dst), static_cast<const int8_t*>(src), n);
+                    break;
+                case uint8:
+                    convertData(static_cast<uint16_t*>(dst), static_cast<const uint8_t*>(src), n);
+                    break;
+                case int16:
+                    convertData(static_cast<uint16_t*>(dst), static_cast<const int16_t*>(src), n);
+                    break;
+                case uint16:
+                    convertData(static_cast<uint16_t*>(dst), static_cast<const uint16_t*>(src), n);
+                    break;
+                case int32:
+                    convertData(static_cast<uint16_t*>(dst), static_cast<const int32_t*>(src), n);
+                    break;
+                case uint32:
+                    convertData(static_cast<uint16_t*>(dst), static_cast<const uint32_t*>(src), n);
+                    break;
+                case int64:
+                    convertData(static_cast<uint16_t*>(dst), static_cast<const int64_t*>(src), n);
+                    break;
+                case uint64:
+                    convertData(static_cast<uint16_t*>(dst), static_cast<const uint64_t*>(src), n);
+                    break;
+                case float32:
+                    convertData(static_cast<uint16_t*>(dst), static_cast<const float*>(src), n);
+                    break;
+                case float64:
+                    convertData(static_cast<uint16_t*>(dst), static_cast<const double*>(src), n);
+                    break;
+                }
+                break;
+            case int32:
+                switch (componentType()) {
+                case int8:
+                    convertData(static_cast<int32_t*>(dst), static_cast<const int8_t*>(src), n);
+                    break;
+                case uint8:
+                    convertData(static_cast<int32_t*>(dst), static_cast<const uint8_t*>(src), n);
+                    break;
+                case int16:
+                    convertData(static_cast<int32_t*>(dst), static_cast<const int16_t*>(src), n);
+                    break;
+                case uint16:
+                    convertData(static_cast<int32_t*>(dst), static_cast<const uint16_t*>(src), n);
+                    break;
+                case int32:
+                    convertData(static_cast<int32_t*>(dst), static_cast<const int32_t*>(src), n);
+                    break;
+                case uint32:
+                    convertData(static_cast<int32_t*>(dst), static_cast<const uint32_t*>(src), n);
+                    break;
+                case int64:
+                    convertData(static_cast<int32_t*>(dst), static_cast<const int64_t*>(src), n);
+                    break;
+                case uint64:
+                    convertData(static_cast<int32_t*>(dst), static_cast<const uint64_t*>(src), n);
+                    break;
+                case float32:
+                    convertData(static_cast<int32_t*>(dst), static_cast<const float*>(src), n);
+                    break;
+                case float64:
+                    convertData(static_cast<int32_t*>(dst), static_cast<const double*>(src), n);
+                    break;
+                }
+                break;
+            case uint32:
+                switch (componentType()) {
+                case int8:
+                    convertData(static_cast<uint32_t*>(dst), static_cast<const int8_t*>(src), n);
+                    break;
+                case uint8:
+                    convertData(static_cast<uint32_t*>(dst), static_cast<const uint8_t*>(src), n);
+                    break;
+                case int16:
+                    convertData(static_cast<uint32_t*>(dst), static_cast<const int16_t*>(src), n);
+                    break;
+                case uint16:
+                    convertData(static_cast<uint32_t*>(dst), static_cast<const uint16_t*>(src), n);
+                    break;
+                case int32:
+                    convertData(static_cast<uint32_t*>(dst), static_cast<const int32_t*>(src), n);
+                    break;
+                case uint32:
+                    convertData(static_cast<uint32_t*>(dst), static_cast<const uint32_t*>(src), n);
+                    break;
+                case int64:
+                    convertData(static_cast<uint32_t*>(dst), static_cast<const int64_t*>(src), n);
+                    break;
+                case uint64:
+                    convertData(static_cast<uint32_t*>(dst), static_cast<const uint64_t*>(src), n);
+                    break;
+                case float32:
+                    convertData(static_cast<uint32_t*>(dst), static_cast<const float*>(src), n);
+                    break;
+                case float64:
+                    convertData(static_cast<uint32_t*>(dst), static_cast<const double*>(src), n);
+                    break;
+                }
+                break;
+            case int64:
+                switch (componentType()) {
+                case int8:
+                    convertData(static_cast<int64_t*>(dst), static_cast<const int8_t*>(src), n);
+                    break;
+                case uint8:
+                    convertData(static_cast<int64_t*>(dst), static_cast<const uint8_t*>(src), n);
+                    break;
+                case int16:
+                    convertData(static_cast<int64_t*>(dst), static_cast<const int16_t*>(src), n);
+                    break;
+                case uint16:
+                    convertData(static_cast<int64_t*>(dst), static_cast<const uint16_t*>(src), n);
+                    break;
+                case int32:
+                    convertData(static_cast<int64_t*>(dst), static_cast<const int32_t*>(src), n);
+                    break;
+                case uint32:
+                    convertData(static_cast<int64_t*>(dst), static_cast<const uint32_t*>(src), n);
+                    break;
+                case int64:
+                    convertData(static_cast<int64_t*>(dst), static_cast<const int64_t*>(src), n);
+                    break;
+                case uint64:
+                    convertData(static_cast<int64_t*>(dst), static_cast<const uint64_t*>(src), n);
+                    break;
+                case float32:
+                    convertData(static_cast<int64_t*>(dst), static_cast<const float*>(src), n);
+                    break;
+                case float64:
+                    convertData(static_cast<int64_t*>(dst), static_cast<const double*>(src), n);
+                    break;
+                }
+                break;
+            case uint64:
+                switch (componentType()) {
+                case int8:
+                    convertData(static_cast<uint64_t*>(dst), static_cast<const int8_t*>(src), n);
+                    break;
+                case uint8:
+                    convertData(static_cast<uint64_t*>(dst), static_cast<const uint8_t*>(src), n);
+                    break;
+                case int16:
+                    convertData(static_cast<uint64_t*>(dst), static_cast<const int16_t*>(src), n);
+                    break;
+                case uint16:
+                    convertData(static_cast<uint64_t*>(dst), static_cast<const uint16_t*>(src), n);
+                    break;
+                case int32:
+                    convertData(static_cast<uint64_t*>(dst), static_cast<const int32_t*>(src), n);
+                    break;
+                case uint32:
+                    convertData(static_cast<uint64_t*>(dst), static_cast<const uint32_t*>(src), n);
+                    break;
+                case int64:
+                    convertData(static_cast<uint64_t*>(dst), static_cast<const int64_t*>(src), n);
+                    break;
+                case uint64:
+                    convertData(static_cast<uint64_t*>(dst), static_cast<const uint64_t*>(src), n);
+                    break;
+                case float32:
+                    convertData(static_cast<uint64_t*>(dst), static_cast<const float*>(src), n);
+                    break;
+                case float64:
+                    convertData(static_cast<uint64_t*>(dst), static_cast<const double*>(src), n);
+                    break;
+                }
+                break;
+            case float32:
+                switch (componentType()) {
+                case int8:
+                    convertData(static_cast<float*>(dst), static_cast<const int8_t*>(src), n);
+                    break;
+                case uint8:
+                    convertData(static_cast<float*>(dst), static_cast<const uint8_t*>(src), n);
+                    break;
+                case int16:
+                    convertData(static_cast<float*>(dst), static_cast<const int16_t*>(src), n);
+                    break;
+                case uint16:
+                    convertData(static_cast<float*>(dst), static_cast<const uint16_t*>(src), n);
+                    break;
+                case int32:
+                    convertData(static_cast<float*>(dst), static_cast<const int32_t*>(src), n);
+                    break;
+                case uint32:
+                    convertData(static_cast<float*>(dst), static_cast<const uint32_t*>(src), n);
+                    break;
+                case int64:
+                    convertData(static_cast<float*>(dst), static_cast<const int64_t*>(src), n);
+                    break;
+                case uint64:
+                    convertData(static_cast<float*>(dst), static_cast<const uint64_t*>(src), n);
+                    break;
+                case float32:
+                    convertData(static_cast<float*>(dst), static_cast<const float*>(src), n);
+                    break;
+                case float64:
+                    convertData(static_cast<float*>(dst), static_cast<const double*>(src), n);
+                    break;
+                }
+                break;
+            case float64:
+                switch (componentType()) {
+                case int8:
+                    convertData(static_cast<double*>(dst), static_cast<const int8_t*>(src), n);
+                    break;
+                case uint8:
+                    convertData(static_cast<double*>(dst), static_cast<const uint8_t*>(src), n);
+                    break;
+                case int16:
+                    convertData(static_cast<double*>(dst), static_cast<const int16_t*>(src), n);
+                    break;
+                case uint16:
+                    convertData(static_cast<double*>(dst), static_cast<const uint16_t*>(src), n);
+                    break;
+                case int32:
+                    convertData(static_cast<double*>(dst), static_cast<const int32_t*>(src), n);
+                    break;
+                case uint32:
+                    convertData(static_cast<double*>(dst), static_cast<const uint32_t*>(src), n);
+                    break;
+                case int64:
+                    convertData(static_cast<double*>(dst), static_cast<const int64_t*>(src), n);
+                    break;
+                case uint64:
+                    convertData(static_cast<double*>(dst), static_cast<const uint64_t*>(src), n);
+                    break;
+                case float32:
+                    convertData(static_cast<double*>(dst), static_cast<const float*>(src), n);
+                    break;
+                case float64:
+                    convertData(static_cast<double*>(dst), static_cast<const double*>(src), n);
+                    break;
+                }
+                break;
             }
             return r;
         }
