@@ -12,7 +12,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # Project
 project(tad)
-set(TAD_VERSION 0.1)
+set(TAD_VERSION 0.2)
 set(TAD_LIBVERSION 0.0.0)
 set(TAD_SOVERSION 0)
 
