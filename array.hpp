@@ -199,13 +199,29 @@ inline const char* typeToString(Type t)
 /*! \brief The ArrayDescription manages array metadata. */
 class ArrayDescription
 {
-protected:
-    TagList _globalTagList;
+private:
+    // defining properties
     std::vector<size_t> _dimensions;
-    std::vector<TagList> _dimensionTagLists;
+    size_t _componentCount;
     Type _componentType;
-    size_t _components;
+    // computed properties
+    size_t _elementCount;
+    size_t _elementSize;
+    // meta data
+    TagList _globalTagList;
+    std::vector<TagList> _dimensionTagLists;
     std::vector<TagList> _componentTagLists;
+
+    size_t initElementCount() const
+    {
+        size_t n = 0;
+        if (dimensionCount() > 0) {
+            n = dimension(0);
+            for (size_t d = 1; d < dimensionCount(); d++)
+                n *= dimension(d);
+        }
+        return n;
+    }
 
 public:
     /**
@@ -221,20 +237,21 @@ public:
 
     /*! \brief Constructor for an array description
      * \param dimensions        List of sizes, defining both the number of dimensions and the array size.
-     * \param components        Number of components in one array element
+     * \param componentCount    Number of components in one array element
      * \param componentType     Data type of the components
      *
      * The array dimensions and the type and number of the element components must be specified.
      * For example, for an image with 800x600 RGB pixels one might construct the following array:
      * `Array image({ 800, 600}, 3, uint8);`
      */
-    ArrayDescription(const std::vector<size_t>& dimensions, size_t components, Type componentType) :
-        _globalTagList(),
-        _dimensions(dimensions.data(), dimensions.data() + dimensions.size()),
-        _dimensionTagLists(dimensions.size()),
+    ArrayDescription(const std::vector<size_t>& dimensions, size_t componentCount, Type componentType) :
+        _dimensions(dimensions),
+        _componentCount(componentCount),
         _componentType(componentType),
-        _components(components),
-        _componentTagLists(components)
+        _elementCount(initElementCount()),
+        _elementSize(_componentCount * typeSize(componentType)),
+        _dimensionTagLists(dimensions.size()),
+        _componentTagLists(_componentCount)
     {
     }
 
@@ -280,7 +297,7 @@ public:
     /*! \brief Returns the number of components in each element. */
     size_t componentCount() const
     {
-        return _components;
+        return _componentCount;
     }
 
     /*! \brief Returns the type represented by each element component. */
@@ -292,25 +309,19 @@ public:
     /*! \brief Returns the size of a component. */
     size_t componentSize() const
     {
-        return typeSize(_componentType);
+        return typeSize(componentType());
     }
 
     /*! \brief Returns the size of an element. */
     size_t elementSize() const
     {
-        return componentCount() * componentSize();
+        return _elementSize;
     }
 
     /*! \brief Returns the number of elements in the array. */
     size_t elementCount() const
     {
-        size_t n = 0;
-        if (dimensionCount() > 0) {
-            n = dimension(0);
-            for (size_t d = 1; d < dimensionCount(); d++)
-                n *= dimension(d);
-        }
-        return n;
+        return _elementCount;
     }
 
     /*! \brief Returns the total data size. */
@@ -500,13 +511,13 @@ private:
             dst[i] = src[i];
     }
 
-protected:
     std::shared_ptr<unsigned char[]> _data;
 
+protected:
     template<typename T>
     bool typeMatchesTemplate() const
     {
-        return (typeFromTemplate<T>() == _componentType);
+        return (typeFromTemplate<T>() == componentType());
     }
     /*! \endcond */
 
