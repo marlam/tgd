@@ -266,6 +266,7 @@ public:
         ArrayDescription(descr)
     {
         _componentType = type;
+        _elementSize = componentCount() * typeSize(type);
     }
 
     /*@}*/
