@@ -339,6 +339,12 @@ public:
                 && elementCount() == a.elementCount());
     }
 
+    /*! \brief Returns this as a description. This is useful for derived classes. */
+    const ArrayDescription& description() const
+    {
+        return *this;
+    }
+
     /*@}*/
 
     /**
