@@ -249,6 +249,28 @@ void tad_info_print_taglist(const TAD::TagList& tl)
     }
 }
 
+std::string tad_info_human_readable_memsize(unsigned long long size)
+{
+    const double dsize = size;
+    const unsigned long long u1024 = 1024;
+    char s[32];
+
+    if (size >= u1024 * u1024 * u1024 * u1024) {
+        std::snprintf(s, sizeof(s), "%.2f TiB", dsize / (u1024 * u1024 * u1024 * u1024));
+    } else if (size >= u1024 * u1024 * u1024) {
+        std::snprintf(s, sizeof(s), "%.2f GiB", dsize / (u1024 * u1024 * u1024));
+    } else if (size >= u1024 * u1024) {
+        std::snprintf(s, sizeof(s), "%.2f MiB", dsize / (u1024 * u1024));
+    } else if (size >= u1024) {
+        std::snprintf(s, sizeof(s), "%.2f KiB", dsize / u1024);
+    } else if (size > 1 || size == 0) {
+        std::snprintf(s, sizeof(s), "%d bytes", int(size));
+    } else {
+        std::strcpy(s, "1 byte");
+    }
+    return s;
+}
+
 int tad_info(int argc, char* argv[])
 {
     CmdLine cmdLine;
@@ -288,10 +310,10 @@ int tad_info(int argc, char* argv[])
                 sizeString += std::to_string(array.dimension(1));
             }
         }
-        printf("array %d: %zd x %s, size %s\n",
+        printf("array %d: %zd x %s, size %s (%s)\n",
                 arrayCounter, array.componentCount(),
                 TAD::typeToString(array.componentType()),
-                sizeString.c_str());
+                sizeString.c_str(), tad_info_human_readable_memsize(array.dataSize()).c_str());
         if (array.globalTagList().size() > 0) {
             printf("  global:\n");
             tad_info_print_taglist(array.globalTagList());
