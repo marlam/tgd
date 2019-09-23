@@ -118,20 +118,35 @@ int tad_convert(int argc, char* argv[])
     CmdLine cmdLine;
     cmdLine.addOptionWithArg("type", 't', parseType);
     cmdLine.addOptionWithoutArg("normalize", 'n');
+    cmdLine.addOptionWithArg("input-format", 'i');
+    cmdLine.addOptionWithArg("output-format", 'o');
     std::string errMsg;
     if (!cmdLine.parse(argc, argv, 2, 2, errMsg)) {
         fprintf(stderr, "tad convert: %s\n", errMsg.c_str());
         return 1;
     }
     if (cmdLine.isSet("help")) {
-        fprintf(stderr, "Usage: tad convert [-n|--normalize] [-t|--type=T] <infile|-> <outfile|->\n");
+        fprintf(stderr, "Usage: tad convert [option]... <infile|-> <outfile|->\n"
+                "Options:\n"
+                "  -n|--normalize: create/assume floating point values in [-1,1]/[0,1]\n"
+                "    when converting to/from signed/unsigned integer values\n"
+                "  -t|--type: convert to new type (int8, uint8, int16, uint16, int32, uint32,\n"
+                "    int64, uint64, float32, float64)\n"
+                "  -i|--input-format: set format of input file (overriding file name extension)\n"
+                "  -o|--output-format: set format of output file (overriding file name extension)\n");
         return 0;
     }
 
     const std::string& inFileName = cmdLine.arguments()[0];
     const std::string& outFileName = cmdLine.arguments()[1];
-    TAD::Importer importer(inFileName);
-    TAD::Exporter exporter(outFileName);
+    TAD::TagList importerHints;
+    if (cmdLine.isSet("input-format"))
+        importerHints.set("FORMAT", cmdLine.value("input-format"));
+    TAD::TagList exporterHints;
+    if (cmdLine.isSet("output-format"))
+        exporterHints.set("FORMAT", cmdLine.value("output-format"));
+    TAD::Importer importer(inFileName, importerHints);
+    TAD::Exporter exporter(outFileName, TAD::Overwrite, exporterHints);
     TAD::Error err = TAD::ErrorNone;
     TAD::Type type = getType(cmdLine.value("type"));
     for (;;) {
@@ -188,22 +203,34 @@ int tad_diff(int argc, char* argv[])
 {
     CmdLine cmdLine;
     cmdLine.addOptionWithoutArg("absolute", 'a');
+    cmdLine.addOptionWithArg("input-format", 'i');
+    cmdLine.addOptionWithArg("output-format", 'o');
     std::string errMsg;
     if (!cmdLine.parse(argc, argv, 3, 3, errMsg)) {
         fprintf(stderr, "tad diff: %s\n", errMsg.c_str());
         return 1;
     }
     if (cmdLine.isSet("help")) {
-        fprintf(stderr, "Usage: tad diff [-a|--absolute] <infile0|-> <infile1|-> <outfile|->\n");
+        fprintf(stderr, "Usage: tad diff [option]... <infile0|-> <infile1|-> <outfile|->\n"
+                "Options:\n"
+                "  -a|--absolute: compute the absolute difference\n"
+                "  -i|--input-format: set format of input file (overriding file name extension)\n"
+                "  -o|--output-format: set format of output file (overriding file name extension)\n");
         return 0;
     }
 
     const std::string& inFileName0 = cmdLine.arguments()[0];
     const std::string& inFileName1 = cmdLine.arguments()[1];
     const std::string& outFileName = cmdLine.arguments()[2];
-    TAD::Importer importer0(inFileName0);
-    TAD::Importer importer1(inFileName1);
-    TAD::Exporter exporter(outFileName);
+    TAD::TagList importerHints;
+    if (cmdLine.isSet("input-format"))
+        importerHints.set("FORMAT", cmdLine.value("input-format"));
+    TAD::TagList exporterHints;
+    if (cmdLine.isSet("output-format"))
+        exporterHints.set("FORMAT", cmdLine.value("output-format"));
+    TAD::Importer importer0(inFileName0, importerHints);
+    TAD::Importer importer1(inFileName1, importerHints);
+    TAD::Exporter exporter(outFileName, TAD::Overwrite, exporterHints);
     TAD::Error err = TAD::ErrorNone;
     for (;;) {
         if (!importer0.hasMore(&err)) {
@@ -277,18 +304,26 @@ int tad_info(int argc, char* argv[])
 {
     CmdLine cmdLine;
     cmdLine.addOptionWithoutArg("statistics", 's');
+    cmdLine.addOptionWithArg("input-format", 'i');
     std::string errMsg;
     if (!cmdLine.parse(argc, argv, 1, 1, errMsg)) {
         fprintf(stderr, "tad info: %s\n", errMsg.c_str());
         return 1;
     }
     if (cmdLine.isSet("help")) {
-        fprintf(stderr, "Usage: tad info [-s|--statistics] <infile|->\n");
+        fprintf(stderr, "Usage: tad info [option]... <infile|->\n"
+                "Options:\n"
+                "  -s|--statistics: print statistics\n"
+                "  -i|--input-format: set format of input file (overriding file name extension)\n"
+                "  -o|--output-format: set format of output file (overriding file name extension)\n");
         return 0;
     }
 
     const std::string& inFileName = cmdLine.arguments()[0];
-    TAD::Importer importer(inFileName);
+    TAD::TagList importerHints;
+    if (cmdLine.isSet("input-format"))
+        importerHints.set("FORMAT", cmdLine.value("input-format"));
+    TAD::Importer importer(inFileName, importerHints);
     TAD::Error err = TAD::ErrorNone;
     int arrayCounter = 0;
     for (;;) {
