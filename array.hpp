@@ -205,8 +205,9 @@ private:
     size_t _componentCount;
     Type _componentType;
     // computed properties
-    size_t _elementCount;
+    unsigned int _componentSize;
     size_t _elementSize;
+    size_t _elementCount;
     // meta data
     TagList _globalTagList;
     std::vector<TagList> _dimensionTagLists;
@@ -248,8 +249,9 @@ public:
         _dimensions(dimensions),
         _componentCount(componentCount),
         _componentType(componentType),
+        _componentSize(typeSize(componentType)),
+        _elementSize(_componentCount * _componentSize),
         _elementCount(initElementCount()),
-        _elementSize(_componentCount * typeSize(componentType)),
         _dimensionTagLists(dimensions.size()),
         _componentTagLists(_componentCount)
     {
@@ -266,7 +268,8 @@ public:
         ArrayDescription(descr)
     {
         _componentType = type;
-        _elementSize = componentCount() * typeSize(type);
+        _componentSize = typeSize(type);
+        _elementSize = componentCount() * componentSize();
     }
 
     /*@}*/
@@ -310,7 +313,7 @@ public:
     /*! \brief Returns the size of a component. */
     size_t componentSize() const
     {
-        return typeSize(componentType());
+        return _componentSize;
     }
 
     /*! \brief Returns the size of an element. */
