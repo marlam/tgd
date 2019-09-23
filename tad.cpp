@@ -125,6 +125,7 @@ int tad_convert(int argc, char* argv[])
     }
     if (cmdLine.isSet("help")) {
         fprintf(stderr, "Usage: tad convert [-n|--normalize] [-t|--type=T] <infile|-> <outfile|->\n");
+        return 0;
     }
 
     const std::string& inFileName = cmdLine.arguments()[0];
@@ -194,6 +195,7 @@ int tad_diff(int argc, char* argv[])
     }
     if (cmdLine.isSet("help")) {
         fprintf(stderr, "Usage: tad diff [-a|--absolute] <infile0|-> <infile1|-> <outfile|->\n");
+        return 0;
     }
 
     const std::string& inFileName0 = cmdLine.arguments()[0];
@@ -282,6 +284,7 @@ int tad_info(int argc, char* argv[])
     }
     if (cmdLine.isSet("help")) {
         fprintf(stderr, "Usage: tad info [-s|--statistics] <infile|->\n");
+        return 0;
     }
 
     const std::string& inFileName = cmdLine.arguments()[0];
