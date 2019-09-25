@@ -41,6 +41,7 @@ find_package(JPEG QUIET)
 find_package(HDF5 COMPONENTS CXX QUIET)
 find_package(MATIO QUIET)
 find_package(TIFF QUIET)
+find_package(FFMPEG QUIET)
 
 # The input/output library
 add_definitions(-DTAD_VERSION="${TAD_VERSION}")
@@ -106,6 +107,12 @@ if(TAD_STATIC)
 	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-tiff.hpp io-tiff.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${TIFF_LIBRARIES})
 	include_directories(${TIFF_INCLUDE_DIRS})
+    endif()
+    if(FFMPEG_FOUND)
+	add_definitions(-DTAD_WITH_FFMPEG)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-ffmpeg.hpp io-ffmpeg.cpp)
+	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${FFMPEG_LIBRARIES})
+	include_directories(${FFMPEG_INCLUDE_DIRS})
     endif()
     add_library(libtad STATIC ${libtad_SOURCES} ${libtad_STATIC_EXTRA_SOURCES})
     target_link_libraries(libtad ${libtad_STATIC_EXTRA_LIBRARIES} "-static")
@@ -200,6 +207,18 @@ else()
 	include_directories(${TIFF_INCLUDE_DIRS})
 	target_link_libraries(libtadio-tiff ${TIFF_LIBRARIES})
 	install(TARGETS libtadio-tiff
+	    RUNTIME DESTINATION bin
+	    LIBRARY DESTINATION lib${LIB_SUFFIX}
+	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
+
+    endif()
+    if(FFMPEG_FOUND)
+        add_library(libtadio-ffmpeg SHARED io-ffmpeg.hpp io-ffmpeg.cpp)
+	set_target_properties(libtadio-ffmpeg PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+	set_target_properties(libtadio-ffmpeg PROPERTIES OUTPUT_NAME tadio-ffmpeg)
+	include_directories(${FFMPEG_INCLUDE_DIRS})
+	target_link_libraries(libtadio-ffmpeg ${FFMPEG_LIBRARIES})
+	install(TARGETS libtadio-ffmpeg
 	    RUNTIME DESTINATION bin
 	    LIBRARY DESTINATION lib${LIB_SUFFIX}
 	    ARCHIVE DESTINATION lib${LIB_SUFFIX})

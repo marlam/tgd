@@ -37,6 +37,7 @@
 #include "io-pfs.hpp"
 #include "io-png.hpp"
 #include "io-tiff.hpp"
+#include "io-ffmpeg.hpp"
 
 
 namespace TAD {
@@ -90,28 +91,19 @@ static std::string getExtension(const std::string& fileName)
 
 static FormatImportExport* openFormatImportExport(const std::string& format)
 {
-    std::string fieName;
-    if (format == "tad") {
-        fieName = "tad";
-    } else if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam" || format == "pfm") {
+    std::string fieName(format);
+    // set fieName for importers that handle multiple file formats
+    if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam" || format == "pfm") {
         fieName = "pnm";
-    } else if (format == "raw") {
-        fieName = "raw";
-    } else if (format == "exr") {
-        fieName = "exr";
-    } else if (format == "gta") {
-        fieName = "gta";
+    } else if (format == "mp4" || format == "mkv" || format == "mov" || format == "avi"
+            || format == "gif" || format == "dds" || format == "bmp" || format == "tga") {
+        // TODO: this list can be much longer; add other extensions when needed
+        fieName = "ffmpeg";
     } else if (format == "h5" || format == "he5" || format == "hdf5") {
         fieName = "hdf5";
-    } else if (format == "jpg" || format == "jpeg") {
+    } else if (format == "jpg") {
         fieName = "jpeg";
-    } else if (format == "mat") {
-        fieName = "mat";
-    } else if (format == "pfs") {
-        fieName = "pfs";
-    } else if (format == "png") {
-        fieName = "png";
-    } else if (format == "tif" || format == "tiff") {
+    } else if (format == "tif") {
         fieName = "tiff";
     }
 
@@ -155,18 +147,24 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
     } else if (fieName == "tiff") {
         return new FormatImportExportTIFF;
 #  endif
+#  ifdef TAD_WITH_FFMPEG
+    } else if (fieName == "ffmpeg") {
+        return new FormatImportExportFFMPEG;
+#  endif
 #endif
     } else {
 #ifndef TAD_STATIC
         // ... then plugin formats
         std::string pluginName = std::string("libtadio-") + fieName + DOT_SO_STR;
         void* plugin = dlopen(pluginName.c_str(), RTLD_NOW);
-        if (!plugin)
+        if (!plugin) {
             return nullptr;
+        }
         std::string factoryName = std::string("FormatImportExportFactory_") + fieName;
         void* factory = dlsym(plugin, factoryName.c_str());
-        if (!factory)
+        if (!factory) {
             return nullptr;
+        }
         FormatImportExport* (*fieFactory)() = reinterpret_cast<FormatImportExport* (*)()>(factory);
         return fieFactory();
 #else
