@@ -32,11 +32,17 @@ class FFmpeg;
 
 class FormatImportExportFFMPEG : public FormatImportExport {
 private:
+    std::string _fileName;
     FFmpeg* _ffmpeg;
     ArrayDescription _desc;
+    int64_t _minDTS;
+    std::vector<int64_t> _frameDTSs;
+    std::vector<int> _keyFrames;
     bool _fileEof, _sentEofPacket, _codecEof;
     int _indexOfLastReadFrame;
-    
+
+    bool hardReset();
+
 public:
     FormatImportExportFFMPEG();
     ~FormatImportExportFFMPEG();

@@ -95,6 +95,8 @@ private:
     std::shared_ptr<FormatImportExport> _fie;
     bool _fileIsOpened;
 
+    Error ensureFileIsOpenedForReading();
+
 public:
     /*! \brief Constructor. This must be initialized with \a initialize(). */
     Importer();

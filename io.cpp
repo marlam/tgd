@@ -95,7 +95,10 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
     // set fieName for importers that handle multiple file formats
     if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam" || format == "pfm") {
         fieName = "pnm";
-    } else if (format == "mp4" || format == "mkv" || format == "mov" || format == "avi"
+    } else if (format == "mp4" || format == "m4v"
+            || format == "mkv" || format == "ogv"
+            || format == "mpeg" || format == "mpg"
+            || format == "mov" || format == "avi" || format == "wmv"
             || format == "gif" || format == "dds" || format == "bmp" || format == "tga") {
         // TODO: this list can be much longer; add other extensions when needed
         fieName = "ffmpeg";
@@ -214,32 +217,33 @@ Error Importer::checkAccess() const
     return ErrorNone;
 }
 
-int Importer::arrayCount()
-{
-    if (!_fie)
-        return -1;
-    if (!_fileIsOpened && _fie->openForReading(_fileName, _hints) != ErrorNone)
-        return -1;
-    _fileIsOpened = true;
-    return _fie->arrayCount();
-}
-
-ArrayContainer Importer::readArray(Error* error, int arrayIndex)
+Error Importer::ensureFileIsOpenedForReading()
 {
     if (!_fie) {
-        if (error)
-            *error = ErrorFormatUnsupported;
-        return ArrayContainer();
+        return ErrorFormatUnsupported;
     }
     Error e = ErrorNone;
     if (!_fileIsOpened) {
         e = _fie->openForReading(_fileName, _hints);
-        if (e != ErrorNone) {
-            if (error)
-                *error = e;
-            return ArrayContainer();
-        }
-        _fileIsOpened = true;
+        if (e == ErrorNone)
+            _fileIsOpened = true;
+    }
+    return e;
+}
+
+int Importer::arrayCount()
+{
+    Error e = ensureFileIsOpenedForReading();
+    return (e == ErrorNone ? _fie->arrayCount() : -1);
+}
+
+ArrayContainer Importer::readArray(Error* error, int arrayIndex)
+{
+    Error e = ensureFileIsOpenedForReading();
+    if (e != ErrorNone) {
+        if (error)
+            *error = e;
+        return ArrayContainer();
     }
     ArrayContainer r = _fie->readArray(&e, arrayIndex);
     if (e != ErrorNone) {
@@ -254,18 +258,12 @@ ArrayContainer Importer::readArray(Error* error, int arrayIndex)
 
 bool Importer::hasMore(Error* error)
 {
-    if (!_fie) {
-        if (error)
-            *error = ErrorFormatUnsupported;
-        return false;
-    }
-    Error e;
-    if (!_fileIsOpened && (e = _fie->openForReading(_fileName, _hints)) != ErrorNone) {
+    Error e = ensureFileIsOpenedForReading();
+    if (e != ErrorNone) {
         if (error)
             *error = e;
         return false;
     }
-    _fileIsOpened = true;
     bool ret = _fie->hasMore();
     if (!ret) {
         if (error)
