@@ -42,6 +42,7 @@ find_package(HDF5 COMPONENTS CXX QUIET)
 find_package(MATIO QUIET)
 find_package(TIFF QUIET)
 find_package(FFMPEG QUIET)
+find_package(DCMTK QUIET)
 
 # The input/output library
 add_definitions(-DTAD_VERSION="${TAD_VERSION}")
@@ -113,6 +114,12 @@ if(TAD_STATIC)
 	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-ffmpeg.hpp io-ffmpeg.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${FFMPEG_LIBRARIES})
 	include_directories(${FFMPEG_INCLUDE_DIRS})
+    endif()
+    if(DCMTK_FOUND)
+	add_definitions(-DTAD_WITH_DCMTK)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-dcmtk.hpp io-dcmtk.cpp)
+	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${DCMTK_LIBRARIES})
+	include_directories(${DCMTK_INCLUDE_DIRS})
     endif()
     add_library(libtad STATIC ${libtad_SOURCES} ${libtad_STATIC_EXTRA_SOURCES})
     target_link_libraries(libtad ${libtad_STATIC_EXTRA_LIBRARIES} "-static")
@@ -219,6 +226,18 @@ else()
 	include_directories(${FFMPEG_INCLUDE_DIRS})
 	target_link_libraries(libtadio-ffmpeg ${FFMPEG_LIBRARIES})
 	install(TARGETS libtadio-ffmpeg
+	    RUNTIME DESTINATION bin
+	    LIBRARY DESTINATION lib${LIB_SUFFIX}
+	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
+
+    endif()
+    if(DCMTK_FOUND)
+        add_library(libtadio-dcmtk SHARED io-dcmtk.hpp io-dcmtk.cpp)
+	set_target_properties(libtadio-dcmtk PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+	set_target_properties(libtadio-dcmtk PROPERTIES OUTPUT_NAME tadio-dcmtk)
+	include_directories(${DCMTK_INCLUDE_DIRS})
+	target_link_libraries(libtadio-dcmtk ${DCMTK_LIBRARIES})
+	install(TARGETS libtadio-dcmtk
 	    RUNTIME DESTINATION bin
 	    LIBRARY DESTINATION lib${LIB_SUFFIX}
 	    ARCHIVE DESTINATION lib${LIB_SUFFIX})

@@ -95,6 +95,8 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
     // set fieName for importers that handle multiple file formats
     if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam" || format == "pfm") {
         fieName = "pnm";
+    } else if (format == "dcm" || format == "dicom") {
+        fieName = "dcmtk";
     } else if (format == "mp4" || format == "m4v"
             || format == "mkv" || format == "ogv"
             || format == "mpeg" || format == "mpg"
@@ -153,6 +155,10 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
 #  ifdef TAD_WITH_FFMPEG
     } else if (fieName == "ffmpeg") {
         return new FormatImportExportFFMPEG;
+#  endif
+#  ifdef TAD_WITH_DCMTK
+    } else if (fieName == "dcmtk") {
+        return new FormatImportExportDCMTK;
 #  endif
 #endif
     } else {
