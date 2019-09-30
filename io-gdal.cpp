@@ -61,7 +61,7 @@ Error FormatImportExportGDAL::openForReading(const std::string& fileName, const 
     size_t width = GDALGetRasterXSize(_dataset);
     size_t height = GDALGetRasterYSize(_dataset);
     size_t compCount = GDALGetRasterCount(_dataset);
-    Type type;
+    Type type = uint8;
     for (size_t i = 0; i < compCount; i++) {
         GDALRasterBandH band = GDALGetRasterBand(_dataset, i + 1);
         Type bandType;
