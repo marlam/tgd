@@ -6,7 +6,7 @@
 # permitted in any medium without royalty provided the copyright notice and this
 # notice are preserved. This file is offered as-is, without any warranty.
 
-FIND_PATH(CFITSIO_INCLUDE_DIR NAMES fitsio2.h)
+FIND_PATH(CFITSIO_INCLUDE_DIR NAMES fitsio.h)
 
 FIND_LIBRARY(CFITSIO_LIBRARY NAMES cfitsio)
 

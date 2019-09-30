@@ -135,9 +135,11 @@ ArrayContainer FormatImportExportFITS::readArray(Error* error, int arrayIndex)
     } else if (fitstype == LONGLONG_IMG) {
         type = int64;
         fitsttype = TLONGLONG;
-    } else if (fitstype == LONGLONG_IMG) {
+#ifdef ULONGLONG_IMG
+    } else if (fitstype == ULONGLONG_IMG) {
         type = uint64;
         fitsttype = TULONGLONG;
+#endif
     } else if (fitstype == FLOAT_IMG) {
         type = float32;
         fitsttype = TFLOAT;
@@ -183,7 +185,6 @@ ArrayContainer FormatImportExportFITS::readArray(Error* error, int arrayIndex)
         *error = ErrorInvalidData;
         return ArrayContainer();
     }
-    //reverseY(r);
     if (arrayIndex >= 0) {
         _indexOfLastReadArray = arrayIndex;
     } else {
