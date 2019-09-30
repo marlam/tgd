@@ -38,6 +38,9 @@
 #include "io-png.hpp"
 #include "io-tiff.hpp"
 #include "io-ffmpeg.hpp"
+#include "io-dcmtk.hpp"
+#include "io-gdal.hpp"
+#include "io-fits.hpp"
 
 
 namespace TAD {
@@ -97,6 +100,8 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
         fieName = "pnm";
     } else if (format == "dcm" || format == "dicom") {
         fieName = "dcmtk";
+    } else if (format == "fit") {
+        fieName = "fits";
     } else if (format == "mp4" || format == "m4v"
             || format == "mkv" || format == "ogv"
             || format == "mpeg" || format == "mpg"
@@ -130,6 +135,10 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
 #  ifdef TAD_WITH_OPENEXR
     } else if (fieName == "exr") {
         return new FormatImportExportEXR;
+#  endif
+#  ifdef TAD_WITH_CFITSIO
+    } else if (fieName == "fits") {
+        return new FormatImportExportFITS;
 #  endif
 #  ifdef TAD_WITH_FFMPEG
     } else if (fieName == "ffmpeg") {
