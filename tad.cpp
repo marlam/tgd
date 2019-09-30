@@ -345,7 +345,7 @@ int tad_info(int argc, char* argv[])
             sizeString = std::to_string(array.dimension(0));
             for (size_t i = 1; i < array.dimensions().size(); i++) {
                 sizeString += 'x';
-                sizeString += std::to_string(array.dimension(1));
+                sizeString += std::to_string(array.dimension(i));
             }
         }
         printf("array %d: %zd x %s, size %s (%s)\n",
