@@ -104,6 +104,9 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
             || format == "gif" || format == "dds" || format == "bmp" || format == "tga") {
         // TODO: this list can be much longer; add other extensions when needed
         fieName = "ffmpeg";
+    } else if (format == "vrt" || format == "tsx") {
+        // TODO: this list can be much longer; add other extensions when needed
+        fieName = "gdal";
     } else if (format == "h5" || format == "he5" || format == "hdf5") {
         fieName = "hdf5";
     } else if (format == "jpg") {
@@ -120,9 +123,21 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
     } else if (fieName == "raw") {
         return new FormatImportExportRAW;
 #ifdef TAD_STATIC
+#  ifdef TAD_WITH_DCMTK
+    } else if (fieName == "dcmtk") {
+        return new FormatImportExportDCMTK;
+#  endif
 #  ifdef TAD_WITH_OPENEXR
     } else if (fieName == "exr") {
         return new FormatImportExportEXR;
+#  endif
+#  ifdef TAD_WITH_FFMPEG
+    } else if (fieName == "ffmpeg") {
+        return new FormatImportExportFFMPEG;
+#  endif
+#  ifdef TAD_WITH_GDAL
+    } else if (fieName == "gdal") {
+        return new FormatImportExportGDAL;
 #  endif
 #  ifdef TAD_WITH_GTA
     } else if (fieName == "gta") {
@@ -151,14 +166,6 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
 #  ifdef TAD_WITH_TIFF
     } else if (fieName == "tiff") {
         return new FormatImportExportTIFF;
-#  endif
-#  ifdef TAD_WITH_FFMPEG
-    } else if (fieName == "ffmpeg") {
-        return new FormatImportExportFFMPEG;
-#  endif
-#  ifdef TAD_WITH_DCMTK
-    } else if (fieName == "dcmtk") {
-        return new FormatImportExportDCMTK;
 #  endif
 #endif
     } else {

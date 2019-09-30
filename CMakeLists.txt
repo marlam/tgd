@@ -43,6 +43,7 @@ find_package(MATIO QUIET)
 find_package(TIFF QUIET)
 find_package(FFMPEG QUIET)
 find_package(DCMTK QUIET)
+find_package(GDAL QUIET)
 
 # The input/output library
 add_definitions(-DTAD_VERSION="${TAD_VERSION}")
@@ -120,6 +121,12 @@ if(TAD_STATIC)
 	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-dcmtk.hpp io-dcmtk.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${DCMTK_LIBRARIES})
 	include_directories(${DCMTK_INCLUDE_DIRS})
+    endif()
+    if(GDAL_FOUND)
+	add_definitions(-DTAD_WITH_GDAL)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-gdal.hpp io-gdal.cpp)
+	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${GDAL_LIBRARIES})
+	include_directories(${GDAL_INCLUDE_DIRS})
     endif()
     add_library(libtad STATIC ${libtad_SOURCES} ${libtad_STATIC_EXTRA_SOURCES})
     target_link_libraries(libtad ${libtad_STATIC_EXTRA_LIBRARIES} "-static")
@@ -238,6 +245,18 @@ else()
 	include_directories(${DCMTK_INCLUDE_DIRS})
 	target_link_libraries(libtadio-dcmtk ${DCMTK_LIBRARIES})
 	install(TARGETS libtadio-dcmtk
+	    RUNTIME DESTINATION bin
+	    LIBRARY DESTINATION lib${LIB_SUFFIX}
+	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
+
+    endif()
+    if(GDAL_FOUND)
+        add_library(libtadio-gdal SHARED io-gdal.hpp io-gdal.cpp)
+	set_target_properties(libtadio-gdal PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+	set_target_properties(libtadio-gdal PROPERTIES OUTPUT_NAME tadio-gdal)
+	include_directories(${GDAL_INCLUDE_DIRS})
+	target_link_libraries(libtadio-gdal ${GDAL_LIBRARIES})
+	install(TARGETS libtadio-gdal
 	    RUNTIME DESTINATION bin
 	    LIBRARY DESTINATION lib${LIB_SUFFIX}
 	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
