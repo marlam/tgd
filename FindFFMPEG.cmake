@@ -17,7 +17,7 @@ DOC
     "FFmpeg headers path"
 )
 
-foreach(FFMPEG_LIB avcodec avformat avutil swscale)
+foreach(FFMPEG_LIB avformat avcodec avutil swscale)
     find_library(FFMPEG_${FFMPEG_LIB}_LIBRARY
 	NAMES
 	    ${FFMPEG_LIB}
