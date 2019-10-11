@@ -58,6 +58,7 @@ set(libtad_SOURCES
 	io-tad.hpp io-tad.cpp
 	io-raw.hpp io-raw.cpp
 	io-pnm.hpp io-pnm.cpp
+        io-rgbe.hpp io-rgbe.cpp
 	dl.hpp)
 if(TAD_STATIC)
     add_definitions(-DTAD_STATIC)
