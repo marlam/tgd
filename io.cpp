@@ -34,6 +34,7 @@
 #include "io-gta.hpp"
 #include "io-hdf5.hpp"
 #include "io-jpeg.hpp"
+#include "io-mat.hpp"
 #include "io-pfs.hpp"
 #include "io-png.hpp"
 #include "io-tiff.hpp"
