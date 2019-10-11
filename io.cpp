@@ -30,6 +30,7 @@
 #include "io-tad.hpp"
 #include "io-pnm.hpp"
 #include "io-raw.hpp"
+#include "io-rgbe.hpp"
 #include "io-exr.hpp"
 #include "io-gta.hpp"
 #include "io-hdf5.hpp"
@@ -98,6 +99,8 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
     // set fieName for importers that handle multiple file formats
     if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam" || format == "pfm") {
         fieName = "pnm";
+    } else if (format == "hdr" || format == "pic") {
+        fieName = "rgbe";
     } else if (format == "dcm" || format == "dicom") {
         fieName = "dcmtk";
     } else if (format == "fit") {
@@ -127,6 +130,8 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
         return new FormatImportExportPNM;
     } else if (fieName == "raw") {
         return new FormatImportExportRAW;
+    } else if (fieName == "rgbe") {
+        return new FormatImportExportRGBE;
 #ifdef TAD_STATIC
 #  ifdef TAD_WITH_DCMTK
     } else if (fieName == "dcmtk") {
