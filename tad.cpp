@@ -33,6 +33,7 @@
 #include "io.hpp"
 #include "foreach.hpp"
 #include "operators.hpp"
+#include "tools.hpp"
 
 #include "cmdline.hpp"
 
@@ -165,11 +166,11 @@ int tad_convert(int argc, char* argv[])
             TAD::Type oldType = array.componentType();
             if (cmdLine.isSet("normalize")) {
                 if (type == TAD::float32) {
-                    array = array.convert(type);
+                    array = convert(array, type);
                     TAD::Array<float> floatArray(array);
                     tad_convert_normalize_helper_to_float<float>(floatArray, oldType);
                 } else if (type == TAD::float64) {
-                    array = array.convert(type);
+                    array = convert(array, type);
                     TAD::Array<double> doubleArray(array);
                     tad_convert_normalize_helper_to_float<double>(doubleArray, oldType);
                 } else if (oldType == TAD::float32) {
@@ -177,16 +178,16 @@ int tad_convert(int argc, char* argv[])
                         TAD::Array<float> floatArray(array);
                         tad_convert_normalize_helper_from_float<float>(floatArray, type);
                     }
-                    array = array.convert(type);
+                    array = convert(array, type);
                 } else if (oldType == TAD::float64) {
                     if (type == TAD::int8 || type == TAD::uint8 || type == TAD::int16 || type == TAD::uint16) {
                         TAD::Array<double> doubleArray(array);
                         tad_convert_normalize_helper_from_float<double>(doubleArray, type);
                     }
-                    array = array.convert(type);
+                    array = convert(array, type);
                 }
             } else {
-                array = array.convert(type);
+                array = convert(array, type);
             }
         }
         err = exporter.writeArray(array);
@@ -255,8 +256,8 @@ int tad_diff(int argc, char* argv[])
             fprintf(stderr, "tad diff: %s: %s\n", inFileName1.c_str(), TAD::strerror(err));
             break;
         }
-        TAD::Array<float> floatArray0 = array0.convert(TAD::float32);
-        TAD::Array<float> floatArray1 = array1.convert(TAD::float32);
+        TAD::Array<float> floatArray0 = convert(array0, TAD::float32);
+        TAD::Array<float> floatArray1 = convert(array1, TAD::float32);
         TAD::Array<float> result = floatArray0 - floatArray1;
         if (cmdLine.isSet("absolute")) {
             TAD::forEachComponentInplace(result, [] (float v) -> float { return std::abs(v); });
@@ -369,7 +370,7 @@ int tad_info(int argc, char* argv[])
             }
         }
         if (cmdLine.isSet("statistics")) {
-            TAD::Array<float> floatArray = array.convert(TAD::float32);
+            TAD::Array<float> floatArray = convert(array, TAD::float32);
             for (size_t i = 0; i < array.componentCount(); i++) {
                 long long int finiteValues = 0;
                 float minVal = std::numeric_limits<float>::quiet_NaN();

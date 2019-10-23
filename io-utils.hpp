@@ -26,6 +26,9 @@
 
 #include <cstdint>
 
+#include "array.hpp"
+#include "tools.hpp"
+
 namespace TAD {
 
 inline void reverseY(size_t height, size_t line_size, unsigned char* data)
@@ -110,7 +113,7 @@ inline ArrayContainer reorderMatlabInputData(const std::vector<size_t>& dims, Ty
     } else {
         r = ArrayContainer(dims, 1, t);
         std::memcpy(r.data(), data, r.dataSize());
-        r = r.transposed();
+        r = transpose(r);
     }
     return r;
 }

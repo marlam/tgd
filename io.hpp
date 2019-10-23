@@ -209,13 +209,6 @@ inline ArrayContainer load(const std::string& fileName, const TagList& hints = T
     return Importer(fileName, hints).readArray(error, -1);
 }
 
-/*! \brief Shortcut to read a single typed array from a file in a single line of code. The component type
- * is converted to the target type if necessary. */
-template<typename T> Array<T> load(const std::string& fileName, const TagList& hints = TagList(), Error* error = nullptr)
-{
-    return load(fileName, hints, error).convert(typeFromTemplate<T>());
-}
-
 /*! \brief Shortcut to write a single array to a file in a single line of code. */
 inline bool save(const ArrayContainer& A, const std::string& fileName, bool append = Overwrite, Error* error = nullptr, const TagList& hints = TagList())
 {
