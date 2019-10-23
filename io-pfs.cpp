@@ -182,7 +182,7 @@ ArrayContainer FormatImportExportPFS::readArray(Error* error, int arrayIndex)
         else if (strcmp(channel->getName(), "ALPHA") == 0)
             r.componentTagList(componentIndex).set("INTERPRETATION", "ALPHA");
         else
-            r.componentTagList(componentIndex).set("PFS/NAME", channel->getName());
+            r.componentTagList(componentIndex).set("INTERPRETATION", channel->getName());
         channelData[componentIndex] = channel->getRawData();
         componentIndex++;
     }
