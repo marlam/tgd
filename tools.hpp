@@ -33,12 +33,14 @@
 
 namespace TAD {
 
+/*! \cond */
 template<typename TO, typename FROM>
 void convertData(TO* dst, const FROM* src, size_t n)
 {
     for (size_t i = 0; i < n; i++)
         dst[i] = src[i];
 }
+/*! \endcond */
 
 /*! \brief Convert the given array to the given new component type.
  * If conversion is not actually necessary because the new type is the same
