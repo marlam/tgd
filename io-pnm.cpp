@@ -116,7 +116,7 @@ static bool readPnmMaxval(FILE* f, PNMInfo* info)
     bool ret = (readPnmWhitespaceAndComments(f)
             && fscanf(f, "%d", &info->maxval) == 1
             && info->maxval >= 1 && info->maxval <= 65535);
-    info->needsEndianFix = (info->maxval > 255);
+    info->needsEndianFix = (info->maxval > 255 && !info->plain);
     return ret;
 }
 
@@ -293,11 +293,19 @@ bool readPnmData(FILE* f, const PNMInfo& info, ArrayContainer& array)
         for (size_t e = 0; e < array.elementCount(); e++) {
             for (size_t c = 0; c < array.componentCount(); c++) {
                 int val;
-                if (!readWhitespace(f)
-                        || fscanf(f, "%d", &val) != 1
-                        || val < 0 || val > 65535
-                        || (array.componentType() == uint8 && val > 255)) {
+                if (!readWhitespace(f) || fscanf(f, "%d", &val) != 1) {
                     return false;
+                }
+                // Clamp values that are outside of the allowed range.
+                // You could say these files are invalid, and NetPBM itself refuses them,
+                // but nevertheless they exist and this clamping is the sanest way
+                // to deal with them.
+                if (val < 0) {
+                    val = 0;
+                } else if (val > 65535) {
+                    val = 65535;
+                } else if (array.componentType() == uint8 && val > 255) {
+                    val = 255;
                 }
                 if (array.componentType() == uint8) {
                     array.set<uint8_t>(e, c, uint8_t(val));
@@ -319,10 +327,7 @@ bool skipPnmData(FILE* f, const PNMInfo& info)
         size_t valueCount = info.width * info.height * info.depth;
         for (size_t i = 0; i < valueCount; i++) {
             int val;
-            if (!readWhitespace(f)
-                    || fscanf(f, "%d", &val) != 1
-                    || val < 0 || val > 65535
-                    || (info.maxval <= 255 && val > 255)) {
+            if (!readWhitespace(f) || fscanf(f, "%d", &val) != 1) {
                 return false;
             }
         }
