@@ -126,8 +126,7 @@ ArrayContainer FormatImportExportPNG::readArray(Error* error, int arrayIndex)
     png_set_sig_bytes(png_ptr, 8);
     // TODO: ??? png_set_gamma(png_ptr, 2.2, 0.45455);
     png_read_png(png_ptr, info_ptr,
-            PNG_TRANSFORM_EXPAND | PNG_TRANSFORM_PACKING,
-            // TODO: | (endianness::endianness == endianness::big ? 0 : PNG_TRANSFORM_SWAP_ENDIAN),
+            PNG_TRANSFORM_EXPAND | PNG_TRANSFORM_PACKING | PNG_TRANSFORM_SWAP_ENDIAN,
             NULL);
     unsigned int width = png_get_image_width(png_ptr, info_ptr);
     unsigned int height = png_get_image_height(png_ptr, info_ptr);
@@ -229,7 +228,7 @@ Error FormatImportExportPNG::writeArray(const ArrayContainer& array)
         png_set_text(png_ptr, info_ptr, &(text[0]), text.size());
     png_set_rows(png_ptr, info_ptr, &(row_pointers[0]));
     png_write_png(png_ptr, info_ptr,
-            PNG_TRANSFORM_IDENTITY, // TODO: endianness::endianness == endianness::big ? PNG_TRANSFORM_SWAP_ENDIAN,
+            PNG_TRANSFORM_SWAP_ENDIAN,
             NULL);
     png_destroy_write_struct(&png_ptr, &info_ptr);
     if (fflush(_f) != 0) {
