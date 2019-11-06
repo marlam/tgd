@@ -128,6 +128,7 @@ int tad_convert(int argc, char* argv[])
     }
     if (cmdLine.isSet("help")) {
         fprintf(stderr, "Usage: tad convert [option]... <infile|-> <outfile|->\n"
+                "Convert to a new type and/or format.\n"
                 "Options:\n"
                 "  -n|--normalize: create/assume floating point values in [-1,1]/[0,1]\n"
                 "    when converting to/from signed/unsigned integer values\n"
@@ -212,6 +213,7 @@ int tad_diff(int argc, char* argv[])
     }
     if (cmdLine.isSet("help")) {
         fprintf(stderr, "Usage: tad diff [option]... <infile0|-> <infile1|-> <outfile|->\n"
+                "Compute the absolute difference.\n"
                 "Options:\n"
                 "  -i|--input-format: set format of input file (overriding file name extension)\n"
                 "  -o|--output-format: set format of output file (overriding file name extension)\n");
@@ -314,6 +316,7 @@ int tad_info(int argc, char* argv[])
     }
     if (cmdLine.isSet("help")) {
         fprintf(stderr, "Usage: tad info [option]... <infile|->\n"
+                "Print information.\n"
                 "Options:\n"
                 "  -s|--statistics: print statistics\n"
                 "  -i|--input-format: set format of input file (overriding file name extension)\n"
