@@ -363,6 +363,7 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
 
     AVPacket pkt;
     int frameIndex = -1;
+    bool triedHardReset = false;
     do {
         int gotFrame = 0;
         do {
@@ -449,11 +450,12 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
             // We structured our seeking so that this should never ever happen,
             // but seeking in FFmpeg is often ... let's say surprising.
             // So we have a terrible fallback here: hard reset
-            if (!hardReset()) {
+            if (triedHardReset || !hardReset()) {
                 close();
                 *error = ErrorInvalidData;
                 return ArrayContainer();
             }
+            triedHardReset = true;
             frameIndex = -1;
         }
     } while (frameIndex < arrayIndex);
