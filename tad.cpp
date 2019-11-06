@@ -203,7 +203,6 @@ int tad_convert(int argc, char* argv[])
 int tad_diff(int argc, char* argv[])
 {
     CmdLine cmdLine;
-    cmdLine.addOptionWithoutArg("absolute", 'a');
     cmdLine.addOptionWithArg("input-format", 'i');
     cmdLine.addOptionWithArg("output-format", 'o');
     std::string errMsg;
@@ -214,7 +213,6 @@ int tad_diff(int argc, char* argv[])
     if (cmdLine.isSet("help")) {
         fprintf(stderr, "Usage: tad diff [option]... <infile0|-> <infile1|-> <outfile|->\n"
                 "Options:\n"
-                "  -a|--absolute: compute the absolute difference\n"
                 "  -i|--input-format: set format of input file (overriding file name extension)\n"
                 "  -o|--output-format: set format of output file (overriding file name extension)\n");
         return 0;
@@ -256,12 +254,15 @@ int tad_diff(int argc, char* argv[])
             fprintf(stderr, "tad diff: %s: %s\n", inFileName1.c_str(), TAD::strerror(err));
             break;
         }
+        if (!array0.isCompatible(array1)) {
+            fprintf(stderr, "tad diff: incompatible input arrays\n");
+            break;
+        }
         TAD::Array<float> floatArray0 = convert(array0, TAD::float32);
         TAD::Array<float> floatArray1 = convert(array1, TAD::float32);
-        TAD::Array<float> result = floatArray0 - floatArray1;
-        if (cmdLine.isSet("absolute")) {
-            TAD::forEachComponentInplace(result, [] (float v) -> float { return std::abs(v); });
-        }
+        TAD::Array<float> floatResult = TAD::forEachComponent(floatArray0, floatArray1,
+                [] (float v0, float v1) -> float { return std::abs(v0 - v1); });
+        TAD::ArrayContainer result = convert(floatResult, array0.componentType());
         err = exporter.writeArray(result);
         if (err != TAD::ErrorNone) {
             fprintf(stderr, "tad diff: %s: %s\n", outFileName.c_str(), TAD::strerror(err));
