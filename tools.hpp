@@ -46,7 +46,7 @@ void convertData(TO* dst, const FROM* src, size_t n)
  * If conversion is not actually necessary because the new type is the same
  * as the old, the returned array will simply share its data with the 
  * original array. */
-ArrayContainer convert(const ArrayContainer& a, Type newType)
+inline ArrayContainer convert(const ArrayContainer& a, Type newType)
 {
     if (a.componentType() == newType) {
         return a;
@@ -661,7 +661,7 @@ inline ArrayContainer merge(const ArrayContainer& a0, const ArrayContainer& a1, 
 }
 
 /*! \brief Extract the listed components of the given array into a new array */
-ArrayContainer extractComponents(const ArrayContainer& a, const std::vector<size_t>& componentList)
+inline ArrayContainer extractComponents(const ArrayContainer& a, const std::vector<size_t>& componentList)
 {
     ArrayContainer r(a.dimensions(), componentList.size(), a.componentType());
     r.globalTagList() = a.globalTagList();
@@ -683,7 +683,7 @@ ArrayContainer extractComponents(const ArrayContainer& a, const std::vector<size
 }
 
 /*! \brief Extract the given component of the given array into a new array */
-ArrayContainer extractComponent(const ArrayContainer& a, size_t component)
+inline ArrayContainer extractComponent(const ArrayContainer& a, size_t component)
 {
     return extractComponents(a, { component });
 }
