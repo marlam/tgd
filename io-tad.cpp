@@ -122,11 +122,12 @@ static bool readString(const char* data, std::string& s, size_t& len)
 {
     size_t i = 0;
     for (;;) {
-        const char& c = data[i++];
+        const char& c = data[i];
         if (c == 0)
             break;
         if (c < 32 || c == 127)
             return false;
+        i++;
     }
     len = i;
     s = std::string(data);
@@ -148,8 +149,9 @@ static Error readTadTagList(FILE* f, TagList& tl)
             std::string key, value;
             size_t keyLen, valueLen;
             if (!readString(data.data() + i, key, keyLen)
+                    || keyLen == 0
                     || i + keyLen + 1 >= data.size()
-                    || !readString(data.data() + i + keyLen, value, valueLen)) {
+                    || !readString(data.data() + i + keyLen + 1, value, valueLen)) {
                 return ErrorInvalidData;
             }
             i += keyLen + 1 + valueLen + 1;
