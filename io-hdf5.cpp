@@ -213,7 +213,7 @@ bool FormatImportExportHDF5::hasMore()
 
 Error FormatImportExportHDF5::writeArray(const ArrayContainer& array)
 {
-    std::string datasetname = std::string("TAD") + std::to_string(_counter++);
+    std::string datasetname = std::string("ARRAY_") + std::to_string(_counter++);
     H5::DataType type;
     switch (array.componentType()) {
     case TAD::int8:
