@@ -51,6 +51,14 @@ TAD::Type getType(const std::string& value)
     return t;
 }
 
+void removeValueRelatedTags(TAD::ArrayContainer& array)
+{
+    for (size_t i = 0; i < array.componentCount(); i++) {
+        array.componentTagList(i).unset("MINVAL");
+        array.componentTagList(i).unset("MAXVAL");
+    }
+}
+
 
 int tad_help(void)
 {
@@ -78,17 +86,21 @@ void tad_convert_normalize_helper_to_float(TAD::Array<T>& array, TAD::Type oldTy
                 [] (T v) -> T { return (v < T(0)
                     ? v / -std::numeric_limits<int8_t>::min()
                     : v / std::numeric_limits<int8_t>::max()); });
+        removeValueRelatedTags(array);
     } else if (oldType == TAD::uint8) {
         TAD::forEachComponentInplace(array,
                 [] (T v) -> T { return v / std::numeric_limits<uint8_t>::max(); });
+        removeValueRelatedTags(array);
     } else if (oldType == TAD::int16) {
         TAD::forEachComponentInplace(array,
                 [] (T v) -> T { return (v < T(0)
                     ? v / -std::numeric_limits<int16_t>::min()
                     : v / std::numeric_limits<int16_t>::max()); });
+        removeValueRelatedTags(array);
     } else if (oldType == TAD::uint16) {
         TAD::forEachComponentInplace(array,
                 [] (T v) -> T { return v / std::numeric_limits<uint16_t>::max(); });
+        removeValueRelatedTags(array);
     }
 }
 
@@ -100,17 +112,21 @@ void tad_convert_normalize_helper_from_float(TAD::Array<T>& array, TAD::Type new
                 [] (T v) -> T { return (v < T(0)
                     ? v * -std::numeric_limits<int8_t>::min()
                     : v * std::numeric_limits<int8_t>::max()); });
+        removeValueRelatedTags(array);
     } else if (newType == TAD::uint8) {
         TAD::forEachComponentInplace(array,
                 [] (T v) -> T { return v * std::numeric_limits<uint8_t>::max(); });
+        removeValueRelatedTags(array);
     } else if (newType == TAD::int16) {
         TAD::forEachComponentInplace(array,
                 [] (T v) -> T { return (v < T(0)
                     ? v * -std::numeric_limits<int16_t>::min()
                     : v * std::numeric_limits<int16_t>::max()); });
+        removeValueRelatedTags(array);
     } else if (newType == TAD::uint16) {
         TAD::forEachComponentInplace(array,
                 [] (T v) -> T { return v * std::numeric_limits<uint16_t>::max(); });
+        removeValueRelatedTags(array);
     }
 }
 
@@ -265,6 +281,7 @@ int tad_diff(int argc, char* argv[])
         TAD::Array<float> floatResult = TAD::forEachComponent(floatArray0, floatArray1,
                 [] (float v0, float v1) -> float { return std::abs(v0 - v1); });
         TAD::ArrayContainer result = convert(floatResult, array0.componentType());
+        removeValueRelatedTags(result);
         err = exporter.writeArray(result);
         if (err != TAD::ErrorNone) {
             fprintf(stderr, "tad diff: %s: %s\n", outFileName.c_str(), TAD::strerror(err));
