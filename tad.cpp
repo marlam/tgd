@@ -409,7 +409,7 @@ int tad_info(int argc, char* argv[])
                         finiteValues++;
                         if (val < tmpMinVal)
                             tmpMinVal = val;
-                        else if (val > tmpMaxVal)
+                        if (val > tmpMaxVal)
                             tmpMaxVal = val;
                         sum += val;
                         sumOfSquares += val * val;
