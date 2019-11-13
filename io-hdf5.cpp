@@ -213,6 +213,16 @@ bool FormatImportExportHDF5::hasMore()
 
 Error FormatImportExportHDF5::writeArray(const ArrayContainer& array)
 {
+    std::string counterString = std::to_string(_counter);
+    size_t leadingZeros = 0;
+    if (_counter < 10)
+        leadingZeros++;
+    if (_counter < 100)
+        leadingZeros++;
+    if (_counter < 1000)
+        leadingZeros++;
+    counterString.insert(0, leadingZeros, '0');
+    _counter++;
     std::string datasetname = std::string("ARRAY_") + std::to_string(_counter++);
     H5::DataType type;
     switch (array.componentType()) {
