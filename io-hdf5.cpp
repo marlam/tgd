@@ -223,7 +223,7 @@ Error FormatImportExportHDF5::writeArray(const ArrayContainer& array)
         leadingZeros++;
     counterString.insert(0, leadingZeros, '0');
     _counter++;
-    std::string datasetname = std::string("ARRAY_") + std::to_string(_counter++);
+    std::string datasetname = std::string("ARRAY_") + counterString;
     H5::DataType type;
     switch (array.componentType()) {
     case TAD::int8:
