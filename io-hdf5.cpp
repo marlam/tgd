@@ -267,6 +267,19 @@ Error FormatImportExportHDF5::writeArray(const ArrayContainer& array)
     try {
         H5::DataSet dataset = _f.createDataSet(datasetname.c_str(), type, dataspace);
         dataset.write(dataArray.data(), type);
+#if 0
+        // write attributes
+        H5::StrType strType(PredType::C_S1, H5T_VARIABLE);
+        H5::DataSpace attSpace(H5S_SCALAR);
+        for (auto it = array.globalTagList().cbegin(); it != array.globalTagList().cend(); it++) {
+            H5::Attribute att = dataset.createAttribute(it->first.c_str(), strType, attSpace);
+            att.write(strType, it->second);
+        }
+        // TODO: if this is an image, set the appropriate IMAGE attributes
+        // See https://support.hdfgroup.org/HDF5/doc/ADGuide/ImageSpec.html
+        // But that is an absolutely specification... I currently see no point
+        // in supporting that
+#endif
     }
     catch (H5::Exception& error) {
         fprintf(stderr, "%s\n", error.getCDetailMsg());
