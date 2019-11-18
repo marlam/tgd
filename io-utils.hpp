@@ -31,24 +31,6 @@
 
 namespace TAD {
 
-inline void reverseY(size_t height, size_t line_size, unsigned char* data)
-{
-    std::vector<unsigned char> tmp_line(line_size);
-    for (size_t y = 0; y < height / 2; y++) {
-        size_t ty = height - 1 - y;
-        std::memcpy(&(tmp_line[0]), &(data[ty * line_size]), line_size);
-        std::memcpy(&(data[ty * line_size]), &(data[y * line_size]), line_size);
-        std::memcpy(&(data[y * line_size]), &(tmp_line[0]), line_size);
-    }
-}
-
-inline void reverseY(ArrayContainer& array)
-{
-    reverseY(array.dimension(1),
-            array.dimension(0) * array.elementSize(),
-            static_cast<unsigned char*>(array.data()));
-}
-
 inline void swapEndianness(ArrayContainer& array)
 {
     size_t n = array.elementCount() * array.componentCount();
@@ -140,6 +122,133 @@ inline ArrayContainer reorderMatlabOutputData(const ArrayContainer& array)
                 array.componentSize());
     }
     return dataArray;
+}
+
+typedef enum
+{
+    // the values correspond to the EXIF specification
+    OriginTopLeft = 1,
+    OriginTopRight = 2,
+    OriginBottomRight = 3,
+    OriginBottomLeft = 4,
+    OriginLeftTop = 5,
+    OriginRightTop = 6,
+    OriginRightBottom = 7,
+    OriginLeftBottom = 8
+} ImageOriginLocation;
+
+inline void reverseY(size_t height, size_t line_size, unsigned char* data)
+{
+    std::vector<unsigned char> tmp_line(line_size);
+    for (size_t y = 0; y < height / 2; y++) {
+        size_t ty = height - 1 - y;
+        std::memcpy(&(tmp_line[0]), &(data[ty * line_size]), line_size);
+        std::memcpy(&(data[ty * line_size]), &(data[y * line_size]), line_size);
+        std::memcpy(&(data[y * line_size]), &(tmp_line[0]), line_size);
+    }
+}
+
+inline void reverseY(ArrayContainer& array)
+{
+    reverseY(array.dimension(1),
+            array.dimension(0) * array.elementSize(),
+            static_cast<unsigned char*>(array.data()));
+}
+
+inline void reverseX(size_t width, size_t height, size_t line_size, size_t elem_size, unsigned char* data)
+{
+    std::vector<unsigned char> tmp_elem(elem_size);
+    for (size_t y = 0; y < height; y++) {
+        unsigned char* rowData = data + y * line_size;
+        for (size_t x = 0; x < width / 2; x++) {
+            std::memcpy(tmp_elem.data(), rowData + x * elem_size, elem_size);
+            std::memcpy(rowData + x * elem_size, rowData + (width - 1 - x) * elem_size, elem_size);
+            std::memcpy(rowData + (width - 1 - x) * elem_size, tmp_elem.data(), elem_size);
+        }
+    }
+}
+
+inline void reverseX(ArrayContainer& array)
+{
+    reverseX(array.dimension(0), array.dimension(1),
+            array.dimension(0) * array.elementSize(),
+            array.elementSize(),
+            static_cast<unsigned char*>(array.data()));
+}
+
+inline ArrayContainer createTransposedContainer(const ArrayContainer& array)
+{
+    assert(array.dimensionCount() == 2);
+    ArrayContainer r({ array.dimension(1), array.dimension(0) }, array.componentCount(), array.componentType());
+    r.globalTagList() = array.globalTagList();
+    r.dimensionTagList(0) = array.dimensionTagList(1);
+    r.dimensionTagList(1) = array.dimensionTagList(0);
+    for (size_t i = 0; i < r.componentCount(); i++)
+        r.componentTagList(i) = array.componentTagList(i);
+    return r;
+}
+
+inline void fixImageOrientation(ArrayContainer& array, ImageOriginLocation originLocation)
+{
+    assert(array.dimensionCount() == 2);
+    switch (originLocation) {
+    case OriginTopLeft:
+        break;
+    case OriginTopRight:
+        reverseX(array);
+        break;
+    case OriginBottomRight:
+        reverseY(array);
+        reverseX(array);
+        break;
+    case OriginBottomLeft:
+        reverseY(array);
+        break;
+    case OriginLeftTop:
+        {
+            ArrayContainer r = createTransposedContainer(array);
+            for (size_t y = 0; y < r.dimension(1); y++) {
+                for (size_t x = 0; x < r.dimension(0); x++) {
+                    std::memcpy(r.get({ x, y }), array.get({ array.dimension(0) - 1 - y, array.dimension(1) - 1 - x }), r.elementSize());
+                }
+            }
+            array = r;
+        }
+        break;
+    case OriginRightTop:
+        {
+            ArrayContainer r = createTransposedContainer(array);
+            for (size_t y = 0; y < r.dimension(1); y++) {
+                for (size_t x = 0; x < r.dimension(0); x++) {
+                    std::memcpy(r.get({ x, y }), array.get({ array.dimension(0) - 1 - y, x }), r.elementSize());
+                }
+            }
+            array = r;
+        }
+        break;
+    case OriginRightBottom:
+        {
+            ArrayContainer r = createTransposedContainer(array);
+            for (size_t y = 0; y < r.dimension(1); y++) {
+                for (size_t x = 0; x < r.dimension(0); x++) {
+                    std::memcpy(r.get({ x, y }), array.get({ y, x }), r.elementSize());
+                }
+            }
+            array = r;
+        }
+        break;
+    case OriginLeftBottom:
+        {
+            ArrayContainer r = createTransposedContainer(array);
+            for (size_t y = 0; y < r.dimension(1); y++) {
+                for (size_t x = 0; x < r.dimension(0); x++) {
+                    std::memcpy(r.get({ x, y }), array.get({ y, array.dimension(1) - 1 - x }), r.elementSize());
+                }
+            }
+            array = r;
+        }
+        break;
+    }
 }
 
 }

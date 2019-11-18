@@ -26,6 +26,11 @@
 #include <setjmp.h>
 #include <jpeglib.h>
 
+#ifdef TAD_WITH_EXIF
+# include <libexif/exif-data.h>
+# include "io-utils.hpp"
+#endif
+
 #include "io-jpeg.hpp"
 
 
@@ -55,10 +60,13 @@ FormatImportExportJPEG::~FormatImportExportJPEG()
 
 Error FormatImportExportJPEG::openForReading(const std::string& fileName, const TagList&)
 {
-    if (fileName == "-")
+    if (fileName == "-") {
         _f = stdin;
-    else
+    } else {
         _f = fopen(fileName.c_str(), "rb");
+        if (_f)
+            _fileName = fileName;
+    }
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
@@ -66,10 +74,13 @@ Error FormatImportExportJPEG::openForWriting(const std::string& fileName, bool a
 {
     if (append)
         return ErrorFeaturesUnsupported;
-    if (fileName == "-")
+    if (fileName == "-") {
         _f = stdout;
-    else
+    } else {
         _f = fopen(fileName.c_str(), "wb");
+        if (_f)
+            _fileName = fileName;
+    }
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
@@ -81,6 +92,7 @@ void FormatImportExportJPEG::close()
         }
         _f = nullptr;
     }
+    _fileName = std::string();
 }
 
 int FormatImportExportJPEG::arrayCount()
@@ -126,6 +138,20 @@ ArrayContainer FormatImportExportJPEG::readArray(Error* error, int arrayIndex)
     }
     jpeg_finish_decompress(&cinfo);
     jpeg_destroy_decompress(&cinfo);
+
+#if TAD_WITH_EXIF
+    ExifData* exifData = exif_data_new_from_file(_fileName.c_str());
+    if (exifData) {
+        int orientation = 0;
+        ExifByteOrder byteOrder = exif_data_get_byte_order(exifData);
+        ExifEntry* exifEntry = exif_data_get_entry(exifData, EXIF_TAG_ORIENTATION);
+        if (exifEntry)
+            orientation = exif_get_short(exifEntry->data, byteOrder);
+        exif_data_free(exifData);
+        if (orientation >= 1 && orientation <= 8)
+            fixImageOrientation(r, static_cast<ImageOriginLocation>(orientation));
+    }
+#endif
 
     return r;
 }

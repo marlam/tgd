@@ -33,6 +33,7 @@ namespace TAD {
 class FormatImportExportJPEG : public FormatImportExport {
 private:
     FILE* _f;
+    std::string _fileName;
 
 public:
     FormatImportExportJPEG();
