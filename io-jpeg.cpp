@@ -139,6 +139,7 @@ ArrayContainer FormatImportExportJPEG::readArray(Error* error, int arrayIndex)
     jpeg_finish_decompress(&cinfo);
     jpeg_destroy_decompress(&cinfo);
 
+    ImageOriginLocation originLocation = OriginTopLeft;
 #if TAD_WITH_EXIF
     ExifData* exifData = exif_data_new_from_file(_fileName.c_str());
     if (exifData) {
@@ -148,12 +149,11 @@ ArrayContainer FormatImportExportJPEG::readArray(Error* error, int arrayIndex)
         if (exifEntry)
             orientation = exif_get_short(exifEntry->data, byteOrder);
         exif_data_free(exifData);
-        ImageOriginLocation originLocation = OriginTopLeft;
         if (orientation >= 1 && orientation <= 8)
             originLocation = static_cast<ImageOriginLocation>(orientation);
-        fixImageOrientation(r, originLocation);
     }
 #endif
+    fixImageOrientation(r, originLocation);
 
     return r;
 }
