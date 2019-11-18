@@ -265,10 +265,7 @@ ArrayContainer FormatImportExportTIFF::readArray(Error* error, int arrayIndex)
     if (tileWidth == 0 && tileHeight == 0) {
         if (config == PLANARCONFIG_CONTIG) {
             for (uint32_t row = 0; row < height; row++) {
-                uint32_t rrow = row;
-                if (orientation == ORIENTATION_TOPLEFT)
-                    rrow = height - 1 - rrow;
-                if (!TIFFReadScanline(_tiff, r.get({ 0, rrow }), row)) {
+                if (!TIFFReadScanline(_tiff, r.get({ 0, row }), row)) {
                     *error = ErrorLibrary;
                     return ArrayContainer();
                 }
@@ -276,10 +273,7 @@ ArrayContainer FormatImportExportTIFF::readArray(Error* error, int arrayIndex)
         } else {
             for (uint16_t s = 0; s < nSamples; s++) {
                 for (uint32_t row = 0; row < height; row++) {
-                    uint32_t rrow = row;
-                    if (orientation == ORIENTATION_TOPLEFT)
-                        rrow = height - 1 - rrow;
-                    if (!TIFFReadScanline(_tiff, r.get({ 0, rrow }), row, s)) {
+                    if (!TIFFReadScanline(_tiff, r.get({ 0, row }), row, s)) {
                         *error = ErrorLibrary;
                         return ArrayContainer();
                     }
@@ -301,8 +295,6 @@ ArrayContainer FormatImportExportTIFF::readArray(Error* error, int arrayIndex)
                         remainingTileWidth = r.dimension(0) - x;
                     for (uint32_t ty = 0; ty < remainingTileHeight; ty++) {
                         uint32_t ry = y + ty;
-                        if (orientation == ORIENTATION_TOPLEFT)
-                            ry = height - 1 - ry;
                         unsigned char* rdata = static_cast<unsigned char*>(r.get({ x, ry }));
                         const unsigned char* tdata = tileData.data() + ty * tileLineSize;
                         for (uint32_t tx = 0; tx < remainingTileWidth; tx++) {
@@ -315,6 +307,10 @@ ArrayContainer FormatImportExportTIFF::readArray(Error* error, int arrayIndex)
                 }
             }
         }
+    }
+
+    if (orientation >= 1 && orientation <= 8) {
+        fixImageOrientation(r, static_cast<ImageOriginLocation>(orientation));
     }
 
     _readCount++;
