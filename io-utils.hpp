@@ -193,29 +193,18 @@ inline void fixImageOrientation(ArrayContainer& array, ImageOriginLocation origi
     assert(array.dimensionCount() == 2);
     switch (originLocation) {
     case OriginTopLeft:
+        reverseY(array);
         break;
     case OriginTopRight:
+        reverseY(array);
         reverseX(array);
         break;
     case OriginBottomRight:
-        reverseY(array);
         reverseX(array);
         break;
     case OriginBottomLeft:
-        reverseY(array);
         break;
     case OriginLeftTop:
-        {
-            ArrayContainer r = createTransposedContainer(array);
-            for (size_t y = 0; y < r.dimension(1); y++) {
-                for (size_t x = 0; x < r.dimension(0); x++) {
-                    std::memcpy(r.get({ x, y }), array.get({ array.dimension(0) - 1 - y, array.dimension(1) - 1 - x }), r.elementSize());
-                }
-            }
-            array = r;
-        }
-        break;
-    case OriginRightTop:
         {
             ArrayContainer r = createTransposedContainer(array);
             for (size_t y = 0; y < r.dimension(1); y++) {
@@ -226,12 +215,23 @@ inline void fixImageOrientation(ArrayContainer& array, ImageOriginLocation origi
             array = r;
         }
         break;
+    case OriginRightTop:
+        {
+            ArrayContainer r = createTransposedContainer(array);
+            for (size_t y = 0; y < r.dimension(1); y++) {
+                for (size_t x = 0; x < r.dimension(0); x++) {
+                    std::memcpy(r.get({ x, y }), array.get({ array.dimension(0) - 1 - y, array.dimension(1) - 1 - x }), r.elementSize());
+                }
+            }
+            array = r;
+        }
+        break;
     case OriginRightBottom:
         {
             ArrayContainer r = createTransposedContainer(array);
             for (size_t y = 0; y < r.dimension(1); y++) {
                 for (size_t x = 0; x < r.dimension(0); x++) {
-                    std::memcpy(r.get({ x, y }), array.get({ y, x }), r.elementSize());
+                    std::memcpy(r.get({ x, y }), array.get({ y, array.dimension(1) - 1 - x }), r.elementSize());
                 }
             }
             array = r;
@@ -242,7 +242,7 @@ inline void fixImageOrientation(ArrayContainer& array, ImageOriginLocation origi
             ArrayContainer r = createTransposedContainer(array);
             for (size_t y = 0; y < r.dimension(1); y++) {
                 for (size_t x = 0; x < r.dimension(0); x++) {
-                    std::memcpy(r.get({ x, y }), array.get({ y, array.dimension(1) - 1 - x }), r.elementSize());
+                    std::memcpy(r.get({ x, y }), array.get({ y, x }), r.elementSize());
                 }
             }
             array = r;

@@ -133,7 +133,7 @@ ArrayContainer FormatImportExportJPEG::readArray(Error* error, int arrayIndex)
     jpeg_start_decompress(&cinfo);
     JSAMPROW jrow[1];
     while (cinfo.output_scanline < cinfo.image_height) {
-        jrow[0] = static_cast<unsigned char*>(r.get((cinfo.image_height - 1 - cinfo.output_scanline) * cinfo.image_width));
+        jrow[0] = static_cast<unsigned char*>(r.get(cinfo.output_scanline * cinfo.image_width));
         jpeg_read_scanlines(&cinfo, jrow, 1);
     }
     jpeg_finish_decompress(&cinfo);
@@ -148,8 +148,10 @@ ArrayContainer FormatImportExportJPEG::readArray(Error* error, int arrayIndex)
         if (exifEntry)
             orientation = exif_get_short(exifEntry->data, byteOrder);
         exif_data_free(exifData);
+        ImageOriginLocation originLocation = OriginTopLeft;
         if (orientation >= 1 && orientation <= 8)
-            fixImageOrientation(r, static_cast<ImageOriginLocation>(orientation));
+            originLocation = static_cast<ImageOriginLocation>(orientation);
+        fixImageOrientation(r, originLocation);
     }
 #endif
 
