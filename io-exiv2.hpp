@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018, 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019 Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,38 +21,38 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_IO_PNG_HPP
-#define TAD_IO_PNG_HPP
+#ifndef TAD_IO_EXIV2_HPP
+#define TAD_IO_EXIV2_HPP
 
-#include <cstdio>
+#ifdef TAD_WITH_EXIV2
+# include <exiv2/exiv2.hpp>
+#endif
 
-#include "io.hpp"
+#include "io-utils.hpp"
 
 namespace TAD {
 
-class FormatImportExportPNG : public FormatImportExport {
-private:
-    FILE* _f;
-    std::string _fileName;
-
-public:
-    FormatImportExportPNG();
-    ~FormatImportExportPNG();
-
-    virtual Error openForReading(const std::string& fileName, const TagList& hints) override;
-    virtual Error openForWriting(const std::string& fileName, bool append, const TagList& hints) override;
-    virtual void close() override;
-
-    // for reading:
-    virtual int arrayCount() override;
-    virtual ArrayContainer readArray(Error* error, int arrayIndex = -1 /* -1 means next */) override;
-    virtual bool hasMore() override;
-
-    // for writing / appending:
-    virtual Error writeArray(const ArrayContainer& array) override;
-};
-
-extern "C" FormatImportExport* FormatImportExportFactory_png();
+ImageOriginLocation getImageOriginLocation(const std::string& fileName)
+{
+    ImageOriginLocation originLocation = OriginTopLeft;
+#if TAD_WITH_EXIV2
+    if (fileName.size() != 0) {
+        Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(fileName.c_str());
+        if (image.get()) {
+            image->readMetadata();
+            Exiv2::ExifData& exifData = image->exifData();
+            if (!exifData.empty()) {
+                Exiv2::Exifdatum& orientationTag = exifData["Exif.Image.Orientation"];
+                long orientation = orientationTag.toLong();
+                if (orientation >= 1 && orientation <= 8)
+                    originLocation = static_cast<ImageOriginLocation>(orientation);
+            }
+        }
+    }
+#endif
+    return originLocation;
+}
 
 }
+
 #endif

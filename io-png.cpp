@@ -26,6 +26,8 @@
 #include <png.h>
 
 #include "io-png.hpp"
+#include "io-utils.hpp"
+#include "io-exiv2.hpp"
 
 
 namespace TAD {
@@ -52,10 +54,13 @@ FormatImportExportPNG::~FormatImportExportPNG()
 
 Error FormatImportExportPNG::openForReading(const std::string& fileName, const TagList&)
 {
-    if (fileName == "-")
+    if (fileName == "-") {
         _f = stdin;
-    else
+    } else {
         _f = fopen(fileName.c_str(), "rb");
+        if (_f)
+            _fileName = fileName;
+    }
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
@@ -63,10 +68,13 @@ Error FormatImportExportPNG::openForWriting(const std::string& fileName, bool ap
 {
     if (append)
         return ErrorFeaturesUnsupported;
-    if (fileName == "-")
+    if (fileName == "-") {
         _f = stdout;
-    else
+    } else {
         _f = fopen(fileName.c_str(), "wb");
+        if (_f)
+            _fileName = fileName;
+    }
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
@@ -78,6 +86,7 @@ void FormatImportExportPNG::close()
         }
         _f = nullptr;
     }
+    _fileName = std::string();
 }
 
 int FormatImportExportPNG::arrayCount()
@@ -155,8 +164,10 @@ ArrayContainer FormatImportExportPNG::readArray(Error* error, int arrayIndex)
         r.componentTagList(3).set("INTERPRETATION", "ALPHA");
     }
     for (size_t i = 0; i < height; i++)
-        std::memcpy(r.get(i * width), row_pointers[height - 1 - i], r.elementSize() * width);
+        std::memcpy(r.get(i * width), row_pointers[i], r.elementSize() * width);
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+
+    fixImageOrientation(r, getImageOriginLocation(_fileName));
 
     return r;
 }
