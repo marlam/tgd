@@ -32,7 +32,7 @@
 
 namespace TAD {
 
-ImageOriginLocation getImageOriginLocation(const std::string& fileName)
+inline ImageOriginLocation getImageOriginLocation(const std::string& fileName)
 {
     ImageOriginLocation originLocation = OriginTopLeft;
 #if TAD_WITH_EXIV2
