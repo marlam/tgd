@@ -163,11 +163,17 @@ ArrayContainer FormatImportExportPNG::readArray(Error* error, int arrayIndex)
         r.componentTagList(2).set("INTERPRETATION", "SRGB/B");
         r.componentTagList(3).set("INTERPRETATION", "ALPHA");
     }
-    for (size_t i = 0; i < height; i++)
-        std::memcpy(r.get(i * width), row_pointers[i], r.elementSize() * width);
+    ImageOriginLocation originLocation = getImageOriginLocation(_fileName);
+    for (size_t i = 0; i < height; i++) {
+        if (originLocation == OriginTopLeft)
+            std::memcpy(r.get(i * width), row_pointers[height - 1 - i], r.elementSize() * width);
+        else
+            std::memcpy(r.get(i * width), row_pointers[i], r.elementSize() * width);
+    }
     png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 
-    fixImageOrientation(r, getImageOriginLocation(_fileName));
+    if (originLocation != OriginTopLeft)
+        fixImageOrientation(r, originLocation);
 
     return r;
 }

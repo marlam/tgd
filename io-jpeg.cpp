@@ -127,16 +127,29 @@ ArrayContainer FormatImportExportJPEG::readArray(Error* error, int arrayIndex)
         r.componentTagList(1).set("INTERPRETATION", "SRGB/G");
         r.componentTagList(2).set("INTERPRETATION", "SRGB/B");
     }
+    ImageOriginLocation originLocation = getImageOriginLocation(_fileName);
+#if 0
+    // These flags improve performance, but at unclear costs in quality.
+    cinfo.do_fancy_upsampling = TRUE;
+    cinfo.dct_method = JDCT_FASTEST;
+#endif
     jpeg_start_decompress(&cinfo);
-    JSAMPROW jrow[1];
+    std::vector<JSAMPROW> jrows(cinfo.output_height);
+    for (unsigned int i = 0; i < cinfo.output_height; i++) {
+        if (originLocation == OriginTopLeft)
+            jrows[i] = static_cast<unsigned char*>(r.get((cinfo.output_height - 1 - i) * cinfo.image_width));
+        else
+            jrows[i] = static_cast<unsigned char*>(r.get(i * cinfo.image_width));
+    }
     while (cinfo.output_scanline < cinfo.image_height) {
-        jrow[0] = static_cast<unsigned char*>(r.get(cinfo.output_scanline * cinfo.image_width));
-        jpeg_read_scanlines(&cinfo, jrow, 1);
+        jpeg_read_scanlines(&cinfo, &jrows[cinfo.output_scanline],
+                cinfo.output_height - cinfo.output_scanline);
     }
     jpeg_finish_decompress(&cinfo);
     jpeg_destroy_decompress(&cinfo);
 
-    fixImageOrientation(r, getImageOriginLocation(_fileName));
+    if (originLocation != OriginTopLeft)
+        fixImageOrientation(r, originLocation);
 
     return r;
 }
