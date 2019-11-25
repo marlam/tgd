@@ -270,6 +270,7 @@ int FormatImportExportFFMPEG::arrayCount()
                         av_init_packet(&pkt);
                         pkt.data = nullptr;
                         pkt.size = 0;
+                        pkt.stream_index = _ffmpeg->streamIndex;
                     } else if (ret < 0) {
                         return -1;
                     }
@@ -336,7 +337,7 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
             avformat_seek_file(_ffmpeg->formatCtx, _ffmpeg->streamIndex,
                     std::numeric_limits<int64_t>::min(),
                     precedingKeyFrameDTS,
-                    std::numeric_limits<int64_t>::max(),
+                    precedingKeyFrameDTS,
                     0);
             // flush the decoder buffers
             avcodec_flush_buffers(_ffmpeg->codecCtx);
@@ -361,6 +362,7 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
                     av_init_packet(&pkt);
                     pkt.data = nullptr;
                     pkt.size = 0;
+                    pkt.stream_index = _ffmpeg->streamIndex;
                 } else if (ret < 0) {
                     close();
                     *error = ErrorInvalidData;
