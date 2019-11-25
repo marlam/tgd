@@ -39,7 +39,6 @@ private:
     std::vector<int64_t> _frameDTSs;
     std::vector<int64_t> _framePTSs;
     std::vector<int> _keyFrames;
-    bool _fileEof, _sentEofPacket, _codecEof;
     int _indexOfLastReadFrame;
 
     bool hardReset();

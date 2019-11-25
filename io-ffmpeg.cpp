@@ -224,9 +224,6 @@ void FormatImportExportFFMPEG::close()
     _frameDTSs.clear();
     _framePTSs.clear();
     _keyFrames.clear();
-    _fileEof = false;
-    _sentEofPacket = false;
-    _codecEof = false;
     _indexOfLastReadFrame = -1;
 }
 
@@ -259,13 +256,17 @@ int FormatImportExportFFMPEG::arrayCount()
                 return -1;
         }
         int ret;
+        bool fileEof = false;
         for (;;) {
             ret = avcodec_receive_frame(_ffmpeg->codecCtx, _ffmpeg->videoFrame);
-            if (ret == AVERROR(EAGAIN)) {
+            if ((ret == AVERROR(EAGAIN) && fileEof) || ret == AVERROR_EOF) {
+                break;
+            } else if (ret == AVERROR(EAGAIN)) {
                 for (;;) {
                     AVPacket pkt;
                     ret = av_read_frame(_ffmpeg->formatCtx, &pkt);
                     if (ret == AVERROR_EOF) {
+                        fileEof = true;
                         av_init_packet(&pkt);
                         pkt.data = nullptr;
                         pkt.size = 0;
@@ -280,9 +281,9 @@ int FormatImportExportFFMPEG::arrayCount()
                         break;
                     }
                     av_packet_unref(&pkt);
+                    if (fileEof)
+                        break;
                 }
-            } else if (ret == AVERROR_EOF) {
-                break;
             } else if (ret < 0) {
                 return -1;
             } else {
@@ -290,6 +291,7 @@ int FormatImportExportFFMPEG::arrayCount()
                 int64_t pts = _ffmpeg->videoFrame->pts;
                 _frameDTSs.push_back(dts);
                 _framePTSs.push_back(pts);
+                //fprintf(stderr, "frame %zu: dts=%ld pts=%ld\n", _frameDTSs.size(), dts, pts);
                 if (_frameDTSs.size() == 1 || dts < _minDTS) {
                     _minDTS = dts;
                 }
@@ -306,10 +308,7 @@ int FormatImportExportFFMPEG::arrayCount()
 
 ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
 {
-    if (arrayIndex < 0 && _codecEof) {
-        *error = ErrorInvalidData;
-        return ArrayContainer();
-    } else if (arrayIndex >= 0) {
+    if (arrayIndex >= 0) {
         if (arrayIndex >= arrayCount()) { // this builds an index of DTS times if we did not do it yet
             *error = ErrorInvalidData;
             return ArrayContainer();
@@ -341,22 +340,24 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
                     0);
             // flush the decoder buffers
             avcodec_flush_buffers(_ffmpeg->codecCtx);
-            // reset EOF flags
-            _fileEof = false;
-            _sentEofPacket = false;
-            _codecEof = false;
         }
     }
 
     bool triedHardReset = false;
+    bool fileEof = false;
     int ret;
     for (;;) {
         ret = avcodec_receive_frame(_ffmpeg->codecCtx, _ffmpeg->videoFrame);
-        if (ret == AVERROR(EAGAIN)) {
+        if ((ret == AVERROR(EAGAIN) && fileEof) || ret == AVERROR_EOF) {
+            close();
+            *error = ErrorInvalidData;
+            return ArrayContainer();
+        } else if (ret == AVERROR(EAGAIN)) {
             for (;;) {
                 AVPacket pkt;
                 ret = av_read_frame(_ffmpeg->formatCtx, &pkt);
                 if (ret == AVERROR_EOF) {
+                    fileEof = true;
                     av_init_packet(&pkt);
                     pkt.data = nullptr;
                     pkt.size = 0;
@@ -375,11 +376,9 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
                     break;
                 }
                 av_packet_unref(&pkt);
+                if (fileEof)
+                    break;
             }
-        } else if (ret == AVERROR_EOF) {
-            close();
-            *error = ErrorInvalidData;
-            return ArrayContainer();
         } else if (ret < 0) {
             close();
             *error = ErrorInvalidData;
@@ -425,6 +424,7 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
                         *error = ErrorInvalidData;
                         return ArrayContainer();
                     }
+                    fileEof = false;
                     triedHardReset = true;
                 }
             }
