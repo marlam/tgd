@@ -109,6 +109,7 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
     } else if (format == "mp4" || format == "m4v"
             || format == "mkv" || format == "ogv"
             || format == "mpeg" || format == "mpg"
+            || format == "webm"
             || format == "mov" || format == "avi" || format == "wmv"
             || format == "gif" || format == "dds" || format == "bmp" || format == "tga") {
         // TODO: this list can be much longer; add other extensions when needed
