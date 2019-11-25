@@ -222,6 +222,7 @@ void FormatImportExportFFMPEG::close()
     _desc = ArrayDescription();
     _minDTS = 0; // bad guess, but INT64_MIN seems to cause problems when seeking to it
     _frameDTSs.clear();
+    _framePTSs.clear();
     _keyFrames.clear();
     _fileEof = false;
     _sentEofPacket = false;
@@ -234,12 +235,14 @@ bool FormatImportExportFFMPEG::hardReset()
     // Hard reset by closing and reopening, because seeking to minDTS is not reliable
     int64_t bakMinDTS = _minDTS;
     std::vector<int64_t> bakFrameDTSs = _frameDTSs;
+    std::vector<int64_t> bakFramePTSs = _framePTSs;
     std::vector<int> bakKeyFrames = _keyFrames;
     close();
     if (openForReading(_fileName, TagList()) != ErrorNone)
         return false;
     _minDTS = bakMinDTS;
     _frameDTSs = bakFrameDTSs;
+    _framePTSs = bakFramePTSs;
     _keyFrames = bakKeyFrames;
     return true;
 }
@@ -255,62 +258,46 @@ int FormatImportExportFFMPEG::arrayCount()
             if (openForReading(_fileName, TagList()) != ErrorNone)
                 return -1;
         }
-        AVPacket pkt;
-        bool fileEof = false;
-        bool sentEofPacket = false;
-        bool codecEof = false;
-        do {
-            int gotFrame = 0;
-            do {
-                if (!fileEof) {
-                    int ret = av_read_frame(_ffmpeg->formatCtx, &pkt);
-                    if (ret < 0 && ret != AVERROR_EOF) {
+        int ret;
+        for (;;) {
+            ret = avcodec_receive_frame(_ffmpeg->codecCtx, _ffmpeg->videoFrame);
+            if (ret == AVERROR(EAGAIN)) {
+                for (;;) {
+                    AVPacket pkt;
+                    ret = av_read_frame(_ffmpeg->formatCtx, &pkt);
+                    if (ret == AVERROR_EOF) {
+                        av_init_packet(&pkt);
+                        pkt.data = nullptr;
+                        pkt.size = 0;
+                    } else if (ret < 0) {
                         return -1;
                     }
-                    if (ret == 0 && pkt.stream_index != _ffmpeg->streamIndex) {
+                    if (pkt.stream_index == _ffmpeg->streamIndex) {
+                        if (avcodec_send_packet(_ffmpeg->codecCtx, &pkt) < 0) {
+                            return -1;
+                        }
                         av_packet_unref(&pkt);
-                        continue;
+                        break;
                     }
-                    fileEof = (ret == AVERROR_EOF);
+                    av_packet_unref(&pkt);
                 }
-                if (fileEof) {
-                    av_init_packet(&pkt);
-                    pkt.data = nullptr;
-                    pkt.size = 0;
-                }
-                if (pkt.data || !sentEofPacket) {
-                    if (avcodec_send_packet(_ffmpeg->codecCtx, &pkt) < 0) {
-                        return -1;
-                    }
-                }
-                if (!pkt.data) {
-                    sentEofPacket = true;
-                }
-                int ret = avcodec_receive_frame(_ffmpeg->codecCtx, _ffmpeg->videoFrame);
-                if (ret == AVERROR(EAGAIN)) {
-                    // we need another packet
-                } else if (ret == AVERROR_EOF) {
-                    codecEof = true;
-                } else if (ret < 0) {
-                    return -1;
-                } else {
-                    gotFrame = 1;
-                }
-                av_packet_unref(&pkt);
-            } while (!codecEof && !gotFrame);
-
-            if (!gotFrame) {
+            } else if (ret == AVERROR_EOF) {
                 break;
+            } else if (ret < 0) {
+                return -1;
+            } else {
+                int64_t dts = _ffmpeg->videoFrame->pkt_dts;
+                int64_t pts = _ffmpeg->videoFrame->pts;
+                _frameDTSs.push_back(dts);
+                _framePTSs.push_back(pts);
+                if (_frameDTSs.size() == 1 || dts < _minDTS) {
+                    _minDTS = dts;
+                }
+                if (_ffmpeg->videoFrame->key_frame) {
+                    _keyFrames.push_back(_frameDTSs.size() - 1);
+                }
             }
-            int64_t dts = _ffmpeg->videoFrame->pkt_dts;
-            _frameDTSs.push_back(dts);
-            if (_frameDTSs.size() == 1 || dts < _minDTS) {
-                _minDTS = dts;
-            }
-            if (_ffmpeg->videoFrame->key_frame) {
-                _keyFrames.push_back(_frameDTSs.size() - 1);
-            }
-        } while (!codecEof);
+        }
         if (!hardReset())
             return -1;
     }
@@ -361,62 +348,43 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
         }
     }
 
-    AVPacket pkt;
-    int frameIndex = -1;
     bool triedHardReset = false;
-    do {
-        int gotFrame = 0;
-        do {
-            if (!_fileEof) {
-                int ret = av_read_frame(_ffmpeg->formatCtx, &pkt);
-                if (ret < 0 && ret != AVERROR_EOF) {
+    int ret;
+    for (;;) {
+        ret = avcodec_receive_frame(_ffmpeg->codecCtx, _ffmpeg->videoFrame);
+        if (ret == AVERROR(EAGAIN)) {
+            for (;;) {
+                AVPacket pkt;
+                ret = av_read_frame(_ffmpeg->formatCtx, &pkt);
+                if (ret == AVERROR_EOF) {
+                    av_init_packet(&pkt);
+                    pkt.data = nullptr;
+                    pkt.size = 0;
+                } else if (ret < 0) {
                     close();
                     *error = ErrorInvalidData;
                     return ArrayContainer();
                 }
-                if (ret == 0 && pkt.stream_index != _ffmpeg->streamIndex) {
+                if (pkt.stream_index == _ffmpeg->streamIndex) {
+                    if (avcodec_send_packet(_ffmpeg->codecCtx, &pkt) < 0) {
+                        close();
+                        *error = ErrorInvalidData;
+                        return ArrayContainer();
+                    }
                     av_packet_unref(&pkt);
-                    continue;
+                    break;
                 }
-                _fileEof = (ret == AVERROR_EOF);
+                av_packet_unref(&pkt);
             }
-            if (_fileEof) {
-                av_init_packet(&pkt);
-                pkt.data = nullptr;
-                pkt.size = 0;
-            }
-            if (pkt.data || !_sentEofPacket) {
-                if (avcodec_send_packet(_ffmpeg->codecCtx, &pkt) < 0) {
-                    close();
-                    *error = ErrorInvalidData;
-                    return ArrayContainer();
-                }
-            }
-            if (!pkt.data) {
-                _sentEofPacket = true;
-            }
-            int ret = avcodec_receive_frame(_ffmpeg->codecCtx, _ffmpeg->videoFrame);
-            if (ret == AVERROR(EAGAIN)) {
-                // we need another packet
-            } else if (ret == AVERROR_EOF) {
-                _codecEof = true;
-            } else if (ret < 0) {
-                close();
-                *error = ErrorInvalidData;
-                return ArrayContainer();
-            } else {
-                gotFrame = 1;
-            }
-            av_packet_unref(&pkt);
-        } while (!_codecEof && !gotFrame);
-
-        if (!gotFrame && arrayIndex < 0) {
+        } else if (ret == AVERROR_EOF) {
             close();
             *error = ErrorInvalidData;
             return ArrayContainer();
-        }
-
-        if (gotFrame) {
+        } else if (ret < 0) {
+            close();
+            *error = ErrorInvalidData;
+            return ArrayContainer();
+        } else {
             if (_ffmpeg->videoFrame->width != int(_desc.dimension(0))
                     || _ffmpeg->videoFrame->height != int(_desc.dimension(1))
                     || _ffmpeg->videoFrame->format != _ffmpeg->pixFmt) {
@@ -425,14 +393,16 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
                 *error = ErrorInvalidData;
                 return ArrayContainer();
             }
-
-            // Get frame index from its DTS
-            int64_t dts = _ffmpeg->videoFrame->pkt_dts;
             if (arrayIndex < 0) {
-                frameIndex = _indexOfLastReadFrame + 1;
+                // We are ok once we read one frame
+                break;
             } else {
+                // Get frame index from its DTS and PTS pair (the DTS is not necessarily unique)
+                int frameIndex = -1;
+                int64_t dts = _ffmpeg->videoFrame->pkt_dts;
+                int64_t pts = _ffmpeg->videoFrame->pts;
                 for (size_t i = 0; i < _frameDTSs.size(); i++) {
-                    if (_frameDTSs[i] == dts) {
+                    if (_frameDTSs[i] == dts && _framePTSs[i] == pts) {
                         frameIndex = i;
                         break;
                     }
@@ -442,23 +412,24 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
                     *error = ErrorInvalidData;
                     return ArrayContainer();
                 }
+                if (frameIndex == arrayIndex) {
+                    // We are ok once we read the frame with the index we seek;
+                    // otherwise we read more frames until we arrive there
+                    break;
+                } else if (frameIndex > arrayIndex) {
+                    // We structured our seeking so that this should never ever happen,
+                    // but seeking in FFmpeg is often ... let's say surprising.
+                    // So we have a terrible fallback here: hard reset
+                    if (triedHardReset || !hardReset()) {
+                        close();
+                        *error = ErrorInvalidData;
+                        return ArrayContainer();
+                    }
+                    triedHardReset = true;
+                }
             }
         }
-
-        // Check if seeking worked
-        if (!gotFrame || (arrayIndex >= 0 && frameIndex > arrayIndex)) {
-            // We structured our seeking so that this should never ever happen,
-            // but seeking in FFmpeg is often ... let's say surprising.
-            // So we have a terrible fallback here: hard reset
-            if (triedHardReset || !hardReset()) {
-                close();
-                *error = ErrorInvalidData;
-                return ArrayContainer();
-            }
-            triedHardReset = true;
-            frameIndex = -1;
-        }
-    } while (frameIndex < arrayIndex);
+    }
 
     ArrayContainer r(_desc);
     uint8_t* dst[4] = { static_cast<uint8_t*>(r.data()), nullptr, nullptr, nullptr };
