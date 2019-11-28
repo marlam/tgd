@@ -28,6 +28,7 @@
 #include "io.hpp"
 #include "dl.hpp"
 #include "io-tad.hpp"
+#include "io-csv.hpp"
 #include "io-pnm.hpp"
 #include "io-raw.hpp"
 #include "io-rgbe.hpp"
@@ -98,7 +99,9 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
 {
     std::string fieName(format);
     // set fieName for importers that handle multiple file formats
-    if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam" || format == "pfm") {
+    if (format == "csv" || format == "txt") {
+        fieName = "csv";
+    } else if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam" || format == "pfm") {
         fieName = "pnm";
     } else if (format == "hdr" || format == "pic") {
         fieName = "rgbe";
@@ -128,6 +131,8 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
     // first builtin formats...
     if (fieName == "tad") {
         return new FormatImportExportTAD;
+    } else if (fieName == "csv") {
+        return new FormatImportExportCSV;
     } else if (fieName == "pnm") {
         return new FormatImportExportPNM;
     } else if (fieName == "raw") {

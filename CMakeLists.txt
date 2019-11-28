@@ -57,6 +57,7 @@ set(libtad_SOURCES
 	tools.hpp
 	io.hpp io.cpp io-utils.hpp
 	io-tad.hpp io-tad.cpp
+	io-csv.hpp io-csv.cpp
 	io-raw.hpp io-raw.cpp
 	io-pnm.hpp io-pnm.cpp
         io-rgbe.hpp io-rgbe.cpp
