@@ -214,12 +214,6 @@ Importer::Importer()
 {
 }
 
-Importer::~Importer()
-{
-    if (_fie && _fileIsOpened)
-        _fie->close();
-}
-
 Importer::Importer(const std::string& fileName, const TagList& hints)
 {
     initialize(fileName, hints);

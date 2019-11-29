@@ -119,9 +119,6 @@ public:
      */
     Importer(const std::string& fileName, const TagList& hints = TagList());
 
-    /*!\brief Destructor. */
-    ~Importer();
-
     /*! \brief Initialize. See the constructor documentation. */
     void initialize(const std::string& fileName, const TagList& hints = TagList());
 
