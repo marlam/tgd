@@ -424,6 +424,9 @@ int tad_info(int argc, char* argv[])
                         if (sampleVariance < 0.0f)
                             sampleVariance = 0.0f;
                         sampleDeviation = std::sqrt(sampleVariance);
+                    } else if (finiteValues == 1) {
+                        sampleVariance = 0.0f;
+                        sampleDeviation = 0.0f;
                     }
                 }
                 printf("  component %zd: min=%g max=%g mean=%g var=%g dev=%g\n", i,
