@@ -399,18 +399,22 @@ int tad_info(int argc, char* argv[])
                 float sampleMean = std::numeric_limits<float>::quiet_NaN();
                 float sampleVariance = std::numeric_limits<float>::quiet_NaN();
                 float sampleDeviation = std::numeric_limits<float>::quiet_NaN();
-                float tmpMinVal = +std::numeric_limits<float>::max();
-                float tmpMaxVal = -std::numeric_limits<float>::max();
+                float tmpMinVal = 0.0f;
+                float tmpMaxVal = 0.0f;
                 double sum = 0.0;
                 double sumOfSquares = 0.0;
                 for (size_t e = 0; e < array.elementCount(); e++) {
                     float val = floatArray.get<float>(e, i);
                     if (std::isfinite(val)) {
                         finiteValues++;
-                        if (val < tmpMinVal)
+                        if (finiteValues == 1) {
                             tmpMinVal = val;
-                        if (val > tmpMaxVal)
                             tmpMaxVal = val;
+                        } else if (val < tmpMinVal) {
+                            tmpMinVal = val;
+                        } else if (val > tmpMaxVal) {
+                            tmpMaxVal = val;
+                        }
                         sum += val;
                         sumOfSquares += val * val;
                     }
