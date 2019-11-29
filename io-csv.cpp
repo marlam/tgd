@@ -185,33 +185,39 @@ ArrayContainer FormatImportExportCSV::readArray(Error* error, int arrayIndex)
             if (line[i] == '"') { // quoted value
                 size_t j = i + 1;
                 size_t nextDQuote = line.find('"', i + 1);
-                if (nextDQuote == std::string::npos)
+                if (nextDQuote == std::string::npos) {
                     i = line.length();
-                else
+                } else {
                     i = nextDQuote + 1;
+                    i = line.find(delimiter, i);
+                    if (i == std::string::npos)
+                        i = line.length();
+                }
                 if (!determinedDelimiter) {
                     if (line[i] >= 33 && line[i] < 127)
                         delimiter = line[i];
                     determinedDelimiter = true;
                 }
                 for (;;) {
+                    size_t last_j = j;
+                    //fprintf(stderr, "j=%zu, nextDQuote=%zu, rest='%s'\n", j, nextDQuote, &(line[j]));
                     char* nextChar;
                     float value = readFloat(&(line[j]), &nextChar);
+                    //fprintf(stderr, "v=%g\n", value);
                     element.push_back(value);
                     if (nextChar)
                         j = nextChar - line.c_str();
-                    else
+                    j = line.find(delimiter, j);
+                    if (j == std::string::npos || j >= nextDQuote)
                         break;
-                    while (line[j] == ' ' || (delimiter != '\t' && line[j] == '\t'))
+                    if (j == last_j)
                         j++;
-                    if (line[j] == '"' || line[j] == '\0')
-                        break;
-                    // skip to next value
-                    j++;
                 }
             } else { // unquoted value
+                //fprintf(stderr, "i=%zu, rest='%s'\n", i, &(line[i]));
                 char* nextChar;
                 float value = readFloat(&(line[i]), &nextChar);
+                //fprintf(stderr, "v=%g\n", value);
                 element.push_back(value);
                 if (!determinedDelimiter && nextChar) {
                     if (*nextChar >= 33 && *nextChar < 127)
@@ -220,7 +226,8 @@ ArrayContainer FormatImportExportCSV::readArray(Error* error, int arrayIndex)
                 }
                 if (nextChar)
                     i = nextChar - line.c_str();
-                else
+                i = line.find(delimiter, i);
+                if (i == std::string::npos)
                     i = line.length();
             }
             // check element properties and store it
