@@ -420,7 +420,7 @@ int tad_info(int argc, char* argv[])
                     maxVal = tmpMaxVal;
                     sampleMean = sum / finiteValues;
                     if (finiteValues > 1) {
-                        sampleVariance = (sumOfSquares - sum / array.elementCount() * sum) / (finiteValues - 1);
+                        sampleVariance = (sumOfSquares - sum / finiteValues * sum) / (finiteValues - 1);
                         if (sampleVariance < 0.0f)
                             sampleVariance = 0.0f;
                         sampleDeviation = std::sqrt(sampleVariance);
