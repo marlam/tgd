@@ -99,7 +99,7 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
 {
     std::string fieName(format);
     // set fieName for importers that handle multiple file formats
-    if (format == "csv" || format == "txt") {
+    if (format == "csv") {
         fieName = "csv";
     } else if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam" || format == "pfm") {
         fieName = "pnm";
