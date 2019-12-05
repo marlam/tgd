@@ -81,9 +81,6 @@ public:
     // for writing / appending: (it is guaranteed that the file is opened for writing when one of these is called)
     virtual Error writeArray(const ArrayContainer& array) = 0;
 };
-#if 0
-extern "C" FormatImportExport* FormatImportExportFactory();
-#endif
 /*! \endcond */
 
 /*! \brief The importer class imports arrays from files or streams. */
