@@ -32,18 +32,19 @@
 #include "io-pnm.hpp"
 #include "io-raw.hpp"
 #include "io-rgbe.hpp"
+#include "io-dcmtk.hpp"
 #include "io-exr.hpp"
+#include "io-ffmpeg.hpp"
+#include "io-fits.hpp"
+#include "io-gdal.hpp"
 #include "io-gta.hpp"
 #include "io-hdf5.hpp"
 #include "io-jpeg.hpp"
 #include "io-mat.hpp"
+#include "io-pdf.hpp"
 #include "io-pfs.hpp"
 #include "io-png.hpp"
 #include "io-tiff.hpp"
-#include "io-ffmpeg.hpp"
-#include "io-dcmtk.hpp"
-#include "io-gdal.hpp"
-#include "io-fits.hpp"
 
 
 namespace TAD {
@@ -99,9 +100,7 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
 {
     std::string fieName(format);
     // set fieName for importers that handle multiple file formats
-    if (format == "csv") {
-        fieName = "csv";
-    } else if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam" || format == "pfm") {
+    if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam" || format == "pfm") {
         fieName = "pnm";
     } else if (format == "hdr" || format == "pic") {
         fieName = "rgbe";
@@ -175,6 +174,10 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
 #  ifdef TAD_WITH_MATIO
     } else if (fieName == "mat") {
         return new FormatImportExportMAT;
+#  endif
+#  ifdef TAD_WITH_POPPLER
+    } else if (fieName == "pdf") {
+        return new FormatImportExportPDF;
 #  endif
 #  ifdef TAD_WITH_PFS
     } else if (fieName == "pfs") {

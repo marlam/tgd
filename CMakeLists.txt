@@ -46,6 +46,7 @@ find_package(FFMPEG QUIET)
 find_package(DCMTK QUIET)
 find_package(GDAL QUIET)
 find_package(CFITSIO QUIET)
+find_package(POPPLER QUIET)
 
 # The input/output library
 add_definitions(-DTAD_VERSION="${TAD_VERSION}")
@@ -148,6 +149,12 @@ if(TAD_STATIC)
 	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-fits.hpp io-fits.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${CFITSIO_LIBRARIES})
 	include_directories(${CFITSIO_INCLUDE_DIRS})
+    endif()
+    if(POPPLER_FOUND)
+	add_definitions(-DTAD_WITH_POPPLER)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-pdf.hpp io-pdf.cpp)
+	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${POPPLER_LIBRARIES})
+	include_directories(${POPPLER_INCLUDE_DIRS})
     endif()
     add_library(libtad STATIC ${libtad_SOURCES} ${libtad_STATIC_EXTRA_SOURCES})
     target_link_libraries(libtad ${libtad_STATIC_EXTRA_LIBRARIES} "-static")
@@ -300,6 +307,18 @@ else()
 	include_directories(${CFITSIO_INCLUDE_DIRS})
 	target_link_libraries(libtadio-fits ${CFITSIO_LIBRARIES})
 	install(TARGETS libtadio-fits
+	    RUNTIME DESTINATION bin
+	    LIBRARY DESTINATION lib${LIB_SUFFIX}
+	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
+
+    endif()
+    if(POPPLER_FOUND)
+        add_library(libtadio-pdf SHARED io-pdf.hpp io-pdf.cpp)
+	set_target_properties(libtadio-pdf PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+	set_target_properties(libtadio-pdf PROPERTIES OUTPUT_NAME tadio-pdf)
+	include_directories(${POPPLER_INCLUDE_DIRS})
+	target_link_libraries(libtadio-pdf ${POPPLER_LIBRARIES})
+	install(TARGETS libtadio-pdf
 	    RUNTIME DESTINATION bin
 	    LIBRARY DESTINATION lib${LIB_SUFFIX}
 	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
