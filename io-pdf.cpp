@@ -59,20 +59,11 @@ static std::string toString(unsigned int time)
     if (time == 0) {
         return std::string();
     } else {
-        char buf[26];
+        char buf[64];
         struct tm tmBuf;
         time_t t = time;
         gmtime_r(&t, &tmBuf);
-        asctime_r(&tmBuf, buf);
-        size_t l = strlen(buf);
-        if (l > 0 && buf[l - 1] == '\n') {
-            buf[l - 1] = '\0';
-            l--;
-        }
-        if (l > 0 && buf[l - 1] == '\r') {
-            buf[l - 1] = '\0';
-            l--;
-        }
+        strftime(buf, sizeof(buf), "%F %T UTC", &tmBuf);
         return buf;
     }
 }
