@@ -25,6 +25,8 @@
 #include <cstring>
 #include <ctime>
 
+#include <poppler/cpp/poppler-page.h>
+
 #include "io-pdf.hpp"
 
 
@@ -146,7 +148,23 @@ ArrayContainer FormatImportExportPDF::readArray(Error* error, int arrayIndex)
     }
 
     poppler::page* page = _doc->create_page(pageIndex);
-    poppler::image img = _renderer->render_page(page, _dpi, _dpi);
+    poppler::page::orientation_enum orientation = page->orientation();
+    poppler::rotation_enum rotation = poppler::rotate_0;
+    switch (orientation) {
+    case poppler::page::landscape:
+        rotation = poppler::rotate_270;
+        break;
+    case poppler::page::portrait:
+        rotation = poppler::rotate_0;
+        break;
+    case poppler::page::seascape:
+        rotation = poppler::rotate_90;
+        break;
+    case poppler::page::upside_down:
+        rotation = poppler::rotate_180;
+        break;
+    }
+    poppler::image img = _renderer->render_page(page, _dpi, _dpi, -1, -1, -1, -1, rotation);
     if (img.width() < 1 || img.height() < 1) {
         *error = ErrorInvalidData;
         return ArrayContainer();
