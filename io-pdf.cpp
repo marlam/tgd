@@ -30,9 +30,15 @@
 
 namespace TAD {
 
+static void popplerDebugOutput(const std::string&, void*)
+{
+    // just shut up
+}
+
 FormatImportExportPDF::FormatImportExportPDF() :
     _dpi(0.0f), _renderer(nullptr), _doc(nullptr), _lastReadPage(-1)
 {
+    poppler::set_debug_error_function(popplerDebugOutput, nullptr);
 }
 
 FormatImportExportPDF::~FormatImportExportPDF()
