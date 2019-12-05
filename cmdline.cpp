@@ -109,7 +109,7 @@ bool CmdLine::parse(int argc, char* argv[], int minArgs, int maxArgs, std::strin
         }
         _options[optVal].isSet = true;
         if (_options[optVal].requiresArgument) {
-            _options[optVal].value = std::string(optarg);
+            _options[optVal].valueList.push_back(std::string(optarg));
             if (_options[optVal].parseValue && !_options[optVal].parseValue(optarg)) {
                 errMsg = std::string("invalid argument for --") + _options[optVal].name;
                 error = true;
@@ -139,7 +139,17 @@ bool CmdLine::isSet(const std::string& optionName) const
 
 const std::string& CmdLine::value(const std::string& optionName) const
 {
-    return _options[optionIndex(optionName)].value;
+    static std::string emptyValue;
+    const std::vector<std::string>& vl = valueList(optionName);
+    if (vl.size() == 0)
+        return emptyValue;
+    else
+        return vl.back();
+}
+
+const std::vector<std::string>& CmdLine::valueList(const std::string& optionName) const
+{
+    return _options[optionIndex(optionName)].valueList;
 }
 
 const std::vector<std::string>& CmdLine::arguments() const

@@ -36,11 +36,11 @@ private:
         bool requiresArgument;
         bool isSet;
         bool (*parseValue)(const std::string&);
-        std::string value;
+        std::vector<std::string> valueList;
      
         Option(const std::string& n, char sn) :
             name(n), shortName(sn), requiresArgument(false),
-            isSet(false), parseValue(nullptr), value(std::string())
+            isSet(false), parseValue(nullptr)
         {
         }
 
@@ -48,8 +48,10 @@ private:
                 bool (*pV)(const std::string&),
                 const std::string& v) :
             name(n), shortName(sn), requiresArgument(true),
-            isSet(false), parseValue(pV), value(v)
+            isSet(false), parseValue(pV)
         {
+            if (v.length() > 0)
+                valueList.push_back(v);
         }
     };
 
@@ -77,6 +79,9 @@ public:
 
     // Get value of option.
     const std::string& value(const std::string& optionName) const;
+
+    // Get value list of option.
+    const std::vector<std::string>& valueList(const std::string& optionName) const;
 
     // Get list of arguments.
     const std::vector<std::string>& arguments() const;
