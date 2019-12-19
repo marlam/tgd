@@ -12,9 +12,9 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # Project
 project(tad)
-set(TAD_VERSION 0.6)
-set(TAD_LIBVERSION 0.0.0)
-set(TAD_SOVERSION 0)
+set(TAD_VERSION 1.0)
+set(TAD_LIBVERSION 1.0.0)
+set(TAD_SOVERSION 1)
 
 # Build options
 option(TAD_BUILD_DOCUMENTATION "Build API reference documentation (requires Doxygen)" OFF)
