@@ -60,10 +60,15 @@ static std::string toString(unsigned int time)
         return std::string();
     } else {
         char buf[64];
-        struct tm tmBuf;
         time_t t = time;
-        gmtime_r(&t, &tmBuf);
-        strftime(buf, sizeof(buf), "%F %T UTC", &tmBuf);
+#if defined(_WIN32) || defined(_WIN64)
+        struct tm *tmPtr = gmtime(&t);
+#else
+        struct tm tmBuf;
+        struct tm *tmPtr = &tmBuf;
+        gmtime_r(&t, tmPtr);
+#endif
+        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S UTC", tmPtr);
         return buf;
     }
 }
