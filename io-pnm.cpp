@@ -91,8 +91,9 @@ static bool readPnmWhitespaceAndComments(FILE *f)
         if (c == EOF) {
             return !ferror(f);
         } else {
-            if (inComment && c == '\n') {
-                inComment = false;
+            if (inComment) {
+                if (c == '\n')
+                    inComment = false;
             } else {
                 if (c == '#')
                     inComment = true;
