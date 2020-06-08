@@ -116,9 +116,9 @@ static void rgbeToRGB(unsigned char r, unsigned char g, unsigned char b, unsigne
     float B = 0.0f;
     if (e != 0) {
         float v = std::ldexp(1.0f, int(e) - (128 + 8)) / exposure;
-        R = r * v;
-        G = g * v;
-        B = b * v;
+        R = (r + 0.5f) * v;
+        G = (g + 0.5f) * v;
+        B = (b + 0.5f) * v;
     }
     RGB[0] = R;
     RGB[1] = G;
@@ -289,14 +289,15 @@ bool FormatImportExportRGBE::hasMore()
 static void rgbToRGBE(const float* RGB, unsigned char* rgbe)
 {
     float v = std::max(RGB[0], std::max(RGB[1], RGB[2]));
-    if (v < 1e-32f) {
+    if (v <= 1e-32f) {
         rgbe[0] = 0;
         rgbe[1] = 0;
         rgbe[2] = 0;
         rgbe[3] = 0;
     } else {
         int e;
-        v = std::frexp(v, &e) * 256.0f / v;
+        std::frexp(v, &e);
+        v = std::ldexp(1.0f, -e + 8);
         rgbe[0] = v * RGB[0];
         rgbe[1] = v * RGB[1];
         rgbe[2] = v * RGB[2];
