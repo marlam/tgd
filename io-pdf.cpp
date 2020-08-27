@@ -26,6 +26,8 @@
 #include <ctime>
 
 #include <poppler/cpp/poppler-page.h>
+#include <poppler/cpp/poppler-page-renderer.h>
+#include <poppler/cpp/poppler-document.h>
 
 #include "io-pdf.hpp"
 

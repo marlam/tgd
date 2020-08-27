@@ -24,10 +24,12 @@
 #ifndef TAD_IO_PDF_HPP
 #define TAD_IO_PDF_HPP
 
-#include <poppler/cpp/poppler-page-renderer.h>
-#include <poppler/cpp/poppler-document.h>
-
 #include "io.hpp"
+
+namespace poppler {
+    class page_renderer;
+    class document;
+}
 
 namespace TAD {
 
