@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020 Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,15 +24,15 @@
 #ifndef TAD_IO_TIFF_HPP
 #define TAD_IO_TIFF_HPP
 
-#include <tiffio.h>
-
 #include "io.hpp"
+
+struct tiff;
 
 namespace TAD {
 
 class FormatImportExportTIFF : public FormatImportExport {
 private:
-    TIFF* _tiff;
+    struct tiff* _tiff;
     int _dirCount;
     int _readCount;
 

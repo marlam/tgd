@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020 Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,10 +26,12 @@
 #include "io-hdf5.hpp"
 #include "io-utils.hpp"
 
+#include <H5Cpp.h>
+
 
 namespace TAD {
 
-FormatImportExportHDF5::FormatImportExportHDF5() : _counter(0)
+FormatImportExportHDF5::FormatImportExportHDF5() : _f(nullptr), _counter(0)
 {
     H5::Exception::dontPrint();
 }
@@ -49,10 +51,13 @@ Error FormatImportExportHDF5::openForReading(const std::string& fileName, const 
             return ErrorSysErrno;
         }
         fclose(f);
+        _f = new H5::H5File;
         try {
-            _f.openFile(fileName.c_str(), H5F_ACC_RDONLY);
+            _f->openFile(fileName.c_str(), H5F_ACC_RDONLY);
         }
         catch (H5::Exception& error) {
+            delete _f;
+            _f = nullptr;
             return ErrorLibrary;
         }
         return ErrorNone;
@@ -72,11 +77,14 @@ Error FormatImportExportHDF5::openForWriting(const std::string& fileName, bool a
         }
         fclose(f);
         remove(fileName.c_str());
+        _f = new H5::H5File;
         try {
-            _f = H5::H5File(fileName.c_str(), H5F_ACC_TRUNC);
+            *_f = H5::H5File(fileName.c_str(), H5F_ACC_TRUNC);
         }
         catch (H5::Exception& error) {
             fprintf(stderr, "%s: %s\n", fileName.c_str(), error.getCDetailMsg());
+            delete _f;
+            _f = nullptr;
             return ErrorLibrary;
         }
         return ErrorNone;
@@ -86,10 +94,12 @@ Error FormatImportExportHDF5::openForWriting(const std::string& fileName, bool a
 void FormatImportExportHDF5::close()
 {
     try {
-        _f.close();
+        _f->close();
     }
     catch (H5::Exception& error) {
     }
+    delete _f;
+    _f = nullptr;
 }
 
 static herr_t datasetVisitor(hid_t /* loc_id */, const char* name, const H5L_info_t* /* linfo */, void* opdata)
@@ -102,7 +112,7 @@ static herr_t datasetVisitor(hid_t /* loc_id */, const char* name, const H5L_inf
 int FormatImportExportHDF5::arrayCount()
 {
     if (_datasetNames.size() == 0) {
-        H5Literate(_f.getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, datasetVisitor, &_datasetNames);
+        H5Literate(_f->getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, datasetVisitor, &_datasetNames);
     }
     return _datasetNames.size();
 }
@@ -128,7 +138,7 @@ ArrayContainer FormatImportExportHDF5::readArray(Error* error, int arrayIndex)
     H5::DataType datatype;
     H5T_class_t typeclass;
     try {
-        dataset = _f.openDataSet(datasetName.c_str());
+        dataset = _f->openDataSet(datasetName.c_str());
         datatype = dataset.getDataType();
         typeclass = dataset.getTypeClass();
     }
@@ -265,7 +275,7 @@ Error FormatImportExportHDF5::writeArray(const ArrayContainer& array)
     }
     H5::DataSpace dataspace(dims.size(), dims.data());
     try {
-        H5::DataSet dataset = _f.createDataSet(datasetname.c_str(), type, dataspace);
+        H5::DataSet dataset = _f->createDataSet(datasetname.c_str(), type, dataspace);
         dataset.write(dataArray.data(), type);
 #if 0
         // write attributes

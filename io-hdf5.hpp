@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020 Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,7 +27,9 @@
 #include <vector>
 #include <string>
 
-#include <H5Cpp.h>
+namespace H5 {
+    class H5File;
+}
 
 #include "io.hpp"
 
@@ -35,7 +37,7 @@ namespace TAD {
 
 class FormatImportExportHDF5 : public FormatImportExport {
 private:
-    H5::H5File _f;
+    H5::H5File* _f;
     std::vector<std::string> _datasetNames; // for reading only
     int _counter;
     

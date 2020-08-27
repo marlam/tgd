@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020 Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,6 +27,7 @@
 #include "io-gdal.hpp"
 #include "io-utils.hpp"
 
+#include <gdal.h>
 #include <cpl_conv.h>
 
 
@@ -233,7 +234,7 @@ ArrayContainer FormatImportExportGDAL::readArray(Error* error, int arrayIndex)
     CPLErr err = GDALDatasetRasterIO(_dataset, GF_Read,
             0, 0, r.dimension(0), r.dimension(1),
             r.data(), r.dimension(0), r.dimension(1),
-            _gdalType, r.componentCount(), nullptr,
+            static_cast<GDALDataType>(_gdalType), r.componentCount(), nullptr,
             r.elementSize(), r.elementSize() * r.dimension(0), r.componentSize());
     if (err != CE_None) {
         *error = ErrorLibrary;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020 Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,14 +26,12 @@
 
 #include "io.hpp"
 
-#include <gdal.h>
-
 namespace TAD {
 
 class FormatImportExportGDAL : public FormatImportExport {
 private:
-    GDALDatasetH _dataset;
-    GDALDataType _gdalType;
+    void* _dataset;
+    int _gdalType;
     ArrayDescription _desc;
     bool _arrayWasRead;
 
