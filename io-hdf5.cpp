@@ -93,13 +93,15 @@ Error FormatImportExportHDF5::openForWriting(const std::string& fileName, bool a
 
 void FormatImportExportHDF5::close()
 {
-    try {
-        _f->close();
+    if (_f) {
+        try {
+            _f->close();
+        }
+        catch (H5::Exception& error) {
+        }
+        delete _f;
+        _f = nullptr;
     }
-    catch (H5::Exception& error) {
-    }
-    delete _f;
-    _f = nullptr;
 }
 
 static herr_t datasetVisitor(hid_t /* loc_id */, const char* name, const H5L_info_t* /* linfo */, void* opdata)
