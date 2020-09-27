@@ -117,6 +117,18 @@ private:
         return (ok ? r : defaultValue);
     }
 
+    // Sanitize a string: we do not allow control characters
+    std::string sanitize(const std::string& s)
+    {
+        std::string r(s.size(), '?');
+        for (size_t i = 0; i < r.size(); i++) {
+            if (s[i] >= 32 && s[i] != 127) {
+                r[i] = s[i];
+            }
+        }
+        return r;
+    }
+
 public:
     /*! \brief Constructor. */
     TagList() {}
@@ -145,7 +157,7 @@ public:
     /*! \brief Set a \a key to a \a value. */
     void set(const std::string& key, const std::string& value)
     {
-        _tags.insert(std::make_pair(key, value));
+        _tags.insert(std::make_pair(sanitize(key), sanitize(value)));
     }
 
     /*! \brief Unset a \a key. */
