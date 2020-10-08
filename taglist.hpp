@@ -157,6 +157,7 @@ public:
     /*! \brief Set a \a key to a \a value. */
     void set(const std::string& key, const std::string& value)
     {
+        _tags.erase(key);
         _tags.insert(std::make_pair(sanitize(key), sanitize(value)));
     }
 
