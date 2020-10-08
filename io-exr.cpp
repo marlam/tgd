@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020  Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,6 +27,7 @@
 #include <ImfChannelList.h>
 #include <ImfInputFile.h>
 #include <ImfOutputFile.h>
+#include <ImfStringAttribute.h>
 
 #include "io-exr.hpp"
 #include "io-utils.hpp"
@@ -114,6 +115,12 @@ ArrayContainer FormatImportExportEXR::readArray(Error* error, int arrayIndex)
     }
 
     ArrayContainer r({ size_t(width), size_t(height) }, channelCount, float32);
+    for (auto it = file.header().begin(); it != file.header().end(); it++) {
+        if (std::string(it.attribute().typeName()) == std::string("string")) {
+            r.globalTagList().set(it.name(),
+                    file.header().typedAttribute<StringAttribute>(it.name()).value());
+        }
+    }
     char* charData = static_cast<char*>(r.data());
     FrameBuffer framebuffer;
     int channelIndex = 0;
@@ -191,6 +198,9 @@ Error FormatImportExportEXR::writeArray(const ArrayContainer& array)
     }
 
     Header header(array.dimension(0), array.dimension(1), 1.0f, Imath::V2f(0, 0), 1.0f, INCREASING_Y, PIZ_COMPRESSION);
+    for (auto it = array.globalTagList().cbegin(); it != array.globalTagList().cend(); it++) {
+        header.insert(it->first.c_str(), StringAttribute(it->second.c_str()));
+    }
     std::vector<std::string> channelNames(array.componentCount());
     for (size_t c = 0; c < channelNames.size(); c++) {
         std::string channelName;
