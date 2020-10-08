@@ -215,6 +215,15 @@ ArrayContainer FormatImportExportHDF5::readArray(Error* error, int arrayIndex)
         return ArrayContainer();
     }
     ArrayContainer r = reorderMatlabInputData(dims, rType, dataArray.data());
+    // read attributes
+    H5::StrType strType(H5::PredType::C_S1, H5T_VARIABLE);
+    for (int i = 0; i < dataset.getNumAttrs(); i++) {
+        H5::Attribute a = dataset.openAttribute(i);
+        std::string key = a.getName();
+        std::string value;
+        a.read(strType, value);
+        r.globalTagList().set(key, value);
+    }
     return r;
 }
 
@@ -279,9 +288,8 @@ Error FormatImportExportHDF5::writeArray(const ArrayContainer& array)
     try {
         H5::DataSet dataset = _f->createDataSet(datasetname.c_str(), type, dataspace);
         dataset.write(dataArray.data(), type);
-#if 0
         // write attributes
-        H5::StrType strType(PredType::C_S1, H5T_VARIABLE);
+        H5::StrType strType(H5::PredType::C_S1, H5T_VARIABLE);
         H5::DataSpace attSpace(H5S_SCALAR);
         for (auto it = array.globalTagList().cbegin(); it != array.globalTagList().cend(); it++) {
             H5::Attribute att = dataset.createAttribute(it->first.c_str(), strType, attSpace);
@@ -289,9 +297,8 @@ Error FormatImportExportHDF5::writeArray(const ArrayContainer& array)
         }
         // TODO: if this is an image, set the appropriate IMAGE attributes
         // See https://support.hdfgroup.org/HDF5/doc/ADGuide/ImageSpec.html
-        // But that is an absolutely specification... I currently see no point
+        // But that is an absolutely crappy specification... I currently see no point
         // in supporting that
-#endif
     }
     catch (H5::Exception& error) {
         fprintf(stderr, "%s\n", error.getCDetailMsg());
