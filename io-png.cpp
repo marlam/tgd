@@ -143,17 +143,19 @@ ArrayContainer FormatImportExportPNG::readArray(Error* error, int arrayIndex)
     png_byte bit_depth = png_get_bit_depth(png_ptr, info_ptr);
     png_bytep *row_pointers = png_get_rows(png_ptr, info_ptr);
     png_textp text_ptr;
-    png_uint_32 num_text = 0;
-#if 0
-    // do not read text fields because they typically contain nothing of value
-    // and may contain encoded exif records (e.g. if saved by GIMP) which really
-    // do not help. TODO: extract metadata via exiv2 and use that instead.
-    num_text = png_get_text(png_ptr, info_ptr, &text_ptr, NULL);
-#endif
+    png_uint_32 num_text = png_get_text(png_ptr, info_ptr, &text_ptr, NULL);
 
     ArrayContainer r({ width, height }, channels, bit_depth <= 8 ? uint8 : uint16);
-    for (unsigned int i = 0; i < num_text; i++)
+    for (unsigned int i = 0; i < num_text; i++) {
+        if (std::strncmp(text_ptr[i].text, "\nexif\n", 6) == 0) {
+            // This is EXIF data encoded in a string with control characters.
+            // Not useful as a global tag. We could someday instead extract
+            // individual EXIF data fields using e.g. libexiv2, but for now
+            // that does not seem useful.
+            continue;
+        }
         r.globalTagList().set(text_ptr[i].key, text_ptr[i].text);
+    }
     if (channels == 1) {
         r.componentTagList(0).set("INTERPRETATION", "SRGB/GRAY");
     } else if (channels == 2) {
@@ -209,9 +211,6 @@ Error FormatImportExportPNG::writeArray(const ArrayContainer& array)
     for (size_t i = 0; i < array.dimension(1); i++)
         row_pointers[i] = static_cast<unsigned char*>(const_cast<void*>(array.get((array.dimension(1) - 1 - i) * array.dimension(0))));
     std::vector<struct png_text_struct> text;
-#if 0
-    // do not write text fields because they typically contain nothing of value.
-    // TODO: save metadata via exiv2 instead.
     for (auto it = array.globalTagList().cbegin(); it != array.globalTagList().cend(); it++) {
         struct png_text_struct t;
         std::memset(&t, 0, sizeof(t));
@@ -221,7 +220,6 @@ Error FormatImportExportPNG::writeArray(const ArrayContainer& array)
         t.text_length = it->second.length();
         text.push_back(t);
     }
-#endif
 
     png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png_ptr) {
