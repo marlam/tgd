@@ -6,7 +6,9 @@
 # permitted in any medium without royalty provided the copyright notice and this
 # notice are preserved. This file is offered as-is, without any warranty.
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.7)
+set(CMAKE_FIND_PACKAGE_SORT_ORDER NATURAL)
+set(CMAKE_FIND_PACKAGE_SORT_DIRECTION DEC)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR} ${CMAKE_MODULE_PATH})
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
