@@ -1,4 +1,4 @@
-# Copyright (C) 2018, 2019
+# Copyright (C) 2018, 2019, 2020
 # Computer Graphics Group, University of Siegen
 # Written by Martin Lambers <martin.lambers@uni-siegen.de>
 #
@@ -12,7 +12,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # Project
 project(tad)
-set(TAD_VERSION 1.1)
+set(TAD_VERSION 1.2)
 set(TAD_LIBVERSION 1.0.0)
 set(TAD_SOVERSION 1)
 
