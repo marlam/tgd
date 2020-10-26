@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020 Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -92,13 +92,20 @@ int FormatImportExportPFS::arrayCount()
             _arrayCount = -1;
             return -1;
         }
-        pfs::Frame *frame = pfsio.readFrame(_f);
-        if (!frame) {
+        try {
+            pfs::Frame *frame = pfsio.readFrame(_f);
+            if (!frame) {
+                _arrayOffsets.clear();
+                _arrayCount = -1;
+                return -1;
+            }
+            pfsio.freeFrame(frame);
+        }
+        catch (...) {
             _arrayOffsets.clear();
             _arrayCount = -1;
             return -1;
         }
-        pfsio.freeFrame(frame);
         _arrayOffsets.push_back(arrayPos);
         if (_arrayOffsets.size() == size_t(std::numeric_limits<int>::max()) && hasMore()) {
             _arrayOffsets.clear();
@@ -135,8 +142,15 @@ ArrayContainer FormatImportExportPFS::readArray(Error* error, int arrayIndex)
 
     // Read the PFS
     pfs::DOMIO pfsio;
-    pfs::Frame *frame = pfsio.readFrame(_f);
-    if (!frame) {
+    pfs::Frame* frame = nullptr;
+    try {
+        frame = pfsio.readFrame(_f);
+        if (!frame) {
+            *error = ErrorInvalidData;
+            return ArrayContainer();
+        }
+    }
+    catch (...) {
         *error = ErrorInvalidData;
         return ArrayContainer();
     }
@@ -223,36 +237,44 @@ Error FormatImportExportPFS::writeArray(const ArrayContainer& array)
     }
 
     pfs::DOMIO pfsio;
-    pfs::Frame* frame = pfsio.createFrame(array.dimension(0), array.dimension(1));
-    for (auto gtit = array.globalTagList().cbegin(); gtit != array.globalTagList().cend(); gtit++)
-        frame->getTags()->setString(gtit->first.c_str(), gtit->second.c_str());
+    pfs::Frame* frame = nullptr;
     std::vector<float*> channelData(array.componentCount());
-    for (size_t componentIndex = 0; componentIndex < array.componentCount(); componentIndex++) {
-        std::string interpretation = array.componentTagList(componentIndex).value("INTERPRETATION");
-        std::string pfs_name = array.componentTagList(componentIndex).value("PFS/NAME");
-        std::string channel_name;
-        if (interpretation == "XYZ/X")
-            channel_name = "X";
-        else if (interpretation == "XYZ/Y")
-            channel_name = "Y";
-        else if (interpretation == "XYZ/Z")
-            channel_name = "Z";
-        else if (interpretation == "RED")
-            channel_name = "R";
-        else if (interpretation == "GREEN")
-            channel_name = "G";
-        else if (interpretation == "BLUE")
-            channel_name = "B";
-        else if (interpretation == "ALPHA")
-            channel_name = "ALPHA";
-        else if (pfs_name.length() > 0)
-            channel_name = pfs_name;
-        else if (interpretation.length() > 0)
-            channel_name = interpretation;
-        else
-            channel_name = std::to_string(componentIndex);     
-        pfs::Channel* channel = frame->createChannel(channel_name.c_str());
-        channelData[componentIndex] = channel->getRawData();
+    try {
+        frame = pfsio.createFrame(array.dimension(0), array.dimension(1));
+        for (auto gtit = array.globalTagList().cbegin(); gtit != array.globalTagList().cend(); gtit++)
+            frame->getTags()->setString(gtit->first.c_str(), gtit->second.c_str());
+        for (size_t componentIndex = 0; componentIndex < array.componentCount(); componentIndex++) {
+            std::string interpretation = array.componentTagList(componentIndex).value("INTERPRETATION");
+            std::string pfs_name = array.componentTagList(componentIndex).value("PFS/NAME");
+            std::string channel_name;
+            if (interpretation == "XYZ/X")
+                channel_name = "X";
+            else if (interpretation == "XYZ/Y")
+                channel_name = "Y";
+            else if (interpretation == "XYZ/Z")
+                channel_name = "Z";
+            else if (interpretation == "RED")
+                channel_name = "R";
+            else if (interpretation == "GREEN")
+                channel_name = "G";
+            else if (interpretation == "BLUE")
+                channel_name = "B";
+            else if (interpretation == "ALPHA")
+                channel_name = "ALPHA";
+            else if (pfs_name.length() > 0)
+                channel_name = pfs_name;
+            else if (interpretation.length() > 0)
+                channel_name = interpretation;
+            else
+                channel_name = std::to_string(componentIndex);     
+            pfs::Channel* channel = frame->createChannel(channel_name.c_str());
+            channelData[componentIndex] = channel->getRawData();
+        }
+    }
+    catch (...) {
+        if (frame)
+            pfsio.freeFrame(frame);
+        return ErrorLibrary;
     }
 
     for (size_t y = 0; y < array.dimension(1); y++) {
@@ -264,7 +286,13 @@ Error FormatImportExportPFS::writeArray(const ArrayContainer& array)
         }
     }
 
-    pfsio.writeFrame(frame, _f);
+    try {
+        pfsio.writeFrame(frame, _f);
+    }
+    catch (...) {
+        pfsio.freeFrame(frame);
+        return ErrorLibrary;
+    }
     pfsio.freeFrame(frame);
     if (fflush(_f) != 0) {
         return ErrorSysErrno;
