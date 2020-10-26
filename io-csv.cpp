@@ -158,13 +158,19 @@ ArrayContainer FormatImportExportCSV::readArray(Error* error, int arrayIndex)
     bool allValuesAreFinite = true;
     bool allValuesAreInteger = true;
     bool haveFiniteValue = false;
+    bool foundInvalidCharacter = false;
     for (;;) {
         // read a line, without newline
         std::string line;
         int c;
         while ((c = std::fgetc(_f)) != EOF) {
-            if (c == '\n')
+            if (c == '\n') {
                 break;
+            }
+            if (c == 127 || (c < 32 && (c != '\t' && c != '\r'))) {
+                foundInvalidCharacter = true;
+                break;
+            }
             line.push_back(c);
         }
         if (line.length() > 0 && line[line.length() - 1] == '\r')
@@ -263,6 +269,10 @@ ArrayContainer FormatImportExportCSV::readArray(Error* error, int arrayIndex)
     setlocale(LC_NUMERIC, localebak.c_str());
     if (std::ferror(_f)) {
         *error = ErrorSysErrno;
+        return ArrayContainer();
+    }
+    if (foundInvalidCharacter) {
+        *error = ErrorInvalidData;
         return ArrayContainer();
     }
 
