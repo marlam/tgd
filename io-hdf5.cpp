@@ -58,7 +58,7 @@ Error FormatImportExportHDF5::openForReading(const std::string& fileName, const 
         catch (H5::Exception& error) {
             delete _f;
             _f = nullptr;
-            return ErrorLibrary;
+            return ErrorInvalidData;
         }
         return ErrorNone;
     }
