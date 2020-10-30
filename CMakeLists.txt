@@ -29,7 +29,7 @@ endif()
 install(FILES taglist.hpp array.hpp foreach.hpp operators.hpp tools.hpp io.hpp DESTINATION include/tad)
 
 # Compiler and system (works with gcc and clang)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 endif()
