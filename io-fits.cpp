@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020  Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,6 +24,8 @@
 #include <cerrno>
 #include <string>
 
+#include <fitsio.h>
+
 #include "io-fits.hpp"
 
 
@@ -45,7 +47,7 @@ Error FormatImportExportFITS::openForReading(const std::string& fileName, const 
         return ErrorInvalidData;
 
     int status = 0;
-    fits_open_file(&_f, fileName.c_str(), READONLY, &status);
+    fits_open_file(reinterpret_cast<fitsfile**>(&_f), fileName.c_str(), READONLY, &status);
     if (status) {
         return ErrorInvalidData;
     }
@@ -62,7 +64,7 @@ void FormatImportExportFITS::close()
 {
     if (_f) {
         int status = 0;
-        fits_close_file(_f, &status);
+        fits_close_file(static_cast<fitsfile*>(_f), &status);
         _f = nullptr;
     }
     _haveArrayCount = false;
@@ -75,10 +77,10 @@ int FormatImportExportFITS::arrayCount()
     if (!_haveArrayCount) {
         int status = 0;
         int hdunum;
-        fits_get_num_hdus(_f, &hdunum, &status);
+        fits_get_num_hdus(static_cast<fitsfile*>(_f), &hdunum, &status);
         for (int i = 1; i <= hdunum; i++) {
             int hdutype = ANY_HDU;
-            fits_movabs_hdu(_f, i, &hdutype, &status);
+            fits_movabs_hdu(static_cast<fitsfile*>(_f), i, &hdutype, &status);
             if (hdutype == IMAGE_HDU)
                 _imgHDUs.push_back(i);
         }
@@ -97,9 +99,9 @@ ArrayContainer FormatImportExportFITS::readArray(Error* error, int arrayIndex)
     }
     int status = 0;
     if (arrayIndex >= 0) {
-        fits_movabs_hdu(_f, _imgHDUs[arrayIndex], nullptr, &status);
+        fits_movabs_hdu(static_cast<fitsfile*>(_f), _imgHDUs[arrayIndex], nullptr, &status);
     } else {
-        fits_movabs_hdu(_f, _imgHDUs[_indexOfLastReadArray + 1], nullptr, &status);
+        fits_movabs_hdu(static_cast<fitsfile*>(_f), _imgHDUs[_indexOfLastReadArray + 1], nullptr, &status);
     }
     if (status) {
         *error = ErrorSeekingNotSupported;
@@ -107,7 +109,7 @@ ArrayContainer FormatImportExportFITS::readArray(Error* error, int arrayIndex)
     }
 
     int fitstype;
-    fits_get_img_type(_f, &fitstype, &status);
+    fits_get_img_type(static_cast<fitsfile*>(_f), &fitstype, &status);
     if (status) {
         *error = ErrorInvalidData;
         return ArrayContainer();
@@ -152,7 +154,7 @@ ArrayContainer FormatImportExportFITS::readArray(Error* error, int arrayIndex)
     }
 
     int fitsdimcount;
-    fits_get_img_dim(_f, &fitsdimcount, &status);
+    fits_get_img_dim(static_cast<fitsfile*>(_f), &fitsdimcount, &status);
     if (status) {
         *error = ErrorInvalidData;
         return ArrayContainer();
@@ -162,7 +164,7 @@ ArrayContainer FormatImportExportFITS::readArray(Error* error, int arrayIndex)
         return ArrayContainer();
     }
     std::vector<long> fitsdims(fitsdimcount, -1);
-    fits_get_img_size(_f, fitsdimcount, fitsdims.data(), &status);
+    fits_get_img_size(static_cast<fitsfile*>(_f), fitsdimcount, fitsdims.data(), &status);
     if (status) {
         *error = ErrorInvalidData;
         return ArrayContainer();
@@ -179,7 +181,7 @@ ArrayContainer FormatImportExportFITS::readArray(Error* error, int arrayIndex)
     ArrayContainer r(dims, 1, type);
     for (int i = 0; i < fitsdimcount; i++)
         fitsdims[i] = 1;
-    fits_read_pix(_f, fitsttype, fitsdims.data(), r.elementCount(),
+    fits_read_pix(static_cast<fitsfile*>(_f), fitsttype, fitsdims.data(), r.elementCount(),
             nullptr, r.data(), nullptr, &status);
     if (status) {
         *error = ErrorInvalidData;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020  Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,14 +26,12 @@
 
 #include "io.hpp"
 
-#include "fitsio.h"
-
 
 namespace TAD {
 
 class FormatImportExportFITS : public FormatImportExport {
 private:
-    fitsfile* _f;
+    void* _f;
     bool _haveArrayCount;
     std::vector<int> _imgHDUs;
     int _indexOfLastReadArray;
