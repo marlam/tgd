@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020 Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,15 +27,13 @@
 #include <vector>
 #include <string>
 
-#include <matio.h>
-
 #include "io.hpp"
 
 namespace TAD {
 
 class FormatImportExportMAT : public FormatImportExport {
 private:
-    mat_t* _mat;
+    void* _mat;
     std::vector<std::string> _varNames;
     int _counter;
     

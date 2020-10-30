@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020 Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,6 +22,8 @@
  */
 
 #include <cstdio>
+
+#include <matio.h>
 
 #include "io-mat.hpp"
 #include "io-utils.hpp"
@@ -81,7 +83,7 @@ Error FormatImportExportMAT::openForWriting(const std::string& fileName, bool ap
 void FormatImportExportMAT::close()
 {
     if (_mat) {
-        Mat_Close(_mat);
+        Mat_Close(static_cast<mat_t*>(_mat));
         _mat = nullptr;
     }
 }
@@ -90,11 +92,11 @@ int FormatImportExportMAT::arrayCount()
 {
     if (_varNames.size() == 0) {
         matvar_t* matvar;
-        while ((matvar = Mat_VarReadNextInfo(_mat))) {
+        while ((matvar = Mat_VarReadNextInfo(static_cast<mat_t*>(_mat)))) {
             _varNames.push_back(matvar->name);
             Mat_VarFree(matvar);
         }
-        Mat_Rewind(_mat);
+        Mat_Rewind(static_cast<mat_t*>(_mat));
     }
     return _varNames.size();
 }
@@ -107,9 +109,9 @@ ArrayContainer FormatImportExportMAT::readArray(Error* error, int arrayIndex)
             *error = ErrorInvalidData;
             return ArrayContainer();
         }
-        matvar = Mat_VarRead(_mat, _varNames[arrayIndex].c_str());
+        matvar = Mat_VarRead(static_cast<mat_t*>(_mat), _varNames[arrayIndex].c_str());
     } else {
-        matvar = Mat_VarReadNext(_mat);
+        matvar = Mat_VarReadNext(static_cast<mat_t*>(_mat));
         _counter++;
     }
     if (!matvar) {
@@ -220,7 +222,7 @@ Error FormatImportExportMAT::writeArray(const ArrayContainer& array)
     matvar_t* matvar = Mat_VarCreate(name.c_str(), classType, dataType,
             dataArray.dimensionCount(), const_cast<size_t*>(dataArray.dimensions().data()),
             dataArray.data(), MAT_F_DONT_COPY_DATA);
-    if (!matvar || Mat_VarWrite(_mat, matvar, MAT_COMPRESSION_NONE) != 0) {
+    if (!matvar || Mat_VarWrite(static_cast<mat_t*>(_mat), matvar, MAT_COMPRESSION_NONE) != 0) {
         return ErrorLibrary;
     }
     Mat_VarFree(matvar);
