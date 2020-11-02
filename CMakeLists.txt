@@ -19,6 +19,7 @@ set(TAD_LIBVERSION 1.0.0)
 set(TAD_SOVERSION 1)
 
 # Build options
+option(TAD_BUILD_TOOL "Build the tad command line tool" ON)
 option(TAD_BUILD_DOCUMENTATION "Build API reference documentation (requires Doxygen)" OFF)
 option(TAD_STATIC "Build static libtad" OFF)
 if(TAD_STATIC)
@@ -28,10 +29,16 @@ endif()
 # The TAD library (headers only)
 install(FILES taglist.hpp array.hpp foreach.hpp operators.hpp tools.hpp io.hpp DESTINATION include/tad)
 
-# Compiler and system (works with gcc and clang)
+# Compiler and system
 set(CMAKE_CXX_STANDARD 17)
 if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+endif()
+if(MSVC)
+    add_definition(-Doff_t=__int64)
+    add_definition(-Dftello=_ftelli64)
+    add_definition(-Dfseeko=_fseeki64)
+    set(TAD_BUILD_TOOL OFF) # because there is no getopt.h in MSVC
 endif()
 
 # Optional libraries for input/output modules
@@ -162,7 +169,9 @@ if(TAD_STATIC)
     target_link_libraries(libtad ${libtad_STATIC_EXTRA_LIBRARIES} "-static")
 else()
     add_library(libtad SHARED ${libtad_SOURCES})
-    target_link_libraries(libtad dl)
+    if(UNIX)
+        target_link_libraries(libtad dl)
+    endif()
     if(GTA_FOUND)
 	add_library(libtadio-gta SHARED io-gta.hpp io-gta.cpp)
 	set_target_properties(libtadio-gta PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
@@ -378,6 +387,8 @@ if(TAD_BUILD_DOCUMENTATION)
 endif()
 
 # The tool
-add_executable(tad tad.cpp cmdline.hpp cmdline.cpp)
-target_link_libraries(tad libtad)
-install(TARGETS tad RUNTIME DESTINATION bin)
+if(TAD_BUILD_TOOL)
+    add_executable(tad tad.cpp cmdline.hpp cmdline.cpp)
+    target_link_libraries(tad libtad)
+    install(TARGETS tad RUNTIME DESTINATION bin)
+endif()
