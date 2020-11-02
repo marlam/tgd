@@ -35,9 +35,8 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 endif()
 if(MSVC)
-    add_definition(-Doff_t=__int64)
-    add_definition(-Dftello=_ftelli64)
-    add_definition(-Dfseeko=_fseeki64)
+    add_definitions(-Dftello=_ftelli64)
+    add_definitions(-Dfseeko=_fseeki64)
     set(TAD_BUILD_TOOL OFF) # because there is no getopt.h in MSVC
 endif()
 
