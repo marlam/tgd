@@ -585,12 +585,10 @@ inline void setSubArray(ArrayContainer& dest, const ArrayContainer& source, cons
         if (index.size() > 0 && index[d] >= dest.dimension(d))
             return;
     }
-    size_t destIndex[dest.dimensionCount()];
+    std::vector<size_t> destIndex(dest.dimensionCount());
     for (size_t d = 0; d < dest.dimensionCount(); d++)
         destIndex[d] = (index.size() == 0 ? 0 : index[d]);
-    size_t sourceIndex[dest.dimensionCount()];
-    for (size_t d = 0; d < dest.dimensionCount(); d++)
-        sourceIndex[d] = 0;
+    std::vector<size_t> sourceIndex(dest.dimensionCount(), 0);
     unsigned char* destData = static_cast<unsigned char*>(dest.data());
     const unsigned char* sourceData = static_cast<const unsigned char*>(source.data());
     for (;;) {
@@ -601,8 +599,8 @@ inline void setSubArray(ArrayContainer& dest, const ArrayContainer& source, cons
             elementsToCopy = 0;
         else
             elementsToCopy = std::min(source.dimension(0), dest.dimension(0) - index[0]);
-        std::memcpy(destData + dest.elementOffset(std::vector<size_t>(destIndex, destIndex + dest.dimensionCount())),
-                sourceData + source.elementOffset(std::vector<size_t>(sourceIndex, sourceIndex + dest.dimensionCount())),
+        std::memcpy(destData + dest.elementOffset(destIndex),
+                sourceData + source.elementOffset(sourceIndex),
                 elementsToCopy * source.elementSize());
         size_t dimToInc = 1;
         bool inced = false;
@@ -630,7 +628,7 @@ inline ArrayContainer merge(const ArrayContainer& a0, const ArrayContainer& a1, 
     assert(a0.componentType() == a1.componentType());
     assert(dimension < a0.dimensionCount());
 
-    size_t newDims[a0.dimensionCount()];
+    std::vector<size_t> newDims(a0.dimensionCount());
     for (size_t d = 0; d < a0.dimensionCount(); d++) {
         assert(d == dimension || a0.dimension(d) == a1.dimension(d));
         newDims[d] = a0.dimension(d);
@@ -639,7 +637,7 @@ inline ArrayContainer merge(const ArrayContainer& a0, const ArrayContainer& a1, 
     }
 
     // Create result array
-    ArrayContainer result(std::vector<size_t>(newDims, newDims + a0.dimensionCount()), a0.componentCount(), a0.componentType());
+    ArrayContainer result(newDims, a0.componentCount(), a0.componentType());
 
     // Copy metadata
     result.globalTagList() = a0.globalTagList();
@@ -654,10 +652,10 @@ inline ArrayContainer merge(const ArrayContainer& a0, const ArrayContainer& a1, 
 
     // Copy data
     setSubArray(result, a0);
-    size_t a1Index[a0.dimensionCount()];
+    std::vector<size_t> a1Index(a0.dimensionCount());
     for (size_t d = 0; d < a0.dimensionCount(); d++)
         a1Index[d] = (d == dimension ? a0.dimension(d) : 0);
-    setSubArray(result, a1, std::vector<size_t>(a1Index, a1Index + a0.dimensionCount()));
+    setSubArray(result, a1, a1Index);
 
     return result;
 }
