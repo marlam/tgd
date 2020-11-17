@@ -113,7 +113,8 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
             || format == "mpeg" || format == "mpg"
             || format == "webm" || format == "webp"
             || format == "mov" || format == "avi" || format == "wmv"
-            || format == "gif" || format == "dds" || format == "bmp" || format == "tga" || format == "xpm") {
+            || format == "gif" || format == "dds" || format == "bmp"
+            || format == "tga" || format == "xpm" || format == "ico") {
         // TODO: this list can be much longer; add other extensions when needed
         fieName = "ffmpeg";
     } else if (format == "vrt" || format == "tsx") {
