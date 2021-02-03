@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2018, 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2018, 2019, 2020, 2021
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,6 +35,7 @@ class FormatImportExportJPEG : public FormatImportExport {
 private:
     FILE* _f;
     std::string _fileName;
+    bool _arrayWasReadOrWritten;
 
 public:
     FormatImportExportJPEG();

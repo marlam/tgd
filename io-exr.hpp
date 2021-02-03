@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020, 2021
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,7 +32,7 @@ namespace TAD {
 class FormatImportExportEXR : public FormatImportExport {
 private:
     std::string _fileName;
-    bool _arrayWasRead;
+    bool _arrayWasReadOrWritten;
 
 public:
     FormatImportExportEXR();

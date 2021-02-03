@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2018, 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2018, 2019, 2020, 2021
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -46,7 +47,7 @@ static void my_error_exit(j_common_ptr cinfo)
 }
 
 FormatImportExportJPEG::FormatImportExportJPEG() :
-    _f(nullptr)
+    _f(nullptr), _arrayWasReadOrWritten(false)
 {
 }
 
@@ -90,6 +91,7 @@ void FormatImportExportJPEG::close()
         _f = nullptr;
     }
     _fileName = std::string();
+    _arrayWasReadOrWritten = false;
 }
 
 int FormatImportExportJPEG::arrayCount()
@@ -151,18 +153,14 @@ ArrayContainer FormatImportExportJPEG::readArray(Error* error, int arrayIndex)
     if (originLocation != OriginTopLeft)
         fixImageOrientation(r, originLocation);
 
+    _arrayWasReadOrWritten = true;
+
     return r;
 }
 
 bool FormatImportExportJPEG::hasMore()
 {
-    int c = fgetc(_f);
-    if (c == EOF) {
-        return false;
-    } else {
-        ungetc(c, _f);
-        return true;
-    }
+    return !_arrayWasReadOrWritten;
 }
 
 Error FormatImportExportJPEG::writeArray(const ArrayContainer& array)
@@ -171,7 +169,8 @@ Error FormatImportExportJPEG::writeArray(const ArrayContainer& array)
             || array.dimension(0) <= 0 || array.dimension(1) <= 0
             || array.dimension(0) > 0x7fffffffL || array.dimension(1) > 0x7fffffffL
             || array.componentType() != uint8
-            || (array.componentCount() != 1 && array.componentCount() != 3)) {
+            || (array.componentCount() != 1 && array.componentCount() != 3)
+            || _arrayWasReadOrWritten) {
         return ErrorFeaturesUnsupported;
     }
 
@@ -203,6 +202,7 @@ Error FormatImportExportJPEG::writeArray(const ArrayContainer& array)
     if (fflush(_f) != 0) {
         return ErrorSysErrno;
     }
+    _arrayWasReadOrWritten = true;
     return ErrorNone;
 }
 

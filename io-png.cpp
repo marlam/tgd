@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2018, 2019, 2020 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2018, 2019, 2020, 2021
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -43,7 +44,7 @@ static void my_png_warning(png_structp /* png_ptr */, png_const_charp /* warning
 }
 
 FormatImportExportPNG::FormatImportExportPNG() :
-    _f(nullptr)
+    _f(nullptr), _arrayWasReadOrWritten(false)
 {
 }
 
@@ -87,6 +88,7 @@ void FormatImportExportPNG::close()
         _f = nullptr;
     }
     _fileName = std::string();
+    _arrayWasReadOrWritten = false;
 }
 
 int FormatImportExportPNG::arrayCount()
@@ -183,18 +185,14 @@ ArrayContainer FormatImportExportPNG::readArray(Error* error, int arrayIndex)
     if (originLocation != OriginTopLeft)
         fixImageOrientation(r, originLocation);
 
+    _arrayWasReadOrWritten = true;
+
     return r;
 }
 
 bool FormatImportExportPNG::hasMore()
 {
-    int c = fgetc(_f);
-    if (c == EOF) {
-        return false;
-    } else {
-        ungetc(c, _f);
-        return true;
-    }
+    return !_arrayWasReadOrWritten;
 }
 
 Error FormatImportExportPNG::writeArray(const ArrayContainer& array)
@@ -203,7 +201,8 @@ Error FormatImportExportPNG::writeArray(const ArrayContainer& array)
             || array.dimension(0) <= 0 || array.dimension(1) <= 0
             || array.dimension(0) > 0x7fffffffL || array.dimension(1) > 0x7fffffffL
             || (array.componentType() != uint8 && array.componentType() != uint16)
-            || array.componentCount() < 1 || array.componentCount() > 4) {
+            || array.componentCount() < 1 || array.componentCount() > 4
+            || _arrayWasReadOrWritten) {
         return ErrorFeaturesUnsupported;
     }
 
@@ -259,6 +258,7 @@ Error FormatImportExportPNG::writeArray(const ArrayContainer& array)
     if (fflush(_f) != 0) {
         return ErrorSysErrno;
     }
+    _arrayWasReadOrWritten = true;
     return ErrorNone;
 }
 

@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019, 2020  Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020, 2021
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -35,7 +36,7 @@
 
 namespace TAD {
 
-FormatImportExportEXR::FormatImportExportEXR() : _arrayWasRead(false)
+FormatImportExportEXR::FormatImportExportEXR() : _arrayWasReadOrWritten(false)
 {
 }
 
@@ -79,6 +80,7 @@ Error FormatImportExportEXR::openForWriting(const std::string& fileName, bool ap
 
 void FormatImportExportEXR::close()
 {
+    _arrayWasReadOrWritten = false;
 }
 
 int FormatImportExportEXR::arrayCount()
@@ -179,7 +181,7 @@ ArrayContainer FormatImportExportEXR::readArray(Error* error, int arrayIndex)
         file.readPixels(dw.min.y, dw.max.y);
 
         reverseY(r);
-        _arrayWasRead = true;
+        _arrayWasReadOrWritten = true;
         return r;
     }
     catch (...) {
@@ -190,7 +192,7 @@ ArrayContainer FormatImportExportEXR::readArray(Error* error, int arrayIndex)
 
 bool FormatImportExportEXR::hasMore()
 {
-    return !_arrayWasRead;
+    return !_arrayWasReadOrWritten;
 }
 
 Error FormatImportExportEXR::writeArray(const ArrayContainer& array)
@@ -199,7 +201,8 @@ Error FormatImportExportEXR::writeArray(const ArrayContainer& array)
             || array.dimension(0) <= 0 || array.dimension(1) <= 0
             || array.dimension(0) > 65535 || array.dimension(1) > 65535
             || array.componentCount() < 1
-            || array.componentType() != float32) {
+            || array.componentType() != float32
+            || _arrayWasReadOrWritten) {
         return ErrorFeaturesUnsupported;
     }
 
@@ -244,6 +247,7 @@ Error FormatImportExportEXR::writeArray(const ArrayContainer& array)
         }
         file.setFrameBuffer(framebuffer);
         file.writePixels(array.dimension(1));
+        _arrayWasReadOrWritten = true;
         return ErrorNone;
     }
     catch (...) {
