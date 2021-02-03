@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020 Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,6 +29,9 @@
 # include <fcntl.h>
 #endif
 
+#include <string>
+#include <vector>
+
 #include "array.hpp"
 #include "io.hpp"
 #include "foreach.hpp"
@@ -37,6 +40,46 @@
 
 #include "cmdline.hpp"
 
+
+/* Helper functions to parse command line options */
+
+bool parsePosInt(const std::string& value)
+{
+    size_t val = 0;
+    try { val = std::stoull(value); } catch (...) { }
+    return (val > 0);
+}
+
+size_t getPosInt(const std::string& value)
+{
+    return std::stoull(value);
+}
+
+bool parsePosIntList(const std::string& value)
+{
+    for (size_t i = 0; i < value.length();) {
+        size_t j = value.find_first_of(',', i);
+        if (!parsePosInt(value.substr(i, (j == std::string::npos ? std::string::npos : j - i))))
+            return false;
+        if (j == std::string::npos)
+            break;
+        i = j + 1;
+    }
+    return true;
+}
+
+std::vector<size_t> getPosIntList(const std::string& value)
+{
+    std::vector<size_t> values;
+    for (size_t i = 0; i < value.length();) {
+        size_t j = value.find_first_of(',', i);
+        values.push_back(getPosInt(value.substr(i, (j == std::string::npos ? std::string::npos : j - i))));
+        if (j == std::string::npos)
+            break;
+        i = j + 1;
+    }
+    return values;
+}
 
 bool parseType(const std::string& value)
 {
@@ -50,6 +93,8 @@ TAD::Type getType(const std::string& value)
     TAD::typeFromString(value, &t);
     return t;
 }
+
+/* Helper functions for handling tags */
 
 void addTag(TAD::TagList& tl, const std::string& tag)
 {
@@ -77,6 +122,7 @@ void removeValueRelatedTags(TAD::ArrayContainer& array)
     }
 }
 
+/* tad commands */
 
 int tad_help(void)
 {
@@ -84,6 +130,7 @@ int tad_help(void)
             "Usage: tad <command> [options...] [arguments...]\n"
             "Available commands:\n"
             "  convert\n"
+            "  create\n"
             "  diff\n"
             "  info\n"
             "Use the --help option to get command-specific help.\n");
@@ -165,13 +212,13 @@ int tad_convert(int argc, char* argv[])
         fprintf(stderr, "Usage: tad convert [option]... <infile|-> <outfile|->\n"
                 "Convert to a new type and/or format.\n"
                 "Options:\n"
-                "  -n|--normalize: create/assume floating point values in [-1,1]/[0,1]\n"
-                "    when converting to/from signed/unsigned integer values\n"
-                "  -t|--type: convert to new type (int8, uint8, int16, uint16, int32, uint32,\n"
-                "    int64, uint64, float32, float64)\n"
-                "  -a|--append: append to the output file instead of overwriting (not always possible)\n"
-                "  -i|--input: set input hints such as FORMAT=gdal, DPI=300 etc\n"
-                "  -o|--output: set output hints such as FORMAT=gdal, COMPRESSION=9 etc\n");
+                "  -i|--input=TAG       set input hints such as FORMAT=gdal, DPI=300 etc\n"
+                "  -o|--output=TAG      set output hints such as FORMAT=gdal, COMPRESSION=9 etc\n"
+                "  -t|--type=T          convert to new type (int8, uint8, int16, uint16, int32, uint32,\n"
+                "                       int64, uint64, float32, float64)\n"
+                "  -n|--normalize       create/assume floating point values in [-1,1]/[0,1]\n"
+                "                       when converting to/from signed/unsigned integer values\n"
+                "  -a|--append          append to the output file instead of overwriting (not always possible)\n");
         return 0;
     }
 
@@ -233,6 +280,65 @@ int tad_convert(int argc, char* argv[])
     return (err == TAD::ErrorNone ? 0 : 1);
 }
 
+int tad_create(int argc, char* argv[])
+{
+    CmdLine cmdLine;
+    cmdLine.addOptionWithArg("output", 'o');
+    cmdLine.addOptionWithArg("dimensions", 'd', parsePosIntList);
+    cmdLine.addOptionWithArg("components", 'c', parsePosInt);
+    cmdLine.addOptionWithArg("type", 't', parseType);
+    cmdLine.addOptionWithArg("n", 'n', parsePosInt, "1");
+    std::string errMsg;
+    if (!cmdLine.parse(argc, argv, 1, 1, errMsg)) {
+        fprintf(stderr, "tad create: %s\n", errMsg.c_str());
+        return 1;
+    }
+    if (cmdLine.isSet("help")) {
+        fprintf(stderr, "Usage: tad create [option]... <outfile|->\n"
+                "Create zero-filled arrays.\n"
+                "Options:\n"
+                "  -o|--output=TAG      set output hints such as FORMAT=gdal, COMPRESSION=9 etc\n"
+                "  -d|--dimensions=W[,H,...]  set dimensions\n"
+                "  -c|--components=C    set number of components per element\n"
+                "  -t|--type=T          set type (int8, uint8, int16, uint16, int32, uint32,\n"
+                "                       int64, uint64, float32, float64)\n"
+                "  -n|--n=N             set number of arrays to create (default 1)\n");
+        return 0;
+    }
+    if (!cmdLine.isSet("dimensions")) {
+        fprintf(stderr, "tad create: --dimensions is missing\n");
+        return 1;
+    }
+    if (!cmdLine.isSet("components")) {
+        fprintf(stderr, "tad create: --components is missing\n");
+        return 1;
+    }
+    if (!cmdLine.isSet("type")) {
+        fprintf(stderr, "tad create: --type is missing\n");
+        return 1;
+    }
+
+    const std::string& outFileName = cmdLine.arguments()[0];
+    TAD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
+    TAD::Exporter exporter(outFileName, TAD::Overwrite, exporterHints);
+    TAD::Error err = TAD::ErrorNone;
+    std::vector<size_t> dimensions = getPosIntList(cmdLine.value("dimensions"));
+    size_t components = getPosInt(cmdLine.value("components"));
+    TAD::Type type = getType(cmdLine.value("type"));
+    size_t n = getPosInt(cmdLine.value("n"));
+    TAD::ArrayContainer array(dimensions, components, type);
+    std::memset(array.data(), 0, array.dataSize());
+    for (size_t i = 0; i < n; i++) {
+        err = exporter.writeArray(array);
+        if (err != TAD::ErrorNone) {
+            fprintf(stderr, "tad create: %s: %s\n", outFileName.c_str(), TAD::strerror(err));
+            break;
+        }
+    }
+
+    return (err == TAD::ErrorNone ? 0 : 1);
+}
+
 int tad_diff(int argc, char* argv[])
 {
     CmdLine cmdLine;
@@ -247,8 +353,8 @@ int tad_diff(int argc, char* argv[])
         fprintf(stderr, "Usage: tad diff [option]... <infile0|-> <infile1|-> <outfile|->\n"
                 "Compute the absolute difference.\n"
                 "Options:\n"
-                "  -i|--input: set input hints such as FORMAT=gdal, DPI=300 etc\n"
-                "  -o|--output: set output hints such as FORMAT=gdal, COMPRESSION=9 etc\n");
+                "  -i|--input=TAG       set input hints such as FORMAT=gdal, DPI=300 etc\n"
+                "  -o|--output=TAG      set output hints such as FORMAT=gdal, COMPRESSION=9 etc\n");
         return 0;
     }
 
@@ -347,8 +453,8 @@ int tad_info(int argc, char* argv[])
         fprintf(stderr, "Usage: tad info [option]... <infile|->\n"
                 "Print information.\n"
                 "Options:\n"
-                "  -s|--statistics: print statistics\n"
-                "  -i|--input: set input hints such as FORMAT=gdal, DPI=300 etc\n");
+                "  -i|--input=TAG       set input hints such as FORMAT=gdal, DPI=300 etc\n"
+                "  -s|--statistics      print statistics\n");
         return 0;
     }
 
@@ -472,6 +578,8 @@ int main(int argc, char* argv[])
         retval = tad_version();
     } else if (std::strcmp(argv[1], "convert") == 0) {
         retval = tad_convert(argc - 1, &(argv[1]));
+    } else if (std::strcmp(argv[1], "create") == 0) {
+        retval = tad_create(argc - 1, &(argv[1]));
     } else if (std::strcmp(argv[1], "diff") == 0) {
         retval = tad_diff(argc - 1, &(argv[1]));
     } else if (std::strcmp(argv[1], "info") == 0) {
