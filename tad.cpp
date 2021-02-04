@@ -119,7 +119,7 @@ bool parseType(const std::string& value)
 
 TAD::Type getType(const std::string& value)
 {
-    TAD::Type t;
+    TAD::Type t = TAD::uint8;
     TAD::typeFromString(value, &t);
     return t;
 }
@@ -554,16 +554,16 @@ int tad_info(int argc, char* argv[])
     cmdLine.addOptionWithArg("input", 'i');
     cmdLine.addOptionWithoutArg("statistics", 's');
     cmdLine.addOptionWithArg("box", 'b', parseUIntList);
-    cmdLine.addOptionWithoutArg("dimensions", 'D');
-    cmdLine.addOptionWithArg("dimension", 'd', parseUInt);
-    cmdLine.addOptionWithoutArg("components", 'c');
-    cmdLine.addOptionWithoutArg("type", 't');
-    cmdLine.addOptionWithArg("global-tag");
-    cmdLine.addOptionWithoutArg("global-tags");
-    cmdLine.addOptionWithArg("dimension-tag", 0, parseUIntAndName);
-    cmdLine.addOptionWithArg("dimension-tags", 0, parseUInt);
-    cmdLine.addOptionWithArg("component-tag", 0, parseUIntAndName);
-    cmdLine.addOptionWithArg("component-tags", 0, parseUInt);
+    cmdLine.addOrderedOptionWithoutArg("dimensions", 'D');
+    cmdLine.addOrderedOptionWithArg("dimension", 'd', parseUInt);
+    cmdLine.addOrderedOptionWithoutArg("components", 'c');
+    cmdLine.addOrderedOptionWithoutArg("type", 't');
+    cmdLine.addOrderedOptionWithArg("global-tag");
+    cmdLine.addOrderedOptionWithoutArg("global-tags");
+    cmdLine.addOrderedOptionWithArg("dimension-tag", 0, parseUIntAndName);
+    cmdLine.addOrderedOptionWithArg("dimension-tags", 0, parseUInt);
+    cmdLine.addOrderedOptionWithArg("component-tag", 0, parseUIntAndName);
+    cmdLine.addOrderedOptionWithArg("component-tags", 0, parseUInt);
     std::string errMsg;
     if (!cmdLine.parse(argc, argv, 1, 1, errMsg)) {
         fprintf(stderr, "tad info: %s\n", errMsg.c_str());
@@ -578,7 +578,8 @@ int tad_info(int argc, char* argv[])
                 "  -i|--input=TAG       set input hints such as FORMAT=gdal, DPI=300 etc\n"
                 "  -s|--statistics      print statistics\n"
                 "  -b|--box=INDEX,SIZE  set box to operate on, e.g. X,Y,WIDTH,HEIGHT for 2D\n"
-                "The following option disable default output:\n"
+                "The following options disable default output, and instead print their own\n"
+                "output in the order in which they are given:\n"
                 "  -D|--dimensions      print number of dimensions\n"
                 "  -d|--dimension=D     print dimension D, e.g. -d 0 for width in 2D\n"
                 "  -c|--components      print number of array element components\n"
@@ -624,48 +625,36 @@ int tad_info(int argc, char* argv[])
             fprintf(stderr, "tad info: %s: %s\n", inFileName.c_str(), TAD::strerror(err));
             break;
         }
-        if (cmdLine.isSet("dimensions")) {
-            printf("%zu\n", array.dimensionCount());
-        }
-        if (cmdLine.isSet("dimension")) {
-            std::vector<std::string> dimList = cmdLine.valueList("dimension");
-            for (size_t i = 0; i < dimList.size(); i++) {
-                size_t dim = getUInt(dimList[i]);
+        for (size_t o = 0; o < cmdLine.orderedOptionNames().size(); o++) {
+            std::string optName = cmdLine.orderedOptionNames()[o];
+            std::string optVal = cmdLine.orderedOptionValues()[o];
+            if (optName == "dimensions") {
+                printf("%zu\n", array.dimensionCount());
+            } else if (optName == "dimension") {
+                size_t dim = getUInt(optVal);
                 if (dim >= array.dimensionCount()) {
                     fprintf(stderr, "tad info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
                     err = TAD::ErrorInvalidData;
                     break;
                 }
                 printf("%zu\n", array.dimension(dim));
-            }
-        }
-        if (cmdLine.isSet("components")) {
-            printf("%zu\n", array.componentCount());
-        }
-        if (cmdLine.isSet("type")) {
-            printf("%s\n", TAD::typeToString(getType(cmdLine.value("type"))));
-        }
-        if (cmdLine.isSet("global-tag")) {
-            std::vector<std::string> nameList = cmdLine.valueList("global-tag");
-            for (size_t i = 0; i < nameList.size(); i++) {
-                const std::string& name = nameList[i];
-                if (!array.globalTagList().contains(name)) {
-                    fprintf(stderr, "tad info: %s: no global tag %s\n", inFileName.c_str(), name.c_str());
+            } else if (optName == "components") {
+                printf("%zu\n", array.componentCount());
+            } else if (optName == "type") {
+                printf("%s\n", TAD::typeToString(getType(cmdLine.value("type"))));
+            } else if (optName == "global-tag") {
+                if (!array.globalTagList().contains(optVal)) {
+                    fprintf(stderr, "tad info: %s: no global tag %s\n", inFileName.c_str(), optVal.c_str());
                     err = TAD::ErrorInvalidData;
                     break;
                 }
-                printf("%s\n", array.globalTagList().value(name).c_str());
-            }
-        }
-        if (cmdLine.isSet("global-tags")) {
-            tad_info_print_taglist(array.globalTagList(), false);
-        }
-        if (cmdLine.isSet("dimension-tag")) {
-            std::vector<std::string> dimNameList = cmdLine.valueList("dimension-tag");
-            for (size_t i = 0; i < dimNameList.size(); i++) {
+                printf("%s\n", array.globalTagList().value(optVal).c_str());
+            } else if (optName == "global-tags") {
+                tad_info_print_taglist(array.globalTagList(), false);
+            } else if (optName == "dimension-tag") {
                 size_t dim;
                 std::string name;
-                getUIntAndName(dimNameList[i], &dim, &name);
+                getUIntAndName(optVal, &dim, &name);
                 if (dim >= array.dimensionCount()) {
                     fprintf(stderr, "tad info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
                     err = TAD::ErrorInvalidData;
@@ -677,26 +666,18 @@ int tad_info(int argc, char* argv[])
                     break;
                 }
                 printf("%s\n", array.dimensionTagList(dim).value(name).c_str());
-            }
-        }
-        if (cmdLine.isSet("dimension-tags")) {
-            std::vector<std::string> dimList = cmdLine.valueList("dimension-tags");
-            for (size_t i = 0; i < dimList.size(); i++) {
-                size_t dim = getUInt(dimList[i]);
+            } else if (optName == "dimension-tags") {
+                size_t dim = getUInt(optVal);
                 if (dim >= array.dimensionCount()) {
                     fprintf(stderr, "tad info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
                     err = TAD::ErrorInvalidData;
                     break;
                 }
                 tad_info_print_taglist(array.dimensionTagList(dim), false);
-            }
-        }
-        if (cmdLine.isSet("component-tag")) {
-            std::vector<std::string> compNameList = cmdLine.valueList("component-tag");
-            for (size_t i = 0; i < compNameList.size(); i++) {
+            } else if (optName == "component-tag") {
                 size_t comp;
                 std::string name;
-                getUIntAndName(compNameList[i], &comp, &name);
+                getUIntAndName(optVal, &comp, &name);
                 if (comp >= array.componentCount()) {
                     fprintf(stderr, "tad info: %s: no such component %zu\n", inFileName.c_str(), comp);
                     err = TAD::ErrorInvalidData;
@@ -708,12 +689,8 @@ int tad_info(int argc, char* argv[])
                     break;
                 }
                 printf("%s\n", array.componentTagList(comp).value(name).c_str());
-            }
-        }
-        if (cmdLine.isSet("component-tags")) {
-            std::vector<std::string> compList = cmdLine.valueList("component-tags");
-            for (size_t i = 0; i < compList.size(); i++) {
-                size_t comp = getUInt(compList[i]);
+            } else if (optName == "component-tags") {
+                size_t comp = getUInt(optVal);
                 if (comp >= array.componentCount()) {
                     fprintf(stderr, "tad info: %s: no such component %zu\n", inFileName.c_str(), comp);
                     err = TAD::ErrorInvalidData;
@@ -721,6 +698,9 @@ int tad_info(int argc, char* argv[])
                 }
                 tad_info_print_taglist(array.componentTagList(comp), false);
             }
+        }
+        if (err != TAD::ErrorNone) {
+            break;
         }
         if (defaultOutput) {
             std::string sizeString;

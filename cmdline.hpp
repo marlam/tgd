@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020, 2021
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,20 +35,22 @@ private:
         std::string name;
         char shortName;
         bool requiresArgument;
+        bool orderMatters;
         bool isSet;
         bool (*parseValue)(const std::string&);
         std::vector<std::string> valueList;
      
-        Option(const std::string& n, char sn) :
-            name(n), shortName(sn), requiresArgument(false),
+        Option(const std::string& n, char sn, bool om = false) :
+            name(n), shortName(sn), requiresArgument(false), orderMatters(om),
             isSet(false), parseValue(nullptr)
         {
         }
 
         Option(const std::string& n, char sn,
                 bool (*pV)(const std::string&),
-                const std::string& v) :
-            name(n), shortName(sn), requiresArgument(true),
+                const std::string& v,
+                bool om = false) :
+            name(n), shortName(sn), requiresArgument(true), orderMatters(om),
             isSet(false), parseValue(pV)
         {
             if (v.length() > 0)
@@ -57,6 +60,8 @@ private:
 
     std::vector<Option> _options;
     std::vector<std::string> _arguments;
+    std::vector<std::string> _orderedOptionNames;
+    std::vector<std::string> _orderedOptionValues;
 
     size_t optionIndex(const std::string& optionName) const;
 
@@ -68,6 +73,14 @@ public:
 
     // Add option that requires an argument.
     void addOptionWithArg(const std::string& name, char shortName = 0,
+            bool (*parseValue)(const std::string&) = nullptr,
+            const std::string& defaultValue = std::string());
+
+    // Add option that takes no arguments, but for which order matters.
+    void addOrderedOptionWithoutArg(const std::string& name, char shortName = 0);
+
+    // Add option that requires an argument, and for which order matters.
+    void addOrderedOptionWithArg(const std::string& name, char shortName = 0,
             bool (*parseValue)(const std::string&) = nullptr,
             const std::string& defaultValue = std::string());
 
@@ -85,6 +98,10 @@ public:
 
     // Get list of arguments.
     const std::vector<std::string>& arguments() const;
+
+    // Get ordered list of options that have the 'orderMatters' flag, and their arguments
+    const std::vector<std::string>& orderedOptionNames() const;
+    const std::vector<std::string>& orderedOptionValues() const;
 };
 
 #endif

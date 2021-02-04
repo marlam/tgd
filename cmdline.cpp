@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020, 2021
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -52,6 +53,18 @@ void CmdLine::addOptionWithArg(const std::string& name, char shortName,
         const std::string& defaultValue)
 {
     _options.push_back(Option(name, shortName, parseValue, defaultValue));
+}
+
+void CmdLine::addOrderedOptionWithoutArg(const std::string& name, char shortName)
+{
+    _options.push_back(Option(name, shortName, true));
+}
+
+void CmdLine::addOrderedOptionWithArg(const std::string& name, char shortName,
+        bool (*parseValue)(const std::string&),
+        const std::string& defaultValue)
+{
+    _options.push_back(Option(name, shortName, parseValue, defaultValue, true));
 }
 
 bool CmdLine::parse(int argc, char* argv[], int minArgs, int maxArgs, std::string& errMsg)
@@ -115,6 +128,13 @@ bool CmdLine::parse(int argc, char* argv[], int minArgs, int maxArgs, std::strin
                 error = true;
             }
         }
+        if (_options[optVal].orderMatters) {
+            _orderedOptionNames.push_back(_options[optVal].name);
+            _orderedOptionValues.push_back(
+                      _options[optVal].requiresArgument
+                    ? _options[optVal].valueList.back()
+                    : std::string());
+        }
     }
     if (!error && !isSet("help")) {
         int args = argc - optind;
@@ -155,4 +175,14 @@ const std::vector<std::string>& CmdLine::valueList(const std::string& optionName
 const std::vector<std::string>& CmdLine::arguments() const
 {
     return _arguments;
+}
+
+const std::vector<std::string>& CmdLine::orderedOptionNames() const
+{
+    return _orderedOptionNames;
+}
+
+const std::vector<std::string>& CmdLine::orderedOptionValues() const
+{
+    return _orderedOptionValues;
 }
