@@ -140,6 +140,49 @@ void getUIntAndName(const std::string& value, size_t* u, std::string* n)
     *n = value.substr(i + 1);
 }
 
+bool parseRange(const std::string& value)
+{
+    bool aOk = false;
+    bool bOk = false;
+    bool sOk = false;
+
+    size_t comma = value.find_first_of(',');
+    sOk = (comma == std::string::npos || parseUInt(value.substr(comma + 1)));
+    std::string val = value.substr(0, comma);
+
+    size_t dash = val.find_first_of('-');
+    if (dash == std::string::npos) {
+        aOk = parseUInt(val);
+        bOk = aOk;
+    } else {
+        aOk = (dash == 0 || parseUInt(val.substr(0, dash)));
+        bOk = (dash == val.length() - 1 || parseUInt(val.substr(dash + 1)));
+    }
+
+    return aOk && bOk && sOk;
+}
+
+void getRange(const std::string& value, size_t* a, size_t* b, size_t* s)
+{
+    size_t comma = value.find_first_of(',');
+    *s = (comma == std::string::npos ? 1 : getUInt(value.substr(comma + 1)));
+    std::string val = value.substr(0, comma);
+
+    size_t dash = val.find_first_of('-');
+    if (dash == std::string::npos) {
+        *a = getUInt(val);
+        *b = *a;
+    } else {
+        *a = (dash == 0 ? 0 : getUInt(val.substr(0, dash)));
+        *b = (dash == val.length() - 1 ? std::numeric_limits<size_t>::max() : getUInt(val.substr(dash + 1)));
+    }
+}
+
+bool indexInRange(size_t i, size_t a, size_t b, size_t s)
+{
+    return (i >= a && i <= b && (i - a) % s == 0);
+}
+
 /* Helper functions for handling tags */
 
 void addTag(TAD::TagList& tl, const std::string& tag)
@@ -307,11 +350,13 @@ void tad_convert_normalize_helper_from_float(TAD::Array<T>& array, TAD::Type new
 int tad_convert(int argc, char* argv[])
 {
     CmdLine cmdLine;
+    cmdLine.addOptionWithArg("input", 'i');
+    cmdLine.addOptionWithArg("output", 'o');
     cmdLine.addOptionWithoutArg("normalize", 'n');
     cmdLine.addOptionWithArg("type", 't', parseType);
     cmdLine.addOptionWithoutArg("append", 'a');
-    cmdLine.addOptionWithArg("input", 'i');
-    cmdLine.addOptionWithArg("output", 'o');
+    cmdLine.addOptionWithArg("keep", 'k', parseRange);
+    cmdLine.addOptionWithArg("drop", 'd', parseRange);
     std::string errMsg;
     if (!cmdLine.parse(argc, argv, 2, -1, errMsg)) {
         fprintf(stderr, "tad convert: %s\n", errMsg.c_str());
@@ -327,8 +372,20 @@ int tad_convert(int argc, char* argv[])
                 "                       int64, uint64, float32, float64)\n"
                 "  -n|--normalize       create/assume floating point values in [-1,1]/[0,1]\n"
                 "                       when converting to/from signed/unsigned integer values\n"
-                "  -a|--append          append to the output file instead of overwriting (not always possible)\n");
+                "  -a|--append          append to the output file instead of overwriting (not always possible)\n"
+                "The following options allow to keep or drop specific arrays from the input.\n"
+                "Only one of the two alternatives can be used, but each option can be given multiple times.\n"
+                "A range specification is of the form 'A-B' optionally followed by ',S' where A is the start\n"
+                "(zero if omitted), B is the end (a maximum value if omitted), and S is a step size.\n"
+                "For example, for an input of 10 arrays, '0-9' or '-' specifies all, '0-9,2' specifies\n"
+                "every even-numered array, and '5' specifies array 5.\n"
+                "  -k|--keep=A-B[,S]    keep the specified arrays, drop others\n"
+                "  -d|--drop=A-B[,S]    drop the specified arrays, keep others\n");
         return 0;
+    }
+    if (cmdLine.isSet("keep") && cmdLine.isSet("drop")) {
+        fprintf(stderr, "tad convert: cannot use both --keep and --drop\n");
+        return 1;
     }
 
     const std::string& outFileName = cmdLine.arguments()[cmdLine.arguments().size() - 1];
@@ -338,6 +395,21 @@ int tad_convert(int argc, char* argv[])
     TAD::Type type = getType(cmdLine.value("type"));
     TAD::Error err = TAD::ErrorNone;
 
+    std::vector<size_t> A, B, S;
+    std::vector<std::string> ranges;
+    if (cmdLine.isSet("keep")) {
+        ranges = cmdLine.valueList("keep");
+    } else if (cmdLine.isSet("drop")) {
+        ranges = cmdLine.valueList("drop");
+    }
+    A.resize(ranges.size());
+    B.resize(ranges.size());
+    S.resize(ranges.size());
+    for (size_t i = 0; i < ranges.size(); i++) {
+        getRange(ranges[i], &(A[i]), &(B[i]), &(S[i]));
+    }
+
+    size_t arrayIndex = 0;
     for (size_t i = 0; i < cmdLine.arguments().size() - 1; i++) {
         const std::string& inFileName = cmdLine.arguments()[i];
         TAD::Importer importer(inFileName, importerHints);
@@ -353,39 +425,59 @@ int tad_convert(int argc, char* argv[])
                 fprintf(stderr, "tad convert: %s: %s\n", inFileName.c_str(), TAD::strerror(err));
                 break;
             }
-            if (cmdLine.isSet("type")) {
-                TAD::Type oldType = array.componentType();
-                if (cmdLine.isSet("normalize")) {
-                    if (type == TAD::float32) {
-                        array = convert(array, type);
-                        TAD::Array<float> floatArray(array);
-                        tad_convert_normalize_helper_to_float<float>(floatArray, oldType);
-                    } else if (type == TAD::float64) {
-                        array = convert(array, type);
-                        TAD::Array<double> doubleArray(array);
-                        tad_convert_normalize_helper_to_float<double>(doubleArray, oldType);
-                    } else if (oldType == TAD::float32) {
-                        if (type == TAD::int8 || type == TAD::uint8 || type == TAD::int16 || type == TAD::uint16) {
-                            TAD::Array<float> floatArray(array);
-                            tad_convert_normalize_helper_from_float<float>(floatArray, type);
-                        }
-                        array = convert(array, type);
-                    } else if (oldType == TAD::float64) {
-                        if (type == TAD::int8 || type == TAD::uint8 || type == TAD::int16 || type == TAD::uint16) {
-                            TAD::Array<double> doubleArray(array);
-                            tad_convert_normalize_helper_from_float<double>(doubleArray, type);
-                        }
-                        array = convert(array, type);
+            bool keep = true;
+            if (cmdLine.isSet("keep")) {
+                keep = false;
+                for (size_t i = 0; i < ranges.size(); i++) {
+                    if (indexInRange(arrayIndex, A[i], B[i], S[i])) {
+                        keep = true;
+                        break;
                     }
-                } else {
-                    array = convert(array, type);
+                }
+            } else if (cmdLine.isSet("drop")) {
+                for (size_t i = 0; i < ranges.size(); i++) {
+                    if (indexInRange(arrayIndex, A[i], B[i], S[i])) {
+                        keep = false;
+                        break;
+                    }
                 }
             }
-            err = exporter.writeArray(array);
-            if (err != TAD::ErrorNone) {
-                fprintf(stderr, "tad convert: %s: %s\n", outFileName.c_str(), TAD::strerror(err));
-                break;
+            if (keep) {
+                if (cmdLine.isSet("type")) {
+                    TAD::Type oldType = array.componentType();
+                    if (cmdLine.isSet("normalize")) {
+                        if (type == TAD::float32) {
+                            array = convert(array, type);
+                            TAD::Array<float> floatArray(array);
+                            tad_convert_normalize_helper_to_float<float>(floatArray, oldType);
+                        } else if (type == TAD::float64) {
+                            array = convert(array, type);
+                            TAD::Array<double> doubleArray(array);
+                            tad_convert_normalize_helper_to_float<double>(doubleArray, oldType);
+                        } else if (oldType == TAD::float32) {
+                            if (type == TAD::int8 || type == TAD::uint8 || type == TAD::int16 || type == TAD::uint16) {
+                                TAD::Array<float> floatArray(array);
+                                tad_convert_normalize_helper_from_float<float>(floatArray, type);
+                            }
+                            array = convert(array, type);
+                        } else if (oldType == TAD::float64) {
+                            if (type == TAD::int8 || type == TAD::uint8 || type == TAD::int16 || type == TAD::uint16) {
+                                TAD::Array<double> doubleArray(array);
+                                tad_convert_normalize_helper_from_float<double>(doubleArray, type);
+                            }
+                            array = convert(array, type);
+                        }
+                    } else {
+                        array = convert(array, type);
+                    }
+                }
+                err = exporter.writeArray(array);
+                if (err != TAD::ErrorNone) {
+                    fprintf(stderr, "tad convert: %s: %s\n", outFileName.c_str(), TAD::strerror(err));
+                    break;
+                }
             }
+            arrayIndex++;
         }
         if (err != TAD::ErrorNone) {
             break;
