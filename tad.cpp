@@ -313,13 +313,13 @@ int tad_convert(int argc, char* argv[])
     cmdLine.addOptionWithArg("input", 'i');
     cmdLine.addOptionWithArg("output", 'o');
     std::string errMsg;
-    if (!cmdLine.parse(argc, argv, 2, 2, errMsg)) {
+    if (!cmdLine.parse(argc, argv, 2, -1, errMsg)) {
         fprintf(stderr, "tad convert: %s\n", errMsg.c_str());
         return 1;
     }
     if (cmdLine.isSet("help")) {
-        fprintf(stderr, "Usage: tad convert [option]... <infile|-> <outfile|->\n"
-                "Convert to a new type and/or format.\n"
+        fprintf(stderr, "Usage: tad convert [option]... <infile|-> [<infile...>] <outfile|->\n"
+                "Convert input(s) to a new type and/or format and write to a new output.\n"
                 "Options:\n"
                 "  -i|--input=TAG       set input hints such as FORMAT=gdal, DPI=300 etc\n"
                 "  -o|--output=TAG      set output hints such as FORMAT=gdal, COMPRESSION=9 etc\n"
@@ -331,57 +331,63 @@ int tad_convert(int argc, char* argv[])
         return 0;
     }
 
-    const std::string& inFileName = cmdLine.arguments()[0];
-    const std::string& outFileName = cmdLine.arguments()[1];
-    TAD::TagList importerHints = createTagList(cmdLine.valueList("input"));
+    const std::string& outFileName = cmdLine.arguments()[cmdLine.arguments().size() - 1];
     TAD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
-    TAD::Importer importer(inFileName, importerHints);
     TAD::Exporter exporter(outFileName, cmdLine.isSet("append") ? TAD::Append : TAD::Overwrite, exporterHints);
-    TAD::Error err = TAD::ErrorNone;
+    TAD::TagList importerHints = createTagList(cmdLine.valueList("input"));
     TAD::Type type = getType(cmdLine.value("type"));
-    for (;;) {
-        if (!importer.hasMore(&err)) {
+    TAD::Error err = TAD::ErrorNone;
+
+    for (size_t i = 0; i < cmdLine.arguments().size() - 1; i++) {
+        const std::string& inFileName = cmdLine.arguments()[i];
+        TAD::Importer importer(inFileName, importerHints);
+        for (;;) {
+            if (!importer.hasMore(&err)) {
+                if (err != TAD::ErrorNone) {
+                    fprintf(stderr, "tad convert: %s: %s\n", inFileName.c_str(), TAD::strerror(err));
+                }
+                break;
+            }
+            TAD::ArrayContainer array = importer.readArray(&err);
             if (err != TAD::ErrorNone) {
                 fprintf(stderr, "tad convert: %s: %s\n", inFileName.c_str(), TAD::strerror(err));
+                break;
             }
-            break;
-        }
-        TAD::ArrayContainer array = importer.readArray(&err);
-        if (err != TAD::ErrorNone) {
-            fprintf(stderr, "tad convert: %s: %s\n", inFileName.c_str(), TAD::strerror(err));
-            break;
-        }
-        if (cmdLine.isSet("type")) {
-            TAD::Type oldType = array.componentType();
-            if (cmdLine.isSet("normalize")) {
-                if (type == TAD::float32) {
-                    array = convert(array, type);
-                    TAD::Array<float> floatArray(array);
-                    tad_convert_normalize_helper_to_float<float>(floatArray, oldType);
-                } else if (type == TAD::float64) {
-                    array = convert(array, type);
-                    TAD::Array<double> doubleArray(array);
-                    tad_convert_normalize_helper_to_float<double>(doubleArray, oldType);
-                } else if (oldType == TAD::float32) {
-                    if (type == TAD::int8 || type == TAD::uint8 || type == TAD::int16 || type == TAD::uint16) {
+            if (cmdLine.isSet("type")) {
+                TAD::Type oldType = array.componentType();
+                if (cmdLine.isSet("normalize")) {
+                    if (type == TAD::float32) {
+                        array = convert(array, type);
                         TAD::Array<float> floatArray(array);
-                        tad_convert_normalize_helper_from_float<float>(floatArray, type);
-                    }
-                    array = convert(array, type);
-                } else if (oldType == TAD::float64) {
-                    if (type == TAD::int8 || type == TAD::uint8 || type == TAD::int16 || type == TAD::uint16) {
+                        tad_convert_normalize_helper_to_float<float>(floatArray, oldType);
+                    } else if (type == TAD::float64) {
+                        array = convert(array, type);
                         TAD::Array<double> doubleArray(array);
-                        tad_convert_normalize_helper_from_float<double>(doubleArray, type);
+                        tad_convert_normalize_helper_to_float<double>(doubleArray, oldType);
+                    } else if (oldType == TAD::float32) {
+                        if (type == TAD::int8 || type == TAD::uint8 || type == TAD::int16 || type == TAD::uint16) {
+                            TAD::Array<float> floatArray(array);
+                            tad_convert_normalize_helper_from_float<float>(floatArray, type);
+                        }
+                        array = convert(array, type);
+                    } else if (oldType == TAD::float64) {
+                        if (type == TAD::int8 || type == TAD::uint8 || type == TAD::int16 || type == TAD::uint16) {
+                            TAD::Array<double> doubleArray(array);
+                            tad_convert_normalize_helper_from_float<double>(doubleArray, type);
+                        }
+                        array = convert(array, type);
                     }
+                } else {
                     array = convert(array, type);
                 }
-            } else {
-                array = convert(array, type);
+            }
+            err = exporter.writeArray(array);
+            if (err != TAD::ErrorNone) {
+                fprintf(stderr, "tad convert: %s: %s\n", outFileName.c_str(), TAD::strerror(err));
+                break;
             }
         }
-        err = exporter.writeArray(array);
         if (err != TAD::ErrorNone) {
-            fprintf(stderr, "tad convert: %s: %s\n", outFileName.c_str(), TAD::strerror(err));
             break;
         }
     }
