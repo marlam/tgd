@@ -46,15 +46,16 @@
 bool parseUInt(const std::string& value, bool allowZero)
 {
     bool ok = true;
-    size_t val = 0;
+    long long val = -1;
     size_t idx = 0;
     try {
-        val = std::stoull(value, &idx);
+        // read a signed value and discard negative values later since stoull accepts "-1" (why??)
+        val = std::stoll(value, &idx);
     }
     catch (...) {
         ok = false;
     }
-    if (ok && (idx != value.length() || (!allowZero && val == 0))) {
+    if (ok && (idx != value.length() || val < 0 || (!allowZero && val == 0))) {
         ok = false;
     }
     return ok;
@@ -358,6 +359,7 @@ int tad_convert(int argc, char* argv[])
     cmdLine.addOptionWithArg("box", 'b', parseUIntList);
     cmdLine.addOptionWithArg("keep", 'k', parseRange);
     cmdLine.addOptionWithArg("drop", 'd', parseRange);
+    cmdLine.addOptionWithoutArg("split", 's');
     std::string errMsg;
     if (!cmdLine.parse(argc, argv, 2, -1, errMsg)) {
         fprintf(stderr, "tad convert: %s\n", errMsg.c_str());
@@ -382,7 +384,13 @@ int tad_convert(int argc, char* argv[])
                 "For example, for an input of 10 arrays, '0-9' or '-' specifies all, '0-9,2' specifies\n"
                 "every even-numered array, and '5' specifies array 5.\n"
                 "  -k|--keep=A-B[,S]    keep the specified arrays, drop others\n"
-                "  -d|--drop=A-B[,S]    drop the specified arrays, keep others\n");
+                "  -d|--drop=A-B[,S]    drop the specified arrays, keep others\n"
+                "The following option allows to split input arrays into multiple files. The <outfile>\n"
+                "argument is then interpreted as a template for the new file names. This template must\n"
+                "contain the sequence %%[n]N, which will be replaced by the index of the array.\n"
+                "The optional parameter n gives the minimum number of digits in the resulting number;\n"
+                "small numbers will be padded with zeroes.\n"
+                "  -s|--split           split input into multiple output files\n");
         return 0;
     }
     if (cmdLine.isSet("keep") && cmdLine.isSet("drop")) {
@@ -390,12 +398,9 @@ int tad_convert(int argc, char* argv[])
         return 1;
     }
 
-    const std::string& outFileName = cmdLine.arguments()[cmdLine.arguments().size() - 1];
     TAD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
-    TAD::Exporter exporter(outFileName, cmdLine.isSet("append") ? TAD::Append : TAD::Overwrite, exporterHints);
     TAD::TagList importerHints = createTagList(cmdLine.valueList("input"));
     TAD::Type type = getType(cmdLine.value("type"));
-    TAD::Error err = TAD::ErrorNone;
 
     std::vector<size_t> box;
     if (cmdLine.isSet("box"))
@@ -415,6 +420,30 @@ int tad_convert(int argc, char* argv[])
         getRange(ranges[i], &(A[i]), &(B[i]), &(S[i]));
     }
 
+    std::string splitTemplate;
+    size_t splitTemplateFirstIndex = 0;
+    size_t splitTemplateLastIndex = 0;
+    size_t splitTemplateFieldWidth = 0;
+    std::string outFileName;
+    TAD::Exporter exporter;
+    if (cmdLine.isSet("split")) {
+        splitTemplate = cmdLine.arguments()[cmdLine.arguments().size() - 1];
+        splitTemplateFirstIndex = splitTemplate.find_first_of('%');
+        splitTemplateLastIndex = splitTemplate.find_first_of('N', splitTemplateFirstIndex);
+        size_t l = splitTemplateLastIndex - splitTemplateFirstIndex - 1;
+        if (splitTemplateFirstIndex == std::string::npos
+                || splitTemplateLastIndex == std::string::npos
+                || (l > 0 && !parseUIntLargerThanZero(splitTemplate.substr(splitTemplateFirstIndex + 1, l)))) {
+            fprintf(stderr, "tad convert: --split: output file template does not contain valid %%[n]N\n");
+            return 1;
+        }
+        splitTemplateFieldWidth = (l == 0 ? 6 : getUInt(splitTemplate.substr(splitTemplateFirstIndex + 1, l)));
+    } else {
+        outFileName = cmdLine.arguments()[cmdLine.arguments().size() - 1];
+        exporter.initialize(outFileName, cmdLine.isSet("append") ? TAD::Append : TAD::Overwrite, exporterHints);
+    }
+
+    TAD::Error err = TAD::ErrorNone;
     size_t arrayIndex = 0;
     for (size_t i = 0; i < cmdLine.arguments().size() - 1; i++) {
         const std::string& inFileName = cmdLine.arguments()[i];
@@ -510,6 +539,15 @@ int tad_convert(int argc, char* argv[])
                     } else {
                         array = convert(array, type);
                     }
+                }
+                if (cmdLine.isSet("split")) {
+                    std::string arrayIndexString = std::to_string(arrayIndex);
+                    outFileName = splitTemplate.substr(0, splitTemplateFirstIndex);
+                    if (arrayIndexString.length() < splitTemplateFieldWidth)
+                        outFileName += std::string(splitTemplateFieldWidth - arrayIndexString.length(), '0');
+                    outFileName += arrayIndexString;
+                    outFileName += splitTemplate.substr(splitTemplateLastIndex + 1);
+                    exporter.initialize(outFileName, cmdLine.isSet("append") ? TAD::Append : TAD::Overwrite, exporterHints);
                 }
                 err = exporter.writeArray(array);
                 if (err != TAD::ErrorNone) {
