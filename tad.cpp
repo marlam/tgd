@@ -141,6 +141,38 @@ void getUIntAndName(const std::string& value, size_t* u, std::string* n)
     *n = value.substr(i + 1);
 }
 
+bool parseNameAndValue(const std::string& value)
+{
+    size_t i = value.find_first_of('=');
+    return (i != std::string::npos && i > 0);
+}
+
+void getNameAndValue(const std::string& value, std::string* n, std::string* v)
+{
+    size_t i = value.find_first_of('=');
+    *n = value.substr(0, i);
+    *v = value.substr(i + 1);
+}
+
+bool parseUIntAndNameAndValue(const std::string& value)
+{
+    if (parseUIntAndName(value)) {
+        size_t u;
+        std::string v;
+        getUIntAndName(value, &u, &v);
+        return parseNameAndValue(v);
+    } else {
+        return false;
+    }
+}
+
+void getUIntAndNameAndValue(const std::string& value, size_t* u, std::string* n, std::string* v)
+{
+    std::string t;
+    getUIntAndName(value, u, &t);
+    getNameAndValue(t, n, v);
+}
+
 bool parseRange(const std::string& value)
 {
     bool aOk = false;
@@ -360,6 +392,16 @@ int tad_convert(int argc, char* argv[])
     cmdLine.addOptionWithArg("keep", 'k', parseRange);
     cmdLine.addOptionWithArg("drop", 'd', parseRange);
     cmdLine.addOptionWithoutArg("split", 's');
+    cmdLine.addOrderedOptionWithoutArg("unset-all-tags");
+    cmdLine.addOrderedOptionWithArg("global-tag", 0, parseNameAndValue);
+    cmdLine.addOrderedOptionWithArg("unset-global-tag");
+    cmdLine.addOrderedOptionWithoutArg("unset-global-tags");
+    cmdLine.addOrderedOptionWithArg("dimension-tag", 0, parseUIntAndNameAndValue);
+    cmdLine.addOrderedOptionWithArg("unset-dimension-tag", 0, parseUIntAndName);
+    cmdLine.addOrderedOptionWithArg("unset-dimension-tags", 0, parseUInt);
+    cmdLine.addOrderedOptionWithArg("component-tag", 0, parseUIntAndNameAndValue);
+    cmdLine.addOrderedOptionWithArg("unset-component-tag", 0, parseUIntAndName);
+    cmdLine.addOrderedOptionWithArg("unset-component-tags", 0, parseUInt);
     std::string errMsg;
     if (!cmdLine.parse(argc, argv, 2, -1, errMsg)) {
         fprintf(stderr, "tad convert: %s\n", errMsg.c_str());
@@ -390,7 +432,19 @@ int tad_convert(int argc, char* argv[])
                 "contain the sequence %%[n]N, which will be replaced by the index of the array.\n"
                 "The optional parameter n gives the minimum number of digits in the resulting number;\n"
                 "small numbers will be padded with zeroes.\n"
-                "  -s|--split           split input into multiple output files\n");
+                "  -s|--split           split input into multiple output files\n"
+                "The following options modify metadata stored in tags, and are applied in the order\n"
+                "in which they are given:\n"
+                "  --unset-all-tags           unset all tags\n"
+                "  --global-tag=N=V           set global tag N to value V\n"
+                "  --unset-global-tag=N       unset global tag N\n"
+                "  --unset-global-tags        unset all global tags\n"
+                "  --dimension-tag=D,N=V      set tag N of dimension D to value V\n"
+                "  --unset-dimension-tag=D,N  unset tag N of dimension D\n"
+                "  --unset-dimension-tags=D   unset all tags of dimension D\n"
+                "  --component-tag=C,N=V      set tag N of component C to value V\n"
+                "  --unset-component-tag=C,N  unset tag N of component C\n"
+                "  --unset-component-tags=C   unset all tags of component C\n");
         return 0;
     }
     if (cmdLine.isSet("keep") && cmdLine.isSet("drop")) {
@@ -539,6 +593,84 @@ int tad_convert(int argc, char* argv[])
                     } else {
                         array = convert(array, type);
                     }
+                }
+                for (size_t o = 0; o < cmdLine.orderedOptionNames().size(); o++) {
+                    const std::string& optName = cmdLine.orderedOptionNames()[o];
+                    const std::string& optVal = cmdLine.orderedOptionValues()[o];
+                    if (optName == "unset-all-tags") {
+                        array.globalTagList().clear();
+                        for (size_t d = 0; d < array.dimensionCount(); d++)
+                            array.dimensionTagList(d).clear();
+                        for (size_t c = 0; c < array.componentCount(); c++)
+                            array.componentTagList(c).clear();
+                    } else if (optName == "global-tag") {
+                        std::string n, v;
+                        getNameAndValue(optVal, &n, &v);
+                        array.globalTagList().set(n, v);
+                    } else if (optName == "unset-global-tag") {
+                        array.globalTagList().unset(optVal);
+                    } else if (optName == "unset-global-tags") {
+                        array.globalTagList().clear();
+                    } else if (optName == "dimension-tag") {
+                        size_t d;
+                        std::string n, v;
+                        getUIntAndNameAndValue(optVal, &d, &n, &v);
+                        if (d >= array.dimensionCount()) {
+                            fprintf(stderr, "tad convert: %s: no such dimension %zu\n", inFileName.c_str(), d);
+                            err = TAD::ErrorInvalidData;
+                            break;
+                        }
+                        array.dimensionTagList(d).set(n, v);
+                    } else if (optName == "unset-dimension-tag") {
+                        size_t d;
+                        std::string n;
+                        getUIntAndName(optVal, &d, &n);
+                        if (d >= array.dimensionCount()) {
+                            fprintf(stderr, "tad convert: %s: no such dimension %zu\n", inFileName.c_str(), d);
+                            err = TAD::ErrorInvalidData;
+                            break;
+                        }
+                        array.dimensionTagList(d).unset(n);
+                    } else if (optName == "unset-dimension-tags") {
+                        size_t d = getUInt(optVal);
+                        if (d >= array.dimensionCount()) {
+                            fprintf(stderr, "tad convert: %s: no such dimension %zu\n", inFileName.c_str(), d);
+                            err = TAD::ErrorInvalidData;
+                            break;
+                        }
+                        array.dimensionTagList(d).clear();
+                    } else if (optName == "component-tag") {
+                        size_t c;
+                        std::string n, v;
+                        getUIntAndNameAndValue(optVal, &c, &n, &v);
+                        if (c >= array.componentCount()) {
+                            fprintf(stderr, "tad convert: %s: no such component %zu\n", inFileName.c_str(), c);
+                            err = TAD::ErrorInvalidData;
+                            break;
+                        }
+                        array.componentTagList(c).set(n, v);
+                    } else if (optName == "unset-component-tag") {
+                        size_t c;
+                        std::string n;
+                        getUIntAndName(optVal, &c, &n);
+                        if (c >= array.componentCount()) {
+                            fprintf(stderr, "tad convert: %s: no such component %zu\n", inFileName.c_str(), c);
+                            err = TAD::ErrorInvalidData;
+                            break;
+                        }
+                        array.componentTagList(c).unset(n);
+                    } else if (optName == "unset-component-tags") {
+                        size_t c = getUInt(optVal);
+                        if (c >= array.componentCount()) {
+                            fprintf(stderr, "tad convert: %s: no such component %zu\n", inFileName.c_str(), c);
+                            err = TAD::ErrorInvalidData;
+                            break;
+                        }
+                        array.componentTagList(c).clear();
+                    }
+                }
+                if (err != TAD::ErrorNone) {
+                    break;
                 }
                 if (cmdLine.isSet("split")) {
                     std::string arrayIndexString = std::to_string(arrayIndex);
@@ -802,8 +934,8 @@ int tad_info(int argc, char* argv[])
             break;
         }
         for (size_t o = 0; o < cmdLine.orderedOptionNames().size(); o++) {
-            std::string optName = cmdLine.orderedOptionNames()[o];
-            std::string optVal = cmdLine.orderedOptionValues()[o];
+            const std::string& optName = cmdLine.orderedOptionNames()[o];
+            const std::string& optVal = cmdLine.orderedOptionValues()[o];
             if (optName == "dimensions") {
                 printf("%zu\n", array.dimensionCount());
             } else if (optName == "dimension") {
