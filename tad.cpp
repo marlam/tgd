@@ -328,6 +328,65 @@ int tad_version(void)
     return 0;
 }
 
+int tad_create(int argc, char* argv[])
+{
+    CmdLine cmdLine;
+    cmdLine.addOptionWithArg("output", 'o');
+    cmdLine.addOptionWithArg("dimensions", 'd', parseUIntLargerThanZeroList);
+    cmdLine.addOptionWithArg("components", 'c', parseUIntLargerThanZero);
+    cmdLine.addOptionWithArg("type", 't', parseType);
+    cmdLine.addOptionWithArg("n", 'n', parseUIntLargerThanZero, "1");
+    std::string errMsg;
+    if (!cmdLine.parse(argc, argv, 1, 1, errMsg)) {
+        fprintf(stderr, "tad create: %s\n", errMsg.c_str());
+        return 1;
+    }
+    if (cmdLine.isSet("help")) {
+        fprintf(stderr, "Usage: tad create [option]... <outfile|->\n"
+                "Create zero-filled arrays.\n"
+                "Options:\n"
+                "  -o|--output=TAG      set output hints such as FORMAT=gdal, COMPRESSION=9 etc\n"
+                "  -d|--dimensions=D0[,D1,...]  set dimensions, e.g. W,H for 2D\n"
+                "  -c|--components=C    set number of components per element\n"
+                "  -t|--type=T          set type (int8, uint8, int16, uint16, int32, uint32,\n"
+                "                       int64, uint64, float32, float64)\n"
+                "  -n|--n=N             set number of arrays to create (default 1)\n");
+        return 0;
+    }
+    if (!cmdLine.isSet("dimensions")) {
+        fprintf(stderr, "tad create: --dimensions is missing\n");
+        return 1;
+    }
+    if (!cmdLine.isSet("components")) {
+        fprintf(stderr, "tad create: --components is missing\n");
+        return 1;
+    }
+    if (!cmdLine.isSet("type")) {
+        fprintf(stderr, "tad create: --type is missing\n");
+        return 1;
+    }
+
+    const std::string& outFileName = cmdLine.arguments()[0];
+    TAD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
+    TAD::Exporter exporter(outFileName, TAD::Overwrite, exporterHints);
+    TAD::Error err = TAD::ErrorNone;
+    std::vector<size_t> dimensions = getUIntList(cmdLine.value("dimensions"));
+    size_t components = getUInt(cmdLine.value("components"));
+    TAD::Type type = getType(cmdLine.value("type"));
+    size_t n = getUInt(cmdLine.value("n"));
+    TAD::ArrayContainer array(dimensions, components, type);
+    std::memset(array.data(), 0, array.dataSize());
+    for (size_t i = 0; i < n; i++) {
+        err = exporter.writeArray(array);
+        if (err != TAD::ErrorNone) {
+            fprintf(stderr, "tad create: %s: %s\n", outFileName.c_str(), TAD::strerror(err));
+            break;
+        }
+    }
+
+    return (err == TAD::ErrorNone ? 0 : 1);
+}
+
 template<typename T>
 void tad_convert_normalize_helper_to_float(TAD::Array<T>& array, TAD::Type oldType)
 {
@@ -690,65 +749,6 @@ int tad_convert(int argc, char* argv[])
             arrayIndex++;
         }
         if (err != TAD::ErrorNone) {
-            break;
-        }
-    }
-
-    return (err == TAD::ErrorNone ? 0 : 1);
-}
-
-int tad_create(int argc, char* argv[])
-{
-    CmdLine cmdLine;
-    cmdLine.addOptionWithArg("output", 'o');
-    cmdLine.addOptionWithArg("dimensions", 'd', parseUIntLargerThanZeroList);
-    cmdLine.addOptionWithArg("components", 'c', parseUIntLargerThanZero);
-    cmdLine.addOptionWithArg("type", 't', parseType);
-    cmdLine.addOptionWithArg("n", 'n', parseUIntLargerThanZero, "1");
-    std::string errMsg;
-    if (!cmdLine.parse(argc, argv, 1, 1, errMsg)) {
-        fprintf(stderr, "tad create: %s\n", errMsg.c_str());
-        return 1;
-    }
-    if (cmdLine.isSet("help")) {
-        fprintf(stderr, "Usage: tad create [option]... <outfile|->\n"
-                "Create zero-filled arrays.\n"
-                "Options:\n"
-                "  -o|--output=TAG      set output hints such as FORMAT=gdal, COMPRESSION=9 etc\n"
-                "  -d|--dimensions=D0[,D1,...]  set dimensions, e.g. W,H for 2D\n"
-                "  -c|--components=C    set number of components per element\n"
-                "  -t|--type=T          set type (int8, uint8, int16, uint16, int32, uint32,\n"
-                "                       int64, uint64, float32, float64)\n"
-                "  -n|--n=N             set number of arrays to create (default 1)\n");
-        return 0;
-    }
-    if (!cmdLine.isSet("dimensions")) {
-        fprintf(stderr, "tad create: --dimensions is missing\n");
-        return 1;
-    }
-    if (!cmdLine.isSet("components")) {
-        fprintf(stderr, "tad create: --components is missing\n");
-        return 1;
-    }
-    if (!cmdLine.isSet("type")) {
-        fprintf(stderr, "tad create: --type is missing\n");
-        return 1;
-    }
-
-    const std::string& outFileName = cmdLine.arguments()[0];
-    TAD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
-    TAD::Exporter exporter(outFileName, TAD::Overwrite, exporterHints);
-    TAD::Error err = TAD::ErrorNone;
-    std::vector<size_t> dimensions = getUIntList(cmdLine.value("dimensions"));
-    size_t components = getUInt(cmdLine.value("components"));
-    TAD::Type type = getType(cmdLine.value("type"));
-    size_t n = getUInt(cmdLine.value("n"));
-    TAD::ArrayContainer array(dimensions, components, type);
-    std::memset(array.data(), 0, array.dataSize());
-    for (size_t i = 0; i < n; i++) {
-        err = exporter.writeArray(array);
-        if (err != TAD::ErrorNone) {
-            fprintf(stderr, "tad create: %s: %s\n", outFileName.c_str(), TAD::strerror(err));
             break;
         }
     }
@@ -1133,10 +1133,10 @@ int main(int argc, char* argv[])
         retval = tad_help();
     } else if (std::strcmp(argv[1], "version") == 0 || std::strcmp(argv[1], "--version") == 0) {
         retval = tad_version();
-    } else if (std::strcmp(argv[1], "convert") == 0) {
-        retval = tad_convert(argc - 1, &(argv[1]));
     } else if (std::strcmp(argv[1], "create") == 0) {
         retval = tad_create(argc - 1, &(argv[1]));
+    } else if (std::strcmp(argv[1], "convert") == 0) {
+        retval = tad_convert(argc - 1, &(argv[1]));
     } else if (std::strcmp(argv[1], "diff") == 0) {
         retval = tad_diff(argc - 1, &(argv[1]));
     } else if (std::strcmp(argv[1], "info") == 0) {
