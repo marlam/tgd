@@ -257,18 +257,18 @@ void initBoxIndex(const std::vector<size_t>& box, std::vector<size_t>& index)
         index[i] = box[i];
 }
 
-bool incBoxIndex(const std::vector<size_t>& box, std::vector<size_t>& index)
+bool incBoxIndex(const std::vector<size_t>& box, std::vector<size_t>& index, size_t incDim = 0)
 {
     if (index.size() == 0 || box.size() != index.size() * 2 || boxIsEmpty(box))
         return false;
-    size_t dimToInc = index.size() - 1;
+    size_t dimToInc = incDim;
     while (index[dimToInc] == box[dimToInc] + box[index.size() + dimToInc] - 1) {
-        if (dimToInc == 0)
+        if (dimToInc == index.size() - 1)
             return false;
-        dimToInc--;
+        dimToInc++;
     }
     index[dimToInc]++;
-    for (size_t j = dimToInc + 1; j < index.size(); j++) {
+    for (size_t j = 0; j < dimToInc; j++) {
         index[j] = box[j];
     }
     return true;
@@ -355,6 +355,7 @@ int tad_convert(int argc, char* argv[])
     cmdLine.addOptionWithoutArg("normalize", 'n');
     cmdLine.addOptionWithArg("type", 't', parseType);
     cmdLine.addOptionWithoutArg("append", 'a');
+    cmdLine.addOptionWithArg("box", 'b', parseUIntList);
     cmdLine.addOptionWithArg("keep", 'k', parseRange);
     cmdLine.addOptionWithArg("drop", 'd', parseRange);
     std::string errMsg;
@@ -373,6 +374,7 @@ int tad_convert(int argc, char* argv[])
                 "  -n|--normalize       create/assume floating point values in [-1,1]/[0,1]\n"
                 "                       when converting to/from signed/unsigned integer values\n"
                 "  -a|--append          append to the output file instead of overwriting (not always possible)\n"
+                "  -b|--box=INDEX,SIZE  set box to operate on, e.g. X,Y,WIDTH,HEIGHT for 2D\n"
                 "The following options allow to keep or drop specific arrays from the input.\n"
                 "Only one of the two alternatives can be used, but each option can be given multiple times.\n"
                 "A range specification is of the form 'A-B' optionally followed by ',S' where A is the start\n"
@@ -394,6 +396,10 @@ int tad_convert(int argc, char* argv[])
     TAD::TagList importerHints = createTagList(cmdLine.valueList("input"));
     TAD::Type type = getType(cmdLine.value("type"));
     TAD::Error err = TAD::ErrorNone;
+
+    std::vector<size_t> box;
+    if (cmdLine.isSet("box"))
+        box = getUIntList(cmdLine.value("box"));
 
     std::vector<size_t> A, B, S;
     std::vector<std::string> ranges;
@@ -443,6 +449,40 @@ int tad_convert(int argc, char* argv[])
                 }
             }
             if (keep) {
+                if (box.size() > 0) {
+                    if (box.size() != array.dimensionCount() * 2) {
+                        fprintf(stderr, "tad convert: %s: box does not match dimensions\n", inFileName.c_str());
+                        err = TAD::ErrorInvalidData;
+                        break;
+                    }
+                    std::vector<size_t> localBox = restrictBoxToArray(box, array);
+                    if (boxIsEmpty(localBox)) {
+                        fprintf(stderr, "tad convert: %s: empty box\n", inFileName.c_str());
+                        err = TAD::ErrorInvalidData;
+                        break;
+                    }
+                    TAD::ArrayContainer arrayBox = TAD::ArrayContainer(
+                            std::vector(localBox.begin() + array.dimensionCount(), localBox.end()),
+                            array.componentCount(), array.componentType());
+                    std::vector<size_t> arrayIndex(array.dimensionCount());
+                    std::vector<size_t> boxIndex(array.dimensionCount());
+                    initBoxIndex(localBox, arrayIndex);
+                    size_t lowestDimBoxSize = localBox[array.dimensionCount()];
+                    for (;;) {
+                        for (size_t i = 0; i < array.dimensionCount(); i++)
+                            boxIndex[i] = arrayIndex[i] - localBox[i];
+                        std::memcpy(arrayBox.get(boxIndex), array.get(arrayIndex),
+                                lowestDimBoxSize * array.elementSize());
+                        if (!incBoxIndex(localBox, arrayIndex, 1))
+                            break;
+                    }
+                    arrayBox.globalTagList() = array.globalTagList();
+                    for (size_t i = 0; i < array.dimensionCount(); i++)
+                        arrayBox.dimensionTagList(i) = array.dimensionTagList(i);
+                    for (size_t i = 0; i < array.componentCount(); i++)
+                        arrayBox.componentTagList(i) = array.componentTagList(i);
+                    array = arrayBox;
+                }
                 if (cmdLine.isSet("type")) {
                     TAD::Type oldType = array.componentType();
                     if (cmdLine.isSet("normalize")) {
@@ -802,11 +842,11 @@ int tad_info(int argc, char* argv[])
         }
         if (defaultOutput) {
             std::string sizeString;
-            if (array.dimensions().size() == 0) {
+            if (array.dimensionCount() == 0) {
                 sizeString = "0";
             } else {
                 sizeString = std::to_string(array.dimension(0));
-                for (size_t i = 1; i < array.dimensions().size(); i++) {
+                for (size_t i = 1; i < array.dimensionCount(); i++) {
                     sizeString += 'x';
                     sizeString += std::to_string(array.dimension(i));
                 }
@@ -832,7 +872,7 @@ int tad_info(int argc, char* argv[])
                 }
             }
             if (cmdLine.isSet("statistics")) {
-                std::vector<size_t> index(array.dimensions().size());
+                std::vector<size_t> index(array.dimensionCount());
                 std::vector<size_t> localBox;
                 if (box.size() > 0) {
                     if (box.size() != index.size() * 2) {
