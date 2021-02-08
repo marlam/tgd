@@ -56,6 +56,9 @@ find_package(GDAL QUIET)
 find_package(CFITSIO QUIET)
 find_package(POPPLER QUIET)
 
+# Optional libraries for the command line tool
+find_package(MUPARSER QUIET)
+
 # The input/output library
 add_definitions(-DTAD_VERSION="${TAD_VERSION}")
 set(libtad_SOURCES
@@ -389,5 +392,11 @@ endif()
 if(TAD_BUILD_TOOL)
     add_executable(tad tad.cpp cmdline.hpp cmdline.cpp)
     target_link_libraries(tad libtad)
+    if(MUPARSER_FOUND)
+        add_definitions(-DTAD_WITH_MUPARSER)
+        include_directories(${MUPARSER_INCLUDE_DIRS})
+        link_directories(${MUPARSER_LIBRARY_DIRS})
+        target_link_libraries(tad ${MUPARSER_LIBRARIES})
+    endif()
     install(TARGETS tad RUNTIME DESTINATION bin)
 endif()

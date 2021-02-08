@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019, 2020 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020, 2021
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,6 +32,12 @@
 
 #include <string>
 #include <vector>
+
+#ifdef TAD_WITH_MUPARSER
+# include <chrono>
+# include <random>
+# include <muParser.h>
+#endif
 
 #include "array.hpp"
 #include "io.hpp"
@@ -314,8 +321,9 @@ int tad_help(void)
     fprintf(stderr,
             "Usage: tad <command> [options...] [arguments...]\n"
             "Available commands:\n"
-            "  convert\n"
             "  create\n"
+            "  convert\n"
+            "  calc\n"
             "  diff\n"
             "  info\n"
             "Use the --help option to get command-specific help.\n");
@@ -343,7 +351,9 @@ int tad_create(int argc, char* argv[])
     }
     if (cmdLine.isSet("help")) {
         fprintf(stderr, "Usage: tad create [option]... <outfile|->\n"
+                "\n"
                 "Create zero-filled arrays.\n"
+                "\n"
                 "Options:\n"
                 "  -o|--output=TAG      set output hints such as FORMAT=gdal, COMPRESSION=9 etc\n"
                 "  -d|--dimensions=D0[,D1,...]  set dimensions, e.g. W,H for 2D\n"
@@ -468,7 +478,9 @@ int tad_convert(int argc, char* argv[])
     }
     if (cmdLine.isSet("help")) {
         fprintf(stderr, "Usage: tad convert [option]... <infile|-> [<infile...>] <outfile|->\n"
+                "\n"
                 "Convert input(s) to a new type and/or format and write to a new output.\n"
+                "\n"
                 "Options:\n"
                 "  -i|--input=TAG       set input hints such as FORMAT=gdal, DPI=300 etc\n"
                 "  -o|--output=TAG      set output hints such as FORMAT=gdal, COMPRESSION=9 etc\n"
@@ -478,6 +490,7 @@ int tad_convert(int argc, char* argv[])
                 "                       when converting to/from signed/unsigned integer values\n"
                 "  -a|--append          append to the output file instead of overwriting (not always possible)\n"
                 "  -b|--box=INDEX,SIZE  set box to operate on, e.g. X,Y,WIDTH,HEIGHT for 2D\n"
+                "\n"
                 "The following options allow to keep or drop specific arrays from the input.\n"
                 "Only one of the two alternatives can be used, but each option can be given multiple times.\n"
                 "A range specification is of the form 'A-B' optionally followed by ',S' where A is the start\n"
@@ -486,12 +499,14 @@ int tad_convert(int argc, char* argv[])
                 "every even-numered array, and '5' specifies array 5.\n"
                 "  -k|--keep=A-B[,S]    keep the specified arrays, drop others\n"
                 "  -d|--drop=A-B[,S]    drop the specified arrays, keep others\n"
+                "\n"
                 "The following option allows to split input arrays into multiple files. The <outfile>\n"
                 "argument is then interpreted as a template for the new file names. This template must\n"
                 "contain the sequence %%[n]N, which will be replaced by the index of the array.\n"
                 "The optional parameter n gives the minimum number of digits in the resulting number;\n"
                 "small numbers will be padded with zeroes.\n"
                 "  -s|--split           split input into multiple output files\n"
+                "\n"
                 "The following options modify metadata stored in tags, and are applied in the order\n"
                 "in which they are given:\n"
                 "  --unset-all-tags           unset all tags\n"
@@ -756,6 +771,554 @@ int tad_convert(int argc, char* argv[])
     return (err == TAD::ErrorNone ? 0 : 1);
 }
 
+#ifdef TAD_WITH_MUPARSER
+class Calc;
+Calc* calcSingleton;
+
+class Calc
+{
+public:
+    // limitations
+    static const size_t maxDimensionCount = 10;
+    static const size_t maxComponentCount = 32;
+
+private:
+    // the expressions
+    const std::vector<std::string>& expressions;
+    // the parsers
+    std::vector<mu::Parser> parsers;
+    // user-defined variable management
+    size_t expressionIndex;
+    std::vector<std::vector<std::pair<std::string, std::unique_ptr<double>>>> added_vars;
+    // pseudo-random numbers
+    std::mt19937_64 prng;
+    std::uniform_real_distribution<double> uniform_distrib;
+    std::normal_distribution<double> gaussian_distrib;
+    // variables
+    double var_array_count;
+    double var_stream_index;
+    double var_dimensions;
+    std::vector<double> var_dim;
+    double var_components;
+    std::vector<double> var_box;
+    std::vector<double> var_boxdim;
+    double var_index;
+    std::vector<double> var_i;
+    std::vector<double> var_v;
+
+    static constexpr double pi = 3.1415926535897932384626433832795029;
+    static constexpr double e = 2.7182818284590452353602874713526625;
+
+    static double mod(double x, double y) { return x - y * floor(x / y); }
+
+    static double deg(double x) { return x * 180.0 / pi; }
+    static double rad(double x) { return x * pi / 180.0; }
+    static double atan2(double y, double x) { return std::atan2(y, x); }
+    static double pow(double x, double y) { return std::pow(x, y); }
+    static double exp2(double x) { return std::exp2(x); }
+    static double cbrt(double x) { return std::cbrt(x); }
+    static double int_(double x) { return (long long)x; }
+    static double ceil(double x) { return std::ceil(x); }
+    static double floor(double x) { return std::floor(x); }
+    static double round(double x) { return std::round(x); }
+    static double trunc(double x) { return std::trunc(x); }
+    static double fract(double x) { return x - floor(x); }
+
+    static double med(const double* x, int n)
+    {
+        std::vector<double> values(x, x + n);
+        std::sort(values.begin(), values.end());
+        if (n % 2 == 1) {
+            return values[n / 2];
+        } else {
+            return (values[n / 2 - 1] + values[n / 2]) / 2.0;
+        }
+    }
+
+    static double clamp(double x, double minval, double maxval) { return std::min(maxval, std::max(minval, x)); }
+    static double step(double x, double edge) { return (x < edge ? 0.0 : 1.0); }
+    static double smoothstep(double x, double edge0, double edge1) { double t = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0); return t * t * (3.0 - t * 2.0); }
+    static double mix(double x, double y, double t) { return x * (1.0 - t) + y * t; }
+
+    static double unary_plus(double x) { return x; }
+
+    static double seed(double x) { calcSingleton->prng.seed(x); return 0.0; }
+    static double random() { return calcSingleton->uniform_distrib(calcSingleton->prng); }
+    static double gaussian() { return calcSingleton->gaussian_distrib(calcSingleton->prng); }
+
+    static double* add_var(const char* name, void* expressionIndexVoid)
+    {
+        size_t expressionIndex = *reinterpret_cast<size_t*>(expressionIndexVoid);
+        calcSingleton->added_vars[expressionIndex].push_back(std::make_pair(
+                    std::string(name), std::unique_ptr<double>(new double(0.0))));
+        return calcSingleton->added_vars[expressionIndex].back().second.get();
+    }
+
+    static double input_value(size_t a, size_t e, size_t c)
+    {
+        const std::vector<TAD::ArrayContainer>& input_arrays = calcSingleton->input_arrays;
+        double v = std::numeric_limits<double>::quiet_NaN();
+        switch (input_arrays[a].componentType()) {
+        case TAD::int8:
+            v = input_arrays[a].get<int8_t>(e)[c];
+            break;
+        case TAD::uint8:
+            v = input_arrays[a].get<uint8_t>(e)[c];
+            break;
+        case TAD::int16:
+            v = input_arrays[a].get<int16_t>(e)[c];
+            break;
+        case TAD::uint16:
+            v = input_arrays[a].get<uint16_t>(e)[c];
+            break;
+        case TAD::int32:
+            v = input_arrays[a].get<int32_t>(e)[c];
+            break;
+        case TAD::uint32:
+            v = input_arrays[a].get<uint32_t>(e)[c];
+            break;
+        case TAD::int64:
+            v = input_arrays[a].get<int64_t>(e)[c];
+            break;
+        case TAD::uint64:
+            v = input_arrays[a].get<uint64_t>(e)[c];
+            break;
+        case TAD::float32:
+            v = input_arrays[a].get<float>(e)[c];
+            break;
+        case TAD::float64:
+            v = input_arrays[a].get<double>(e)[c];
+            break;
+        }
+        return v;
+    }
+
+    static double v(const double* dx, int n)
+    {
+        const std::vector<TAD::ArrayContainer>& input_arrays = calcSingleton->input_arrays;
+
+        if (n != 3 && n != static_cast<int>(input_arrays[0].dimensionCount() + 2))
+            return std::numeric_limits<double>::quiet_NaN();
+
+        size_t a = 0;
+        size_t c = 0;
+        std::vector<size_t> index(n - 2);
+        for (int i = 0; i < n; i++) {
+            long long tmp = dx[i];
+            if (i == 0) {
+                if (tmp < 0) {
+                    a = 0;
+                } else if (static_cast<size_t>(tmp) >= input_arrays.size()) {
+                    a = input_arrays.size() - 1;
+                } else {
+                    a = tmp;
+                }
+            } else if (i == n - 1) {
+                if (tmp < 0) {
+                    c = 0;
+                } else if (static_cast<size_t>(tmp) >= input_arrays[a].componentCount()) {
+                    c = input_arrays[a].componentCount() - 1;
+                } else {
+                    c = tmp;
+                }
+            } else {
+                if (tmp < 0) {
+                    index[i - 1] = 0;
+                } else if (n == 3 && static_cast<size_t>(tmp) >= input_arrays[a].elementCount()) {
+                    index[i - 1] = input_arrays[a].elementCount() - 1;
+                } else if (n != 3 && static_cast<size_t>(tmp) >= input_arrays[a].dimension(i - 1)) {
+                    index[i - 1] = input_arrays[a].dimension(i - 1) - 1;
+                } else {
+                    index[i - 1] = tmp;
+                }
+            }
+        }
+        size_t linearIndex;
+        if (n == 3) {
+            linearIndex = index[0];
+        } else {
+            linearIndex = input_arrays[a].toLinearIndex(index);
+        }
+
+        double r = input_value(a, linearIndex, c);
+        return r;
+    }
+
+public:
+    // input arrays
+    std::vector<TAD::ArrayContainer> input_arrays;
+
+    // constructor
+    Calc(const std::vector<std::string>& expressions, size_t inputCount) :
+        expressions(expressions),
+        parsers(expressions.size()),
+        added_vars(expressions.size()),
+        uniform_distrib(0.0, 1.0),
+        gaussian_distrib(0.0, 1.0),
+        var_dim(maxDimensionCount),
+        var_box(maxDimensionCount),
+        var_boxdim(maxDimensionCount),
+        var_i(maxDimensionCount),
+        var_v(maxComponentCount),
+        input_arrays(inputCount)
+    {
+        calcSingleton = this;
+        for (size_t i = 0; i < parsers.size(); i++) {
+            // standard functionality, mostly compatible with mucalc
+            parsers[i].ClearConst();
+            parsers[i].DefineConst("e", e);
+            parsers[i].DefineConst("pi", pi);
+            parsers[i].DefineOprt("%", mod, mu::prMUL_DIV, mu::oaLEFT, true);
+            parsers[i].DefineFun("deg", deg);
+            parsers[i].DefineFun("rad", rad);
+            parsers[i].DefineFun("atan2", atan2);
+            parsers[i].DefineFun("fract", fract);
+            parsers[i].DefineFun("pow", pow);
+            parsers[i].DefineFun("exp2", exp2);
+            parsers[i].DefineFun("cbrt", cbrt);
+            parsers[i].DefineFun("int", int_);
+            parsers[i].DefineFun("ceil", ceil);
+            parsers[i].DefineFun("floor", floor);
+            parsers[i].DefineFun("round", round);
+            parsers[i].DefineFun("trunc", trunc);
+            parsers[i].DefineFun("med", med);
+            parsers[i].DefineFun("clamp", clamp);
+            parsers[i].DefineFun("step", step);
+            parsers[i].DefineFun("smoothstep", smoothstep);
+            parsers[i].DefineFun("mix", mix);
+            parsers[i].DefineFun("seed", seed, false);
+            parsers[i].DefineFun("random", random, false);
+            parsers[i].DefineFun("gaussian", gaussian, false);
+            parsers[i].DefineInfixOprt("+", unary_plus);
+            parsers[i].SetVarFactory(add_var, &expressionIndex);
+            // function to get values from input arrays
+            parsers[i].DefineFun("v", v);
+            // input-dependent variables
+            parsers[i].DefineVar("array_count", &var_array_count);
+            parsers[i].DefineVar("stream_index", &var_stream_index);
+            parsers[i].DefineVar("dimensions", &var_dimensions);
+            for (size_t j = 0; j < maxDimensionCount; j++)
+                parsers[i].DefineVar((std::string("dim") + std::to_string(j)).c_str(), &(var_dim[j]));
+            parsers[i].DefineVar("components", &var_components);
+            for (size_t j = 0; j < maxDimensionCount; j++)
+                parsers[i].DefineVar((std::string("box") + std::to_string(j)).c_str(), &(var_box[j]));
+            for (size_t j = 0; j < maxDimensionCount; j++)
+                parsers[i].DefineVar((std::string("boxdim") + std::to_string(j)).c_str(), &(var_boxdim[j]));
+            parsers[i].DefineVar("index", &var_index);
+            for (size_t j = 0; j < maxDimensionCount; j++)
+                parsers[i].DefineVar((std::string("i") + std::to_string(j)).c_str(), &(var_i[j]));
+            for (size_t j = 0; j < maxComponentCount; j++)
+                parsers[i].DefineVar((std::string("v") + std::to_string(j)).c_str(), &(var_v[j]));
+            // the expression
+            parsers[i].SetExpr(expressions[i]);
+        }
+
+        // initialize random number generator
+        prng.seed(std::chrono::system_clock::now().time_since_epoch().count());
+    }
+
+    void init(size_t arrayIndex, const std::vector<size_t>& box)
+    {
+        var_array_count = input_arrays.size();
+        var_stream_index = arrayIndex;
+        var_dimensions = input_arrays[0].dimensionCount();
+        for (size_t i = 0; i < maxDimensionCount; i++) {
+            if (i < input_arrays[0].dimensionCount()) {
+                var_dim[i] = input_arrays[0].dimension(i);
+                var_box[i] = box[i];
+                var_boxdim[i] = box[input_arrays[0].dimensionCount() + i];
+            } else {
+                var_dim[i] = std::numeric_limits<double>::quiet_NaN();
+                var_box[i] = std::numeric_limits<double>::quiet_NaN();
+                var_boxdim[i] = std::numeric_limits<double>::quiet_NaN();
+            }
+        }
+        var_components = input_arrays[0].componentCount();
+    }
+
+    void setIndex(const std::vector<size_t>& index, size_t e)
+    {
+        var_index = e;
+        for (size_t i = 0; i < maxDimensionCount; i++) {
+            if (i < input_arrays[0].dimensionCount())
+                var_i[i] = index[i];
+            else
+                var_i[i] = std::numeric_limits<double>::quiet_NaN();
+        }
+        for (size_t i = 0; i < maxComponentCount; i++) {
+            if (i < input_arrays[0].componentCount())
+                var_v[i] = input_value(0, e, i);
+            else
+                var_v[i] = std::numeric_limits<double>::quiet_NaN();
+        }
+    }
+
+    bool evaluate()
+    {
+        bool ok = true;
+        for (size_t i = 0; i < parsers.size(); i++) {
+            expressionIndex = i;
+            try {
+                parsers[i].Eval();
+            }
+            catch (mu::Parser::exception_type& e) {
+                // Fix up the exception before reporting the error
+                mu::string_type expr = e.GetExpr();
+                mu::string_type token = e.GetToken();
+                mu::EErrorCodes code = e.GetCode();
+                size_t pos = e.GetPos();
+                // Let positions start at 1 and fix position reported for EOF
+                if (code != mu::ecUNEXPECTED_EOF)
+                    pos++;
+                if (pos == 0)
+                    pos = 1;
+                // Remove excess blank from token
+                if (token.back() == ' ')
+                    token.pop_back();
+                mu::Parser::exception_type fixed_err(code, pos, token);
+                // Report the fixed error
+                fprintf(stderr, "tad calc: expression %zu: %s\n", i, fixed_err.GetMsg().c_str());
+                fprintf(stderr, "tad calc: %s\n", expressions[i].c_str());
+                fprintf(stderr, "tad calc: %s^\n", std::string(fixed_err.GetPos() - 1, ' ').c_str());
+                ok = false;
+                break;
+            }
+        }
+        return ok;
+    }
+
+    void getElement(TAD::ArrayContainer& array, size_t e)
+    {
+        for (size_t i = 0; i < array.componentCount(); i++) {
+            switch (array.componentType()) {
+            case TAD::int8:
+                array.set<int8_t>(e, i, var_v[i]);
+                break;
+            case TAD::uint8:
+                array.set<uint8_t>(e, i, var_v[i]);
+                break;
+            case TAD::int16:
+                array.set<int16_t>(e, i, var_v[i]);
+                break;
+            case TAD::uint16:
+                array.set<uint16_t>(e, i, var_v[i]);
+                break;
+            case TAD::int32:
+                array.set<int32_t>(e, i, var_v[i]);
+                break;
+            case TAD::uint32:
+                array.set<uint32_t>(e, i, var_v[i]);
+                break;
+            case TAD::int64:
+                array.set<int64_t>(e, i, var_v[i]);
+                break;
+            case TAD::uint64:
+                array.set<uint64_t>(e, i, var_v[i]);
+                break;
+            case TAD::float32:
+                array.set<float>(e, i, var_v[i]);
+                break;
+            case TAD::float64:
+                array.set<double>(e, i, var_v[i]);
+                break;
+            }
+        }
+    }
+};
+#endif
+
+int tad_calc(int argc, char* argv[])
+{
+    CmdLine cmdLine;
+    cmdLine.addOptionWithArg("input", 'i');
+    cmdLine.addOptionWithArg("output", 'o');
+    cmdLine.addOptionWithArg("box", 'b', parseUIntList);
+    cmdLine.addOptionWithArg("expression", 'e');
+    std::string errMsg;
+    if (!cmdLine.parse(argc, argv, 2, -1, errMsg)) {
+        fprintf(stderr, "tad calc: %s\n", errMsg.c_str());
+        return 1;
+    }
+    if (cmdLine.isSet("help")) {
+        fprintf(stderr, "Usage: tad calc [option]... <infile|-> [<infile|->...] <outfile|->\n"
+                "\n"
+                "Calculate array element components via mathematical expressions given with the -e option.\n"
+                "\n"
+                "The expression(s) are evaluated for all components of all array elements of the output array.\n"
+                "Values are assigned to these components by setting the variables v0,v1,... .\n"
+                "For each output array, the values of all corresponding input arrays are available\n"
+                "and can be used in the calculations.\n"
+                "The first input defines the output dimensions and components.\n"
+                "\n"
+                "Available constants:\n"
+                "  pi, e\n"
+                "Available functions:\n"
+                "  deg, rad,\n"
+                "  sin, asin, cos, acos, tan, atan, atan2,\n"
+                "  sinh, asinh, cosh, acosh, tanh, atanh,\n"
+                "  pow, exp, exp2, exp10, log, ln, log2, log10, sqrt, cbrt,\n"
+                "  abs, sign, fract, int, ceil, floor, round, rint, trunc,\n"
+                "  min, max, sum, avg, med,\n"
+                "  clamp, step, smoothstep, mix\n"
+                "  random, gaussian, seed\n"
+                "Available operators:\n"
+                "  ^, *, /, %%, +, -, ==, !=, <, >, <=, >=, ||, &&, ?:\n"
+                "Available input information (in the form of variables):\n"
+                "  array_count     - number of input arrays\n"
+                "  stream_index    - index of the current array in the input stream\n"
+                "  dimensions      - number of dimensions of the output array (e.g. 2 for 2D)\n"
+                "  dim0, dim1, ... - dimensions (e.g. dim0=width, dim1=height for 2D)\n"
+                "  components      - number of components of the output array (e.g. 3 for RGB)\n"
+                "  box0, box1, ... - offset of the box (see option --box)\n"
+                "  boxdim0, ...    - dimensions of the box (see option --box)\n"
+                "  index           - linear index of the current output element (e.g. y * width + x for 2D)\n"
+                "  i0, i1, ...     - index of the current output element (e.g. i0=x, i1=y for 2D)\n"
+                "Function to access input arrays:\n"
+                "  v(a, e, c)      - get the value of component c of element e in input array a\n"
+                "  v(a, i0, ..., c)- get the value of component c of element (i0, i1, ...) in input array a\n"
+                "Output variables:\n"
+                "  v0, v1, ...     - output element components, e.g. v0=R, v1=G, v2=B for images\n"
+                "Example expressions:\n"
+                "  convert BGR image data into RGB:\n"
+                "    v0=v(0,index,2), v1=v(0,index,1), v2=v(0,index,0)\n"
+                "  compute the difference of two images:\n"
+                "    v0=v(0,index,0)-v(1,index,0), v1=v(0,index,1)-v(1,index,1), v2=v(0,index,2)-v(1,index,2)\n"
+                "  flip image vertically:\n"
+                "    x=i0, y=dim1-1-i1, v0=v(0,x,y,0), v1=v(0,x,y,1), v2=v(0,x,y,2)\n"
+                "  copy a small image into a larger image at position x=80, y=60:\n"
+                "    --80,60,500,500  x=i0-box0, y=i1-box1, v0=v(1,x,y,0), v1=v(1,x,y,1), v2=v(1,x,y,2)\n"
+                "\n"
+                "Options:\n"
+                "  -i|--input=TAG       set input hints such as FORMAT=gdal, DPI=300 etc\n"
+                "  -o|--output=TAG      set output hints such as FORMAT=gdal, COMPRESSION=9 etc\n"
+                "  -b|--box=INDEX,SIZE  set box to operate on, e.g. X,Y,WIDTH,HEIGHT for 2D\n"
+                "  -e|--expression=E    evaluate expression E (can be used more than once)\n");
+        return 0;
+    }
+    if (!cmdLine.isSet("expression")) {
+        fprintf(stderr, "tad calc: missing --expression\n");
+        return 1;
+    }
+
+#ifndef TAD_WITH_MUPARSER
+    fprintf(stderr, "tad calc: command not available (libmuparser is missing)\n");
+    return 1;
+#else
+    size_t inputCount = cmdLine.arguments().size() - 1;
+    const std::vector<std::string>& inFileNames = cmdLine.arguments();
+    const std::string& outFileName = cmdLine.arguments().back();
+    TAD::TagList importerHints = createTagList(cmdLine.valueList("input"));
+    TAD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
+    std::vector<TAD::Importer> importers(inputCount);
+    for (size_t i = 0; i < inputCount; i++)
+        importers[i].initialize(inFileNames[i], importerHints);
+    TAD::Exporter exporter(outFileName, TAD::Overwrite, exporterHints);
+
+    std::vector<size_t> box;
+    if (cmdLine.isSet("box"))
+        box = getUIntList(cmdLine.value("box"));
+
+    Calc calc(cmdLine.valueList("expression"), inputCount);
+
+    TAD::Error err = TAD::ErrorNone;
+
+    size_t arrayIndex = 0;
+    for (;;) {
+        /* read inputs */
+        if (!importers[0].hasMore(&err)) {
+            if (err != TAD::ErrorNone) {
+                fprintf(stderr, "tad calc: %s: %s\n", inFileNames[0].c_str(), TAD::strerror(err));
+            }
+            break;
+        }
+        calc.input_arrays[0] = importers[0].readArray(&err);
+        if (err != TAD::ErrorNone) {
+            fprintf(stderr, "tad calc: %s: %s\n", inFileNames[0].c_str(), TAD::strerror(err));
+            break;
+        }
+        if (calc.input_arrays[0].dimensionCount() > Calc::maxDimensionCount
+                || calc.input_arrays[0].componentCount() > Calc::maxComponentCount) {
+            fprintf(stderr, "tad calc: %s: too many dimensions or components\n", inFileNames[0].c_str());
+            break;
+        }
+        for (size_t i = 1; i < importers.size(); i++) {
+            if (!importers[i].hasMore(&err)) {
+                // give up only on error, but not on EOF if at least one array from that input was read
+                if (err != TAD::ErrorNone) {
+                    fprintf(stderr, "tad calc: %s: %s\n", inFileNames[i].c_str(), TAD::strerror(err));
+                } else if (arrayIndex == 0) {
+                    fprintf(stderr, "tad calc: %s: missing array\n", inFileNames[i].c_str());
+                    err = TAD::ErrorInvalidData;
+                }
+                break;
+            }
+            calc.input_arrays[i] = importers[i].readArray(&err);
+            if (err != TAD::ErrorNone) {
+                fprintf(stderr, "tad calc: %s: %s\n", inFileNames[i].c_str(), TAD::strerror(err));
+                break;
+            }
+        }
+        if (err != TAD::ErrorNone) {
+            break;
+        }
+
+        /* set up output array */
+        TAD::ArrayContainer array = calc.input_arrays[0].deepCopy();
+
+        /* set up box to operate on */
+        std::vector<size_t> index(array.dimensionCount());
+        std::vector<size_t> localBox;
+        if (box.size() > 0) {
+            if (box.size() != index.size() * 2) {
+                fprintf(stderr, "tad calc: %s: box does not match dimensions\n", inFileNames[0].c_str());
+                err = TAD::ErrorInvalidData;
+                break;
+            }
+            localBox = restrictBoxToArray(box, array);
+        } else {
+            localBox = getBoxFromArray(array);
+        }
+
+        /* setup calculator for this array */
+        calc.init(arrayIndex, localBox);
+
+        /* calc */
+        if (!boxIsEmpty(localBox)) {
+            /* initialize box index */
+            initBoxIndex(localBox, index);
+            for (;;) {
+                /* get linear index */
+                size_t e = array.toLinearIndex(index);
+                /* give indices to calc */
+                calc.setIndex(index, e);
+                /* evaluate */
+                if (!calc.evaluate()) {
+                    err = TAD::ErrorInvalidData;
+                    break;
+                }
+                /* read back the updated element */
+                calc.getElement(array, e);
+                /* increment index */
+                if (!incBoxIndex(localBox, index))
+                    break;
+            }
+        }
+        if (err != TAD::ErrorNone) {
+            break;
+        }
+
+        err = exporter.writeArray(array);
+        if (err != TAD::ErrorNone) {
+            fprintf(stderr, "tad calc: %s: %s\n", outFileName.c_str(), TAD::strerror(err));
+            break;
+        }
+        arrayIndex++;
+    }
+
+    return (err == TAD::ErrorNone ? 0 : 1);
+#endif
+}
+
 int tad_diff(int argc, char* argv[])
 {
     CmdLine cmdLine;
@@ -768,7 +1331,9 @@ int tad_diff(int argc, char* argv[])
     }
     if (cmdLine.isSet("help")) {
         fprintf(stderr, "Usage: tad diff [option]... <infile0|-> <infile1|-> <outfile|->\n"
+                "\n"
                 "Compute the absolute difference.\n"
+                "\n"
                 "Options:\n"
                 "  -i|--input=TAG       set input hints such as FORMAT=gdal, DPI=300 etc\n"
                 "  -o|--output=TAG      set output hints such as FORMAT=gdal, COMPRESSION=9 etc\n");
@@ -809,6 +1374,7 @@ int tad_diff(int argc, char* argv[])
         }
         if (!array0.isCompatible(array1)) {
             fprintf(stderr, "tad diff: incompatible input arrays\n");
+            err = TAD::ErrorInvalidData;
             break;
         }
         TAD::Array<float> floatArray0 = convert(array0, TAD::float32);
@@ -879,13 +1445,16 @@ int tad_info(int argc, char* argv[])
     }
     if (cmdLine.isSet("help")) {
         fprintf(stderr, "Usage: tad info [option]... <infile|->\n"
+                "\n"
                 "Print information. Default output consists of an overview, all tags,\n"
                 "and optionally statistics (with -s) which are optionally restricted\n"
                 "to a box of interest.\n"
+                "\n"
                 "Options:\n"
                 "  -i|--input=TAG       set input hints such as FORMAT=gdal, DPI=300 etc\n"
                 "  -s|--statistics      print statistics\n"
                 "  -b|--box=INDEX,SIZE  set box to operate on, e.g. X,Y,WIDTH,HEIGHT for 2D\n"
+                "\n"
                 "The following options disable default output, and instead print their own\n"
                 "output in the order in which they are given:\n"
                 "  -D|--dimensions      print number of dimensions\n"
@@ -1137,6 +1706,8 @@ int main(int argc, char* argv[])
         retval = tad_create(argc - 1, &(argv[1]));
     } else if (std::strcmp(argv[1], "convert") == 0) {
         retval = tad_convert(argc - 1, &(argv[1]));
+    } else if (std::strcmp(argv[1], "calc") == 0) {
+        retval = tad_calc(argc - 1, &(argv[1]));
     } else if (std::strcmp(argv[1], "diff") == 0) {
         retval = tad_diff(argc - 1, &(argv[1]));
     } else if (std::strcmp(argv[1], "info") == 0) {
