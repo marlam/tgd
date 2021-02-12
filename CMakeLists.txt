@@ -27,7 +27,14 @@ if(TAD_STATIC)
 endif()
 
 # The TAD library (headers only)
-install(FILES taglist.hpp array.hpp foreach.hpp operators.hpp tools.hpp io.hpp DESTINATION include/tad)
+install(FILES
+	core/taglist.hpp
+	core/array.hpp
+	core/foreach.hpp
+	core/operators.hpp
+	core/tools.hpp
+	core/io.hpp
+	DESTINATION include/tad)
 
 # Compiler and system
 set(CMAKE_CXX_STANDARD 17)
@@ -60,46 +67,49 @@ find_package(POPPLER QUIET)
 find_package(MUPARSER QUIET)
 
 # The input/output library
+include_directories(${CMAKE_SOURCE_DIR}/core)
 add_definitions(-DTAD_VERSION="${TAD_VERSION}")
 set(libtad_SOURCES
-	taglist.hpp
-	array.hpp
-	foreach.hpp
-	operators.hpp
-	tools.hpp
-	io.hpp io.cpp io-utils.hpp
-	io-tad.hpp io-tad.cpp
-	io-csv.hpp io-csv.cpp
-	io-raw.hpp io-raw.cpp
-	io-pnm.hpp io-pnm.cpp
-        io-rgbe.hpp io-rgbe.cpp
-	io-exiv2.hpp
-	dl.hpp)
+	core/taglist.hpp
+	core/array.hpp
+	core/foreach.hpp
+	core/operators.hpp
+	core/tools.hpp
+	core/io.hpp
+	io/io.cpp
+	io/io-utils.hpp
+	io/io-tad.hpp io/io-tad.cpp
+	io/io-csv.hpp io/io-csv.cpp
+	io/io-raw.hpp io/io-raw.cpp
+	io/io-pnm.hpp io/io-pnm.cpp
+        io/io-rgbe.hpp io/io-rgbe.cpp
+	io/io-exiv2.hpp
+	io/dl.hpp)
 if(TAD_STATIC)
     add_definitions(-DTAD_STATIC)
     set(libtad_STATIC_EXTRA_SOURCES "")
     set(libtad_STATIC_EXTRA_LIBRARIES "")
     if(GTA_FOUND)
 	add_definitions(-DTAD_WITH_GTA)
-	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-gta.hpp io-gta.cpp)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io/io-gta.hpp io/io-gta.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${GTA_LIBRARIES})
 	include_directories(${GTA_INCLUDE_DIRS})
     endif()
     if(OPENEXR_FOUND)
 	add_definitions(-DTAD_WITH_OPENEXR)
-	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-exr.hpp io-exr.cpp)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io/io-exr.hpp io/io-exr.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${OPENEXR_LIBRARIES})
 	include_directories(${OPENEXR_INCLUDE_DIRS})
     endif()
     if(PFS_FOUND)
 	add_definitions(-DTAD_WITH_PFS)
-	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-pfs.hpp io-pfs.cpp)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io/io-pfs.hpp io/io-pfs.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${PFS_LIBRARIES})
 	include_directories(${PFS_INCLUDE_DIRS})
     endif()
     if(PNG_FOUND)
 	add_definitions(-DTAD_WITH_PNG ${PNG_DEFINITIONS})
-	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-png.hpp io-png.cpp)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io/io-png.hpp io/io-png.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${PNG_LIBRARIES})
 	include_directories(${PNG_INCLUDE_DIRS})
         if(EXIV2_FOUND)
@@ -110,7 +120,7 @@ if(TAD_STATIC)
     endif()
     if(JPEG_FOUND)
 	add_definitions(-DTAD_WITH_JPEG)
-	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-jpeg.hpp io-jpeg.cpp)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io/io-jpeg.hpp io/io-jpeg.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${JPEG_LIBRARIES})
 	include_directories(${JPEG_INCLUDE_DIR})
         if(EXIV2_FOUND)
@@ -121,49 +131,49 @@ if(TAD_STATIC)
     endif()
     if(HDF5_FOUND)
 	add_definitions(-DTAD_WITH_HDF5 ${HDF5_CXX_DEFINITIONS})
-	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-hdf5.hpp io-hdf5.cpp)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io/io-hdf5.hpp io/io-hdf5.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${HDF5_CXX_LIBRARIES})
 	include_directories(${HDF5_CXX_INCLUDE_DIRS} ${HDF5_INCLUDE_DIRS})
     endif()
     if(MATIO_FOUND)
 	add_definitions(-DTAD_WITH_MATIO)
-	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-mat.hpp io-mat.cpp)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io/io-mat.hpp io/io-mat.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${MATIO_LIBRARIES})
 	include_directories(${MATIO_INCLUDE_DIRS})
     endif()
     if(TIFF_FOUND)
 	add_definitions(-DTAD_WITH_TIFF)
-	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-tiff.hpp io-tiff.cpp)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io/io-tiff.hpp io/io-tiff.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${TIFF_LIBRARIES})
 	include_directories(${TIFF_INCLUDE_DIRS})
     endif()
     if(FFMPEG_FOUND)
 	add_definitions(-DTAD_WITH_FFMPEG)
-	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-ffmpeg.hpp io-ffmpeg.cpp)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io/io-ffmpeg.hpp io/io-ffmpeg.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${FFMPEG_LIBRARIES})
 	include_directories(${FFMPEG_INCLUDE_DIRS})
     endif()
     if(DCMTK_FOUND)
 	add_definitions(-DTAD_WITH_DCMTK)
-	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-dcmtk.hpp io-dcmtk.cpp)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io/io-dcmtk.hpp io/io-dcmtk.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${DCMTK_LIBRARIES})
 	include_directories(${DCMTK_INCLUDE_DIRS})
     endif()
     if(GDAL_FOUND)
 	add_definitions(-DTAD_WITH_GDAL)
-	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-gdal.hpp io-gdal.cpp)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io/io-gdal.hpp io/io-gdal.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${GDAL_LIBRARIES})
 	include_directories(${GDAL_INCLUDE_DIRS})
     endif()
     if(CFITSIO_FOUND)
 	add_definitions(-DTAD_WITH_CFITSIO)
-	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-fits.hpp io-fits.cpp)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io/io-fits.hpp io/io-fits.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${CFITSIO_LIBRARIES})
 	include_directories(${CFITSIO_INCLUDE_DIRS})
     endif()
     if(POPPLER_FOUND)
 	add_definitions(-DTAD_WITH_POPPLER)
-	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io-pdf.hpp io-pdf.cpp)
+	set(libtad_STATIC_EXTRA_SOURCES ${libtad_STATIC_EXTRA_SOURCES} io/io-pdf.hpp io/io-pdf.cpp)
 	set(libtad_STATIC_EXTRA_LIBRARIES ${libtad_STATIC_EXTRA_LIBRARIES} ${POPPLER_LIBRARIES})
 	include_directories(${POPPLER_INCLUDE_DIRS})
     endif()
@@ -175,7 +185,7 @@ else()
         target_link_libraries(libtad dl)
     endif()
     if(GTA_FOUND)
-	add_library(libtadio-gta SHARED io-gta.hpp io-gta.cpp)
+	add_library(libtadio-gta SHARED io/io-gta.hpp io/io-gta.cpp)
 	set_target_properties(libtadio-gta PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 	set_target_properties(libtadio-gta PROPERTIES OUTPUT_NAME tadio-gta)
 	include_directories(${GTA_INCLUDE_DIRS})
@@ -186,7 +196,7 @@ else()
 	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
     endif()
     if(OPENEXR_FOUND)
-	add_library(libtadio-exr SHARED io-exr.hpp io-exr.cpp)
+	add_library(libtadio-exr SHARED io/io-exr.hpp io/io-exr.cpp)
 	set_target_properties(libtadio-exr PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 	set_target_properties(libtadio-exr PROPERTIES OUTPUT_NAME tadio-exr)
 	include_directories(${OPENEXR_INCLUDE_DIRS})
@@ -197,7 +207,7 @@ else()
 	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
     endif()
     if(PFS_FOUND)
-	add_library(libtadio-pfs SHARED io-pfs.hpp io-pfs.cpp)
+	add_library(libtadio-pfs SHARED io/io-pfs.hpp io/io-pfs.cpp)
 	set_target_properties(libtadio-pfs PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 	set_target_properties(libtadio-pfs PROPERTIES OUTPUT_NAME tadio-pfs)
 	include_directories(${PFS_INCLUDE_DIRS})
@@ -208,7 +218,7 @@ else()
 	    ARCHIVE DESTINATION lib${LIB_SUFFIX})
     endif()
     if(PNG_FOUND)
-	add_library(libtadio-png SHARED io-png.hpp io-png.cpp)
+	add_library(libtadio-png SHARED io/io-png.hpp io/io-png.cpp)
 	set_target_properties(libtadio-png PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 	set_target_properties(libtadio-png PROPERTIES OUTPUT_NAME tadio-png)
 	add_definitions(${PNG_DEFINITIONS})
@@ -225,7 +235,7 @@ else()
         endif()
     endif()
     if(JPEG_FOUND)
-	add_library(libtadio-jpeg SHARED io-jpeg.hpp io-jpeg.cpp)
+	add_library(libtadio-jpeg SHARED io/io-jpeg.hpp io/io-jpeg.cpp)
 	set_target_properties(libtadio-jpeg PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 	set_target_properties(libtadio-jpeg PROPERTIES OUTPUT_NAME tadio-jpeg)
 	include_directories(${JPEG_INCLUDE_DIR})
@@ -241,7 +251,7 @@ else()
         endif()
     endif()
     if(HDF5_FOUND)
-        add_library(libtadio-hdf5 SHARED io-hdf5.hpp io-hdf5.cpp)
+        add_library(libtadio-hdf5 SHARED io/io-hdf5.hpp io/io-hdf5.cpp)
 	set_target_properties(libtadio-hdf5 PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 	set_target_properties(libtadio-hdf5 PROPERTIES OUTPUT_NAME tadio-hdf5)
 	add_definitions(${HDF5_CXX_DEFINITIONS})
@@ -254,7 +264,7 @@ else()
 
     endif()
     if(MATIO_FOUND)
-        add_library(libtadio-mat SHARED io-mat.hpp io-mat.cpp)
+        add_library(libtadio-mat SHARED io/io-mat.hpp io/io-mat.cpp)
 	set_target_properties(libtadio-mat PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 	set_target_properties(libtadio-mat PROPERTIES OUTPUT_NAME tadio-mat)
 	include_directories(${MATIO_INCLUDE_DIRS})
@@ -266,7 +276,7 @@ else()
 
     endif()
     if(TIFF_FOUND)
-        add_library(libtadio-tiff SHARED io-tiff.hpp io-tiff.cpp)
+        add_library(libtadio-tiff SHARED io/io-tiff.hpp io/io-tiff.cpp)
 	set_target_properties(libtadio-tiff PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 	set_target_properties(libtadio-tiff PROPERTIES OUTPUT_NAME tadio-tiff)
 	include_directories(${TIFF_INCLUDE_DIRS})
@@ -278,7 +288,7 @@ else()
 
     endif()
     if(FFMPEG_FOUND)
-        add_library(libtadio-ffmpeg SHARED io-ffmpeg.hpp io-ffmpeg.cpp)
+        add_library(libtadio-ffmpeg SHARED io/io-ffmpeg.hpp io/io-ffmpeg.cpp)
 	set_target_properties(libtadio-ffmpeg PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 	set_target_properties(libtadio-ffmpeg PROPERTIES OUTPUT_NAME tadio-ffmpeg)
 	include_directories(${FFMPEG_INCLUDE_DIRS})
@@ -290,7 +300,7 @@ else()
 
     endif()
     if(DCMTK_FOUND)
-        add_library(libtadio-dcmtk SHARED io-dcmtk.hpp io-dcmtk.cpp)
+        add_library(libtadio-dcmtk SHARED io/io-dcmtk.hpp io/io-dcmtk.cpp)
 	set_target_properties(libtadio-dcmtk PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 	set_target_properties(libtadio-dcmtk PROPERTIES OUTPUT_NAME tadio-dcmtk)
 	include_directories(${DCMTK_INCLUDE_DIRS})
@@ -302,7 +312,7 @@ else()
 
     endif()
     if(GDAL_FOUND)
-        add_library(libtadio-gdal SHARED io-gdal.hpp io-gdal.cpp)
+        add_library(libtadio-gdal SHARED io/io-gdal.hpp io/io-gdal.cpp)
 	set_target_properties(libtadio-gdal PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 	set_target_properties(libtadio-gdal PROPERTIES OUTPUT_NAME tadio-gdal)
 	include_directories(${GDAL_INCLUDE_DIRS})
@@ -314,7 +324,7 @@ else()
 
     endif()
     if(CFITSIO_FOUND)
-        add_library(libtadio-fits SHARED io-fits.hpp io-fits.cpp)
+        add_library(libtadio-fits SHARED io/io-fits.hpp io/io-fits.cpp)
 	set_target_properties(libtadio-fits PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 	set_target_properties(libtadio-fits PROPERTIES OUTPUT_NAME tadio-fits)
 	include_directories(${CFITSIO_INCLUDE_DIRS})
@@ -326,7 +336,7 @@ else()
 
     endif()
     if(POPPLER_FOUND)
-        add_library(libtadio-pdf SHARED io-pdf.hpp io-pdf.cpp)
+        add_library(libtadio-pdf SHARED io/io-pdf.hpp io/io-pdf.cpp)
 	set_target_properties(libtadio-pdf PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 	set_target_properties(libtadio-pdf PROPERTIES OUTPUT_NAME tadio-pdf)
 	include_directories(${POPPLER_INCLUDE_DIRS})
@@ -376,12 +386,12 @@ if(TAD_BUILD_DOCUMENTATION)
     COMMAND ${DOXYGEN_EXECUTABLE} "${CMAKE_BINARY_DIR}/Doxyfile"
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
     DEPENDS "${CMAKE_SOURCE_DIR}/Doxyfile.in"
-	    "${CMAKE_SOURCE_DIR}/array.hpp"
-	    "${CMAKE_SOURCE_DIR}/io.hpp"
-	    "${CMAKE_SOURCE_DIR}/taglist.hpp"
-	    "${CMAKE_SOURCE_DIR}/foreach.hpp"
-	    "${CMAKE_SOURCE_DIR}/operators.hpp"
-	    "${CMAKE_SOURCE_DIR}/tools.hpp"
+	    "${CMAKE_SOURCE_DIR}/core/array.hpp"
+	    "${CMAKE_SOURCE_DIR}/core/io.hpp"
+	    "${CMAKE_SOURCE_DIR}/core/taglist.hpp"
+	    "${CMAKE_SOURCE_DIR}/core/foreach.hpp"
+	    "${CMAKE_SOURCE_DIR}/core/operators.hpp"
+	    "${CMAKE_SOURCE_DIR}/core/tools.hpp"
     COMMENT "Generating API documentation with Doxygen" VERBATIM
   )
   add_custom_target(doc ALL DEPENDS "${CMAKE_BINARY_DIR}/html/index.html")
@@ -390,7 +400,7 @@ endif()
 
 # The tool
 if(TAD_BUILD_TOOL)
-    add_executable(tad tad.cpp cmdline.hpp cmdline.cpp)
+    add_executable(tad util/tad.cpp util/cmdline.hpp util/cmdline.cpp)
     target_link_libraries(tad libtad)
     if(MUPARSER_FOUND)
         add_definitions(-DTAD_WITH_MUPARSER)
