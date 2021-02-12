@@ -26,7 +26,6 @@
 #include <locale>
 
 #include "io-csv.hpp"
-#include "tools.hpp"
 
 
 namespace TAD {

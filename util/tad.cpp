@@ -43,7 +43,6 @@
 #include "io.hpp"
 #include "foreach.hpp"
 #include "operators.hpp"
-#include "tools.hpp"
 
 #include "cmdline.hpp"
 

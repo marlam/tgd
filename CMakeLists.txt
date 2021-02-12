@@ -32,7 +32,6 @@ install(FILES
 	core/array.hpp
 	core/foreach.hpp
 	core/operators.hpp
-	core/tools.hpp
 	core/io.hpp
 	DESTINATION include/tad)
 
@@ -74,7 +73,6 @@ set(libtad_SOURCES
 	core/array.hpp
 	core/foreach.hpp
 	core/operators.hpp
-	core/tools.hpp
 	core/io.hpp
 	io/io.cpp
 	io/io-utils.hpp
@@ -391,7 +389,6 @@ if(TAD_BUILD_DOCUMENTATION)
 	    "${CMAKE_SOURCE_DIR}/core/taglist.hpp"
 	    "${CMAKE_SOURCE_DIR}/core/foreach.hpp"
 	    "${CMAKE_SOURCE_DIR}/core/operators.hpp"
-	    "${CMAKE_SOURCE_DIR}/core/tools.hpp"
     COMMENT "Generating API documentation with Doxygen" VERBATIM
   )
   add_custom_target(doc ALL DEPENDS "${CMAKE_BINARY_DIR}/html/index.html")

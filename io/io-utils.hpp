@@ -27,7 +27,6 @@
 #include <cstdint>
 
 #include "array.hpp"
-#include "tools.hpp"
 
 namespace TAD {
 
@@ -66,6 +65,28 @@ inline void swapEndianness(ArrayContainer& array)
             data[i] = x;
         }
     }
+}
+
+inline ArrayContainer transpose(const ArrayContainer& a)
+{
+    std::vector<size_t> vi = a.dimensions();
+    for (size_t i = 0; i < vi.size() / 2; i++) {
+        size_t tmp = vi[i];
+        vi[i] = vi[vi.size() - 1 - i];
+        vi[vi.size() - 1 - i] = tmp;
+    }
+    ArrayContainer r(vi, a.componentCount(), a.componentType());
+    std::vector<size_t> original(a.dimensionCount());
+    for (size_t i = 0; i < a.elementCount(); i++) {
+        r.toVectorIndex(i, vi.data());
+        for (size_t i = 0; i < vi.size() / 2; i++) {
+            size_t tmp = vi[i];
+            vi[i] = vi[vi.size() - 1 - i];
+            vi[vi.size() - 1 - i] = tmp;
+        }
+        std::memcpy(r.get(i), a.get(vi), a.elementSize());
+    }
+    return r;
 }
 
 inline ArrayContainer reorderMatlabInputData(const std::vector<size_t>& dims, Type t, const void *data)
