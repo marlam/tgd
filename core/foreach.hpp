@@ -108,7 +108,7 @@ Array<T> forEachElement(const Array<T>& a, FUNC func)
     Array<T> r(rd);
     auto itr = r.elementBegin();
     for (auto ita = a.constElementBegin(); ita != a.constElementEnd(); ++ita, ++itr)
-        *itr = func(*ita);
+        func(*itr, *ita);
     return r;
 }
 
@@ -117,7 +117,7 @@ template <typename T, typename FUNC>
 Array<T>& forEachElementInplace(Array<T>& a, FUNC func)
 {
     for (auto ita = a.elementBegin(); ita != a.elementEnd(); ++ita)
-        *ita = func(*ita);
+        func(*ita);
     return a;
 }
 
@@ -129,7 +129,7 @@ Array<T> forEachElement(const Array<T>& a, const T* b, FUNC func)
     Array<T> r(rd);
     auto itr = r.elementBegin();
     for (auto ita = a.constElementBegin(); ita != a.constElementEnd(); ++ita, ++itr)
-        *itr = func(*ita, b);
+        func(*itr, *ita, b);
     return r;
 }
 
@@ -138,7 +138,7 @@ template <typename T, typename FUNC>
 Array<T>& forEachElementInplace(Array<T>& a, const T* b, FUNC func)
 {
     for (auto ita = a.elementBegin(); ita != a.elementEnd(); ++ita)
-        *ita = func(*ita, b);
+        func(*ita, b);
     return a;
 }
 
@@ -152,7 +152,7 @@ Array<T> forEachElement(const Array<T>& a, const Array<T>& b, FUNC func)
     auto itb = b.constElementBegin();
     auto itr = r.elementBegin();
     for (auto ita = a.constElementBegin(); ita != a.constElementEnd(); ++ita, ++itb, ++itr)
-        *itr = func(*ita, *itb);
+        func(*itr, *ita, *itb);
     return r;
 }
 
@@ -163,7 +163,7 @@ Array<T>& forEachElementInplace(Array<T>& a, const Array<T>& b, FUNC func)
     assert(a.isCompatible(b));
     auto itb = b.constElementBegin();
     for (auto ita = a.elementBegin(); ita != a.elementEnd(); ++ita, ++itb)
-        *ita = func(*ita, *itb);
+        func(*ita, *itb);
     return a;
 }
 
