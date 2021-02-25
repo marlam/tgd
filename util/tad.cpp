@@ -617,8 +617,8 @@ int tad_convert(int argc, char* argv[])
                         err = TAD::ErrorInvalidData;
                         break;
                     }
-                    TAD::ArrayContainer arrayBox = TAD::ArrayContainer(
-                            std::vector(localBox.begin() + array.dimensionCount(), localBox.end()),
+                    TAD::ArrayContainer arrayBox(
+                            std::vector<size_t>(localBox.begin() + array.dimensionCount(), localBox.end()),
                             array.componentCount(), array.componentType());
                     std::vector<size_t> arrayIndex(array.dimensionCount());
                     std::vector<size_t> boxIndex(array.dimensionCount());
