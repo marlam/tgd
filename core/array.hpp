@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2018, 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2018, 2019, 2020, 2021
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -68,6 +69,128 @@
  * Input and output are managed by the \a TAD::Importer and \a TAD::Exporter classes,
  * and there are shortcuts \a TAD::load() and \a TAD::save() to read and write arrays
  * in just one line of code.
+ *
+ * \section manual TAD Manual
+ *
+ * The <a href="https://marlam.de/tad/doc/tad-manual.html">tad manual</a> contains
+ * <a href="https://marlam.de/tad/doc/tad-manual.html#file-formats">an overview of supported file formats</a>,
+ * <a href="https://marlam.de/tad/doc/tad-manual.html#tad-file-format-specification">the specification of the native TAD file format</a>, and
+ * <a href="https://marlam.de/tad/doc/tad-manual.html#common-tags">a list of common tags</a>.
+ *
+ * \section examples Examples
+ *
+ * This program creates an image:
+ * ~~~~~{.cpp}
+ * #include <tad/array.hpp>
+ * #include <tad/io.hpp>
+ * 
+ * int main(void)
+ * {
+ *     TAD::Array<uint8_t> image({800, 600}, 3);
+ *     for (size_t y = 0; y < image.dimension(1); y++) {
+ *         for (size_t x = 0; x < image.dimension(0); x++) {
+ *             image[{x, y}][0] = x / (image.dimension(0) - 1.0f) * 255; // red
+ *             image[{x, y}][1] = y / (image.dimension(1) - 1.0f) * 255; // green
+ *             image[{x, y}][2] = 0;                                     // blue
+ *         }
+ *     }
+ *     TAD::save(image, "image.ppm");
+ *     return 0;
+ * }
+ * ~~~~~
+ *
+ * This example loads an image, extracts the red channel, and saves it to a file:
+ * ~~~~~{.cpp}
+ * #include <tad/array.hpp>
+ * #include <tad/io.hpp>
+ * 
+ * int main(void)
+ * {
+ *     TAD::Array<uint8_t> image = TAD::load("image.ppm");
+ *     TAD::Array<uint8_t> greenChannel(image.dimensions(), 1);
+ *     for (size_t i = 0; i < greenChannel.elementCount(); i++) {
+ *         greenChannel[i][0] = image[i][1];
+ *     }
+ *     TAD::save(greenChannel, "green.pgm");
+ *     return 0;
+ * }
+ * ~~~~~
+ *
+ * This example modifies array data using operators and alternatively
+ * TAD::forEachComponent() which works with lambdas, functors and functions.
+ * There are also variants that take two arrays as input, and variants that
+ * work on elements instead of components.
+ * ~~~~~{.cpp}
+ * #include <tad/array.hpp>
+ * #include <tad/foreach.hpp>
+ * #include <tad/operators.hpp>
+ * #include <tad/io.hpp>
+ * 
+ * uint8_t func(uint8_t a)
+ * {
+ *     return a * a;
+ * }
+ * 
+ * struct {
+ *     uint8_t operator()(uint8_t a)
+ *     {
+ *         return a * a;
+ *     }
+ * } functor;
+ * 
+ * int main(void)
+ * {
+ *     TAD::Array<uint8_t> image = TAD::load("image.ppm");
+ * 
+ *     // Modify via operator
+ *     TAD::Array<uint8_t> r3 = image * image;
+ *     // Modify via lambda
+ *     TAD::Array<uint8_t> r0 = TAD::forEachComponent(image, [] (uint8_t a) -> uint8_t { return a * a; });
+ *     // Modify via function
+ *     TAD::Array<uint8_t> r1 = TAD::forEachComponent(image, func);
+ *     // Modify via functor
+ *     TAD::Array<uint8_t> r2 = TAD::forEachComponent(image, functor);
+ * 
+ *     // Save results. All are the same.
+ *     // Note that a*a will overflow an uint8_t, but that creates a nice pattern ;)
+ *     TAD::save(r0, "r0.ppm");
+ *     TAD::save(r1, "r1.ppm");
+ *     TAD::save(r2, "r2.ppm");
+ *     TAD::save(r3, "r3.ppm");
+ *
+ *     return 0;
+ * }
+ * ~~~~~
+ *
+ * This example shows that STL algorithms can work on TAD arrays both on
+ * component and on element level:
+ * ~~~~~{.cpp}
+ * #include <algorithm>
+ * #include <tad/array.hpp>
+ * #include <tad/io.hpp>
+ * 
+ * int main(void)
+ * {
+ *     TAD::Array<uint8_t> image = TAD::load("image.ppm");
+ * 
+ *     TAD::Array<uint8_t> sorted = image.deepCopy();
+ *     std::sort(sorted.componentBegin(), sorted.componentEnd());
+ *     TAD::save(sorted, "sorted.ppm");
+ * 
+ *     TAD::Array<uint8_t> answer = image.deepCopy();
+ *     std::for_each(answer.componentBegin(), answer.componentEnd(),
+ *             [](uint8_t& v) { v = 42; });
+ *     TAD::save(answer, "answer.ppm");
+ * 
+ *     TAD::Array<uint8_t> orange = image.deepCopy();
+ *     std::for_each(orange.elementBegin(), orange.elementEnd(),
+ *             [](uint8_t* v) { v[0] = 255; v[1] = 128; v[2] = 64; });
+ *     TAD::save(orange, "orange.ppm");
+ * 
+ *     return 0;
+ * }
+ * ~~~~~
+ *
  */
 
 namespace TAD {
