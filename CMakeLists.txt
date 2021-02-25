@@ -20,10 +20,23 @@ set(TAD_SOVERSION 1)
 
 # Build options
 option(TAD_BUILD_TOOL "Build the tad command line tool" ON)
+option(TAD_BUILD_TOOL_MANPAGE "Build the manual page for the tad command line tool (requires pandoc)" ON)
 option(TAD_BUILD_DOCUMENTATION "Build API reference documentation (requires Doxygen)" OFF)
 option(TAD_STATIC "Build static libtad" OFF)
 if(TAD_STATIC)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+endif()
+
+# Disable optional build features if required packages are not available
+find_package(Doxygen QUIET)
+if(DOXYGEN_FOUND)
+else()
+    set(TAD_BUILD_DOCUMENTATION OFF)
+endif()
+find_package(PANDOC QUIET)
+if(PANDOC_FOUND)
+else()
+    set(TAD_BUILD_TOOL_MANPAGE OFF)
 endif()
 
 # The TAD library (headers only)
@@ -44,6 +57,7 @@ if(MSVC)
     add_definitions(-Dftello=_ftelli64)
     add_definitions(-Dfseeko=_fseeki64)
     set(TAD_BUILD_TOOL OFF) # because there is no getopt.h in MSVC
+    set(TAD_BUILD_TOOL_MANPAGE OFF)
 endif()
 
 # Optional libraries for input/output modules
@@ -377,7 +391,6 @@ install(FILES
 
 # Optional target: library reference documentation
 if(TAD_BUILD_DOCUMENTATION)
-  find_package(Doxygen REQUIRED)
   configure_file("${CMAKE_SOURCE_DIR}/Doxyfile.in" "${CMAKE_BINARY_DIR}/Doxyfile" @ONLY)
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/html")
   add_custom_command(OUTPUT "${CMAKE_BINARY_DIR}/html/index.html"
@@ -406,6 +419,15 @@ if(TAD_BUILD_TOOL)
         target_link_libraries(tad ${MUPARSER_LIBRARIES})
     endif()
     install(TARGETS tad RUNTIME DESTINATION bin)
+endif()
+if(TAD_BUILD_TOOL_MANPAGE)
+    add_custom_command(OUTPUT "${CMAKE_BINARY_DIR}/tad.1"
+        COMMAND ${PANDOC_EXECUTABLE} "-s" "-t" "man" "${CMAKE_SOURCE_DIR}/doc/tad-manual.txt" "-o" "${CMAKE_BINARY_DIR}/tad.1"
+	WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+	DEPENDS "${CMAKE_SOURCE_DIR}/doc/tad-manual.txt"
+	COMMENT "Generating man page with pandoc" VERBATIM)
+    add_custom_target(manpage ALL DEPENDS "${CMAKE_BINARY_DIR}/tad.1")
+    install(FILES "${CMAKE_BINARY_DIR}/tad.1" DESTINATION share/man/man1)
 endif()
 
 # Testing

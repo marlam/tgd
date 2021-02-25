@@ -1,0 +1,595 @@
+---
+title: tad
+date: February 24, 2021
+section: 1
+---
+
+# Synopsis
+
+`tad` *command* [*options*] *input-file*... *output-file*
+
+# Description
+
+Tad is a tool that works on multi-dimensional arrays with metadata ([Tagged
+Array Data]). It provides a set of commands to manipulate arrays in various
+ways or print information about them.
+
+Arrays consist of array elements, and each element consists of a fixed number
+of components of a certain data type. For example, an image of size 640x480 is
+typically stored in a 2D array with dimensions 640 and 480, and each array
+element consists of 3 data values of type uint8 for R, G, and B.
+
+Array meta data is consists of tags (name-value pairs). These tags are
+associated with one of the following
+
+- the whole array (global tags)
+
+- one dimension of the array (dimension tags)
+
+- one element component (component tags)
+
+For example, an image might have the global tag "DESCRIPTION=Sunset at a
+beach" and element component tags INTERPRETATION=SRGB/R,
+INTERPRETATION=SRGB/G, and INTERPRETATION=SRGB/B for the three element
+components.
+
+# Tad Commands
+
+All commands require one or more *input-files*, and all except the `info`
+command require an *output-file*. Input and output files cannot be omitted,
+but you can use `-` to specify standard input or output.
+
+Common options accepted by all commands are
+
+- `--help`
+
+  Print help for this command.
+
+- `-i`, `--input` *NAME=VALUE*
+
+  Specify a tag that gives information about the input. This is only necessary
+  for certain file formats such as raw binary files, where array dimensions
+  and data type are unknown. This option can be used more than once to set
+  multiple tags. See [File Formats].
+
+- `-o`, `--output` *NAME=VALUE*
+
+  Specify a tag that gives information about the output.
+  See [File Formats].
+
+`create`
+
+: Create arrays. All data will be zero, but the array(s) can be piped to the
+  `calc` command to fill them with meaningful data.
+
+    - `-d`, `--dimensions` *D0[,D1,...]*
+
+      Set dimensions, e.g. 800,600 for a 2D image.
+
+    - `-c`, `--components` *C*
+
+      Set number of components per element, e.g. 3 for RGB.
+
+    - `-t`, `--type` *T*
+
+      Set data type (int8, uint8, int16, uint16, int32, uint32, int64, uint64,
+      float32, float64).
+
+    - `-n`, `--n` *N*
+
+      Set the number of arrays to create (default 1).
+
+    Examples:
+
+    - Create a 800x600 PNG image:
+
+      `tad create -d 800,600 -c 3 -t uint8 -n 1 image.png`
+
+    - Create a sequence of 10 images in floating point precision:
+
+      `tad create -d 800,600 -c 3 -t float32 -n 10 images.pfm`
+
+`convert`
+
+: Convert data between different formats.
+
+    - `-t`, `--type` *T*
+
+      Convert to new type (int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64)
+
+    - `-n`, `--normalize`
+
+      Create/assume floating point values in [-1,1]/[0,1] when converting to/from signed/unsigned integer values
+
+    - `-a`, `--append`
+
+      Append to the output file instead of overwriting (only possible with
+      output formats supporting multiple arrays per file).
+
+    - `-b`, `--box` *INDEX,SIZE*
+
+      Set box to operate on. Only this box will be converted, the rest of the
+      input will be ignored.
+      INDEX is the start index, and SIZE is the size of the box. Both must
+      match the dimensions of the input array.  For example, for a 2D image,
+      INDEX is X,Y and SIZE is WIDTH,HEIGHT.
+
+    - `-k`, `--keep` *A-B[,S]*
+
+      Keep only the specified range of arrays from the input and drop the
+      rest. Can be used multiple times to specify more than one range.
+      A is the first index (zero if omitted), B is the last index (a maximum
+      value if omitted), and S is a step size. For example,
+      for an input of 10 arrays, '0-9' or '-' specifies all, '0-9,2' specifies
+      every even-numered array, and '5' specifies array 5.
+
+    - `-d`, `--drop` *A-B[,S]*
+
+      The opposite of `--keep`: drop the specified range of arrays, keep the
+      rest.
+
+    - `-s`, `--split`
+
+      Split the input arrays into multiple files. The *output-file* argument is
+      interpreted as a template for the new file names. This template must
+      contain the sequence `%[n]N`, which will be replaced by the index of the array.
+      The optional parameter n gives the minimum number of digits in the resulting number;
+      small numbers will be padded with zeroes.
+
+    - `--unset-all-tags`
+
+      Unset all tags.
+
+    - `--global-tag` *NAME=VALUE*
+
+      Set the global tag NAME to VALUE.
+
+    - `--unset-global-tag` *NAME*
+
+      Unset the global tag NAME.
+
+    - `--unset-global-tags`
+
+      Unset all global tags.
+
+    - `--dimension-tag` *D,NAME=VALUE*
+
+      Set the tag NAME of dimension D to VALUE.
+
+    - `--unset-dimension-tag` *D,NAME*
+
+      Unset the tag NAME of dimension D.
+
+    - `--unset-dimension-tags` *D*
+
+      Unset all tags of dimension D.
+
+    - `--component-tag` *C,NAME=VALUE*
+
+      Set the tag NAME of component C to VALUE.
+
+    - `--unset-component-tag` *C,NAME*
+
+      Unset the tag NAME of component C.
+
+    - `--unset-component-tags` *C*
+
+      Unset all tags of component C.
+
+    Examples:
+
+    - Convert from PNG to JPEG format:
+
+      `tad convert image.png image.jpg`
+
+    - Split a video file into many images, but consider only every fifth video
+      frame:
+
+      `tad convert --split --keep -,5 video.mp4 frame-%6N.png`
+
+    - Combine multiple images into an image sequence:
+
+      `tad convert image1.png image2.png image3.png image-sequence.ppm`
+
+    - Convert uint8 image data to normalized floating point for analysis in
+      Octave:
+
+      `tad convert --type float32 --normalize image.png image.h5`
+
+    - Cut out a 100x100 pixel box from a larger image at position 15,30:
+
+      `tad convert --box 15,30,100,100 image.png cutout.png`
+
+`calc`
+
+: Calculate array data values.
+
+    - `-b`, `--box` *INDEX,SIZE*
+
+      Set box to operate on. Values will only be calculated for this box,
+      the rest of the input will not be modified.
+      INDEX is the start index, and SIZE is the size of the box. Both must
+      match the dimensions of the input array.  For example, for a 2D image,
+      INDEX is X,Y and SIZE is WIDTH,HEIGHT.
+
+    - `-e`, `--expression` *EXPRESSION*
+
+      Evaluate the *EXPRESSION*. This option can be used more than once to
+      evaluate multiple expressions.
+
+      The expression(s) are evaluated for all components of all array elements
+      of the output array.
+
+      Values are assigned to these components by setting the variables v0 for
+      the first component, v1 for the second component, and so on.
+
+      For each output array, the values of all corresponding input arrays are
+      available and can be used in the calculations. The first input defines
+      the output dimensions and components.
+
+      - Available constants:
+
+        `pi`\
+        `e`
+
+      - Available functions:
+
+        `deg(x)`: convert `x` from radians to degrees\
+        `rad(x)`: convert `x` from degrees to radians\
+        `sin(x)`: return the sine of `x`\
+        `asin(x)`: return the arc sine of `x`\
+        `cos(x)`: return the cosine of `x`\
+        `acos(x)`: return the arc cosine of `x`\
+        `tan(x)`: return the tangent of `x`\
+        `atan(x)`: return the arc tangent of `x`\
+        `atan2(y, x)`: return the arc tangent of y/x in the correct quadrant\
+        `sinh(x)`: return the hyperbolic sine of `x`\
+        `asinh(x)`: return the inverse hyperbolic sine of `x`\
+        `cosh(x)`: return the hyperbolic cosine of `x`\
+        `acosh(x)`: return the inverse hyperbolic cosine of `x`\
+        `tanh(x)`: return the hyperbolic tangent of `x`\
+        `atanh(x)`: return the inverse hyperbolic tangent of `x`\
+        `pow(x,y)`: return `x` raised to the power of y\
+        `exp(x)`: return e raised to the power of `x`\
+        `exp2(x)`: return 2 raised to the power of `x`\
+        `exp10(x)`: return 10 raised to the power of `x`\
+        `log(x), ln(x)`: return the natural logarithm of `x`\
+        `log2(x)`: return the base 2 logarithm of `x`\
+        `log10(x)`: return the base 10 logarithm of `x`\
+        `sqrt(x)`: return the square root of `x`\
+        `cbrt(x)`: return the cubic root of `x`\
+        `abs(x)`: return the absolute value of `x`\
+        `sign(x)`: return -1 or +1 depending on the sign of `x`\
+        `fract(x)`: return the fractional part of `x`\
+        `int(x)`: return the integer part of `x`\
+        `ceil(x)`: return the smallest integral value not less than `x`\
+        `floor(x)`: return the largest integral value not greater than `x`\
+        `round(x)`: return `x` rounded to the nearest integer, away from zero\
+        `rint(x)`: return `x` rounded to the nearest integer\
+        `trunc(x)`: return `x` rounded to the nearest integer, toward zero\
+        `min(x0, ..., xn)`: return the minimum of the arguments\
+        `max(x0, ..., xn)`: return the maximum of the arguments\
+        `sum(x0, ..., xn)`: return the sum of the arguments\
+        `avg(x0, ..., xn)`: return the arithmetic mean of the arguments\
+        `med(x0, ..., xn)`: return the median of the arguments\
+        `clamp(x, a, b)`: return `x` constrained to the interval `[a,b]`\
+        `step(edge, x)`: return 0 if `x` < `edge` and 1 otherwise\
+        `smoothstep(edge0, edge1, x)`: return 0 if `x` < `edge0`, 1 if `x` >= `edge1`, and smooth Hermite interpolation for `edge0` < `x` < `edge1`\
+        `mix(x, y, a)`: return `x*(1-a)+y*a` (linear interpolation between `x` and `y` using `a` in `[0,1]`)\
+        `random()`: return a uniformly distributed random number in `[0,1)`\
+        `gaussian()`: return a Gaussian distributed random number with mean zero and standard deviation 1\
+        `seed(x)`: seed the random number generator with value x (default is time-based seeding)
+
+      - Available operators:
+
+        `^`, `*`, `/`, `%`, `+`, `-`, `==`, `!=`, `<`, `>`, `<=`, `>=`, `||`, `&&`, `?:`
+
+      - Available information about input arrays, in the form of variables:
+
+        `array_count`: number of input arrays\
+        `stream_index`: index of the current array in the input stream\
+        `dimensions`: number of dimensions of the output array (e.g. 2 for 2D)\
+        `dim0, dim1, ...`: dimensions (e.g. dim0=width, dim1=height for 2D)\
+        `components`: number of components of the output array (e.g. 3 for RGB)\
+        `box0, box1, ...`: offset of the box (see option `--box`)\
+        `boxdim0, boxdim1, ...`: dimensions of the box (see option `--box`)\
+        `index`: linear index of the current output element (e.g. `y*width+x` for 2D)\
+        `i0, i1, ...`: index of the current output element (e.g. i0=x, i1=y for 2D)
+
+      - Function to access input array values (all arguments will be clamped
+        to allowed range):
+
+        `v(a, e, c)`: return the value of component `c` of element `e` in input array `a`\
+        `v(a, i0, i1, ..., c)`: return the value of component `c` of element `(i0, i1, ...)` in input array `a`
+
+      - Output variables:
+
+        `v0, v1, ...`: values of the output element components, e.g. v0=R, v1=G, v2=B for images
+
+    Examples:
+
+    - Convert BGR image data into RGB:
+
+      `tad calc -e 'v0=v(0,index,2), v1=v(0,index,1), v2=v(0,index,0)' bgr.png rgb.png`
+
+    - Compute the difference of two images:
+
+      `tad calc -e 'v0=v(0,index,0)-v(1,index,0), v1=v(0,index,1)-v(1,index,1), v2=v(0,index,2)-v(1,index,2)' img0.png img1.png diff.png`
+
+    - Flip image vertically:
+
+      `tad calc -e 'x=i0, y=dim1-1-i1, v0=v(0,x,y,0), v1=v(0,x,y,1), v2=v(0,x,y,2)' img.png flipped-img.png`
+
+    - Copy a small image into a larger image at position x=80, y=60:
+
+      `tad calc --box=80,60,500,500 -e 'x=i0-box0, y=i1-box1, v0=v(1,x,y,0), v1=v(1,x,y,1), v2=v(1,x,y,2)' big-image.png small-image.png output.png`
+
+    - Apply a Gaussian filter to an image:
+
+      `tad calc -e 'v0 = (v(0,i0,i1-1,0) + v(0,i0-1,i1,0) + 2*v(0,i0,i1,0) + v(0,i0+1,i1,0) + v(0,i0,i1+1,0)) / 6,
+      v1 = (v(0,i0,i1-1,1) + v(0,i0-1,i1,1) + 2*v(0,i0,i1,1) + v(0,i0+1,i1,1) + v(0,i0,i1+1,1)) / 6,
+      v2 = (v(0,i0,i1-1,2) + v(0,i0-1,i1,2) + 2*v(0,i0,i1,2) + v(0,i0+1,i1,2) + v(0,i0,i1+1,2)) / 6' image.png filtered.png`
+
+`diff`
+
+: Compute the absolute difference between two arrays.
+
+    Example:
+
+    - Compute a difference image:
+
+      `tad diff img1.png img2.png diff.png`
+
+`info`
+
+: Print information about arrays and their contents and meta data. This command does not take
+an *output-file* argument, and accepts only one *input-file* argument.
+The default output consists of an overview, all tags, and optionally statistics (with `-s`).
+All options described after option `-b` will disable the default output, and
+instead print their own output in the order in which they are given.
+
+    - `-s`, `--statistics`
+
+      Compute and print statistics about the data in the input array(s).
+
+    - `-b`, `--box` *INDEX,SIZE*
+
+      Set box to operate on. Statistics will only be computed for this box, the rest of the
+      input will be ignored.
+      INDEX is the start index, and SIZE is the size of the box. Both must
+      match the dimensions of the input array.  For example, for a 2D image,
+      INDEX is X,Y and SIZE is WIDTH,HEIGHT.
+
+    - `-D`, `--dimensions`
+
+      Disable default output, print number of dimensions.
+
+    - `-d`, `--dimension` *D*
+
+      Disable default output, print dimension `D`, e.g. `-d 0` for width in 2D.
+
+    - `-c`, `--components`
+
+      Disable default output, print number of array element components.
+
+    - `-t`, `--type`
+
+      Disable default output, print data type.
+
+    - `--global-tag` *NAME*
+
+      Disable default output, print the value of the global tag NAME.
+
+    - `--global-tags`
+
+      Disable default output, print all global tags.
+
+    - `--dimension-tag` *D,NAME*
+
+      Disable default output, print the value of tag NAME of dimension D.
+
+    - `--dimension-tags` *D*
+
+      Disable default output, print all tags of dimension D.
+
+    - `--component-tag` *C,NAME*
+
+      Disable default output, print the value of tag NAME of component C.
+
+    - `--component-tags` *C*
+
+      Disable default output, print all tags of component C.
+
+    Examples:
+
+    - Print default information and statistics about an image:
+
+      `tad info -s image.png`
+    
+    - Set environment variables to the width and height of an image:
+
+      ~~~
+      WIDTH="`tad info -d 0 image.png`"
+      HEIGHT="`tad info -d 1 image.png`"
+      ~~~
+
+# File Formats
+
+The `tad` utility supports many file formats. Some are builtin and some require an external
+library. Some file formats are supported for reading and writing (rw), some only for reading (r).
+Different file formats can store different types of arrays. Here's an overview:
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+Name   File Format(s) Library      Read/Write Arrays per file Dimensions Components   Data Types                  Comment
+------ -------------- ------------ ---------- --------------- ---------- ------------ --------------------------- ---------------------------------------
+tad    .tad           builtin      rw         unlimited       unlimited  unlimited    all                         Native format, very fast.
+
+raw    (raw)          builtin      rw         unlimited       unlimited  unlimited    all                         Requires the following input tags for
+                                                                                                                  reading: DIMENSIONS, COMPONENTS, TYPES.
+
+csv    .csv           builtin      rw         unlimited       unlimited  unlimited    all, interpreted as float32 Simple text format, easy to edit.
+                                                                                      when reading and simplified
+                                                                                      to int8, uint8, int16 or
+                                                                                      uint16 if the values fit
+
+pnm    .pgm, .ppm,    builtin      rw         unlimited       2          1-4, with    uint8, uint16, float32      Simple image file formats.
+       .pam, .pfm                                                        float32
+                                                                         only 1 or 3
+
+rgbe   .pic, .hdr     builtin      rw         unlimited       2          3            float32                     Simple format for HDR images.
+
+dcmtk  .dcm, .dicom   [DCMTK]      r          1               2          1 or 3       uint8, uint16, uint32,      Used for medical image data.
+                                                                                      uint64
+
+exr    .exr           [OpenEXR]    rw         1               2          unlimited    float32                     Used for HDR images.
+
+fits   .fits, .fit    [CFITSIO]    r          unlimited       unlimited  1            all                         Used for astronomy data.
+
+ffmpeg Many video     [FFmpeg]     r          unlimited       2          1-4          uint8, uint16               Can import all kinds of video and
+       and image                                                                                                  image data.
+       formats
+
+gdal   Many remote    [GDAL]       r          1               2          unlimited    uint8, int16, uint16,       Used for remote sensing image data.
+       sensing file                                                                   int32, uint32, float32,
+       formats                                                                        float64
+
+gta    .gta           [libgta]     rw         unlimited       unlimited  unlimited    all                         Obsoleted by tad.
+
+hdf5   .h5, .he5,     [HDF5]       rw         unlimited       unlimited  unlimited    all                         Universal, but slow and awful.
+       .hdf5
+
+jpeg   .jpg, .jpeg    [libjpeg]    rw         1               2          1 or 3       uint8                       Lossy image format.
+
+matio  .mat           [libmatio]   rw         unlimited       unlimited  unlimited    all                         Old Matlab file format.
+
+pdf    .pdf           [libpoppler] r          unlimited       2          3            uint8                       Rasterized PDF documents. Supports
+                                              (one per page)                                                      input tag DPI to set resolution.
+
+pfs    .pfs           [libpfs]     rw         unlimited       2          1-1024       float32                     Simple format for 2D floating point
+                                                                                                                  data.
+
+png    .png           [libpng]     rw         1               2          1-4          uint8, uint16               Lossless image file format.
+
+tiff   .tiff          [libtiff]    rw         unlimited       2          unlimited    all                         Versatile image file format.
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+[Tagged Array Data]: https://marlam.de/tad
+[CSV]: https://en.wikipedia.org/wiki/Comma-separated_values
+[DCMTK]: https://dicom.offis.de/dcmtk.php.en
+[OpenEXR]: https://www.openexr.com/
+[CFITSIO]: https://heasarc.gsfc.nasa.gov/fitsio/
+[FFmpeg]: https://ffmpeg.org/
+[GDAL]: https://gdal.org/
+[libgta]: https://marlam.de/gta/
+[HDF5]: https://www.hdfgroup.org/solutions/hdf5/
+[libjpeg]: https://libjpeg-turbo.org/
+[libmatio]: https://github.com/tbeu/matio
+[libpoppler]: https://poppler.freedesktop.org/
+[libpfs]: http://pfstools.sourceforge.net/
+[libpng]: http://www.libpng.org/pub/png/libpng.html
+[libtiff]: http://www.libtiff.org/
+
+# TAD File Format Specification
+
+TAD files (.tad) start with the four bytes `T`, `A`, `D`, and 0.
+
+The fifth byte defines the data type: 0 for int8, 1 for uint8, 2 for int16, 3 for uint16, 4 for
+int32, 5 for uint32, 6 for int64, 7 for uint64, 8 for float32, and 9 for float64.
+These correspond to the common representation of data types on all relevant platforms (two's
+complement for signed integers, IEEE 754 single and double precision for float32 and float64,
+little-endian).
+
+In the following, numbers are always stored as little-endian 64 bit unsigned integers.
+
+Bytes 6-14 store the number of array element components C.
+Bytes 15-23 store the number of dimensions D.
+The following D*8 bytes store the array size in each dimension.
+
+The tag lists follow: first the global tag list, then D tag lists for the dimensions, and then C tag
+lists for the components. Each tag lists starts with 8 bytes storing the number of bytes it occupies
+in the file (excluding these first 8 bytes). The NAME and VALUE pairs in the tag list follow, each
+pair as two zero-terminated UTF-8 strings. 
+
+After that, the array data follows using the data type described above. The size of the data can be
+calculated as the number of array elements (the product over all dimensions) times the
+number of element components times the size of the data type.
+
+Directly after the array data, another TAD may follow, again starting with the four bytes `T`,
+`A`, `D`, and 0. A file can store any number of TADs.
+
+This format is simple and direct and does not involve data conversion of any kind, so it is very
+efficient. If and when a future platform becomes relevant that does not use todays
+conventions (two's complement, IEEE 754, little-endian), then data conversion will be necessary
+on that platform.
+
+# Common Tags
+
+Tags are simply NAME=VALUE pairs. Both NAME and VALUE must be valid UTF8 strings without control
+characters, and NAME must not contain `=`.
+Other than that, there are no restrictions, but there are some conventions and a few common tags that
+should be used to enable interoperability.
+
+Tag names can use `/` to denote tag directories, thereby creating tag name spaces.
+For example, an application FooBar might use tag names such as `FOOBAR/AUDIO/BASS`
+and `FOOBAR/COLOR/BACKGROUND`.
+
+The following global tags are common:
+
+- `CREATOR`
+
+  Creator information.
+
+- `PRODUCER`
+  
+  Producer information (usually the software that produced the array data).
+
+- `DATE`
+
+  Date associated with the data in RFC 3339 format, e.g. `2006-08-14 02:34:56-06:00`
+
+- `DESCRIPTION`
+
+  Human readable description of the content.
+
+- `COPYRIGHT`
+
+  Copyright information.
+
+The following dimension tags are common:
+
+- `INTERPRETATION`
+
+  Describes how the dimension should be interpreted by
+  the application. Typical examples are `X` for the x axis
+  of a cartesian coordinate system or `T` for a time axis.
+
+- `SAMPLE_DISTANCE`
+
+  The distance of sample points for along this dimension.
+  The value may be followed by a SI unit, e.g. m for meters.
+
+The following component tags are common:
+
+- `INTERPRETATION`
+
+  This tag describes how the component should be interpreted
+  by the application.
+
+  For all color spaces: `ALPHA` for linear opacity values.
+
+  For linear color spaces: `RED`, `GREEN`, `BLUE`, `GRAY`.
+
+  For the sRGB color space: `SRGB/R`, `SRGB/G`, `SRGB/B`, `SRGB/GRAY`.
+
+  Similarly for color spaces XYZ, HSL, CMYK and so on.
+
+- `UNIT`: SI unit symbol that describes the unit for the values of this
+  component.
+
+- `NO_DATA_VALUE`: Special value that indicates that there is no data
+  available for an array element.
+
+- `MINVAL`: Minimal value of this component in this array.
+
+- `MAXVAL`: Maximum value of this component in this array.
