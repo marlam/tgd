@@ -343,8 +343,9 @@ Common options accepted by all commands are
 `info`
 
 : Print information about arrays and their contents and meta data. This command does not take
-an *output-file* argument, and accepts only one *input-file* argument.
-The default output consists of an overview, all tags, and optionally statistics (with `-s`).
+an *output-file* argument.
+The default output per array consists of an overview, all tags, and optionally
+statistics (with `-s`).
 All options described after option `-b` will disable the default output, and
 instead print their own output in the order in which they are given.
 

@@ -1442,12 +1442,12 @@ int tad_info(int argc, char* argv[])
     cmdLine.addOrderedOptionWithArg("component-tag", 0, parseUIntAndName);
     cmdLine.addOrderedOptionWithArg("component-tags", 0, parseUInt);
     std::string errMsg;
-    if (!cmdLine.parse(argc, argv, 1, 1, errMsg)) {
+    if (!cmdLine.parse(argc, argv, 1, -1, errMsg)) {
         fprintf(stderr, "tad info: %s\n", errMsg.c_str());
         return 1;
     }
     if (cmdLine.isSet("help")) {
-        fprintf(stderr, "Usage: tad info [option]... <infile|->\n"
+        fprintf(stderr, "Usage: tad info [option]... <infile|->...\n"
                 "\n"
                 "Print information. Default output consists of an overview, all tags,\n"
                 "and optionally statistics (with -s) which are optionally restricted\n"
@@ -1473,11 +1473,9 @@ int tad_info(int argc, char* argv[])
         return 0;
     }
 
-    const std::string& inFileName = cmdLine.arguments()[0];
     TAD::TagList importerHints = createTagList(cmdLine.valueList("input"));
-    TAD::Importer importer(inFileName, importerHints);
     TAD::Error err = TAD::ErrorNone;
-    int arrayCounter = 0;
+    size_t arrayCounter = 0;
     bool defaultOutput = !(
                cmdLine.isSet("dimensions")
             || cmdLine.isSet("dimension")
@@ -1493,195 +1491,201 @@ int tad_info(int argc, char* argv[])
     if (cmdLine.isSet("box"))
         box = getUIntList(cmdLine.value("box"));
 
-    for (;;) {
-        if (!importer.hasMore(&err)) {
+    for (size_t arg = 0; arg < cmdLine.arguments().size(); arg++) {
+        const std::string& inFileName = cmdLine.arguments()[arg];
+        TAD::Importer importer(inFileName, importerHints);
+        for (;;) {
+            if (!importer.hasMore(&err)) {
+                if (err != TAD::ErrorNone) {
+                    fprintf(stderr, "tad info: %s: %s\n", inFileName.c_str(), TAD::strerror(err));
+                }
+                break;
+            }
+            TAD::ArrayContainer array = importer.readArray(&err);
             if (err != TAD::ErrorNone) {
                 fprintf(stderr, "tad info: %s: %s\n", inFileName.c_str(), TAD::strerror(err));
+                break;
             }
-            break;
-        }
-        TAD::ArrayContainer array = importer.readArray(&err);
-        if (err != TAD::ErrorNone) {
-            fprintf(stderr, "tad info: %s: %s\n", inFileName.c_str(), TAD::strerror(err));
-            break;
-        }
-        for (size_t o = 0; o < cmdLine.orderedOptionNames().size(); o++) {
-            const std::string& optName = cmdLine.orderedOptionNames()[o];
-            const std::string& optVal = cmdLine.orderedOptionValues()[o];
-            if (optName == "dimensions") {
-                printf("%zu\n", array.dimensionCount());
-            } else if (optName == "dimension") {
-                size_t dim = getUInt(optVal);
-                if (dim >= array.dimensionCount()) {
-                    fprintf(stderr, "tad info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
-                    err = TAD::ErrorInvalidData;
-                    break;
-                }
-                printf("%zu\n", array.dimension(dim));
-            } else if (optName == "components") {
-                printf("%zu\n", array.componentCount());
-            } else if (optName == "type") {
-                printf("%s\n", TAD::typeToString(getType(cmdLine.value("type"))));
-            } else if (optName == "global-tag") {
-                if (!array.globalTagList().contains(optVal)) {
-                    fprintf(stderr, "tad info: %s: no global tag %s\n", inFileName.c_str(), optVal.c_str());
-                    err = TAD::ErrorInvalidData;
-                    break;
-                }
-                printf("%s\n", array.globalTagList().value(optVal).c_str());
-            } else if (optName == "global-tags") {
-                tad_info_print_taglist(array.globalTagList(), false);
-            } else if (optName == "dimension-tag") {
-                size_t dim;
-                std::string name;
-                getUIntAndName(optVal, &dim, &name);
-                if (dim >= array.dimensionCount()) {
-                    fprintf(stderr, "tad info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
-                    err = TAD::ErrorInvalidData;
-                    break;
-                }
-                if (!array.dimensionTagList(dim).contains(name)) {
-                    fprintf(stderr, "tad info: %s: no tag %s for dimension %zu\n", inFileName.c_str(), name.c_str(), dim);
-                    err = TAD::ErrorInvalidData;
-                    break;
-                }
-                printf("%s\n", array.dimensionTagList(dim).value(name).c_str());
-            } else if (optName == "dimension-tags") {
-                size_t dim = getUInt(optVal);
-                if (dim >= array.dimensionCount()) {
-                    fprintf(stderr, "tad info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
-                    err = TAD::ErrorInvalidData;
-                    break;
-                }
-                tad_info_print_taglist(array.dimensionTagList(dim), false);
-            } else if (optName == "component-tag") {
-                size_t comp;
-                std::string name;
-                getUIntAndName(optVal, &comp, &name);
-                if (comp >= array.componentCount()) {
-                    fprintf(stderr, "tad info: %s: no such component %zu\n", inFileName.c_str(), comp);
-                    err = TAD::ErrorInvalidData;
-                    break;
-                }
-                if (!array.componentTagList(comp).contains(name)) {
-                    fprintf(stderr, "tad info: %s: no tag %s for component %zu\n", inFileName.c_str(), name.c_str(), comp);
-                    err = TAD::ErrorInvalidData;
-                    break;
-                }
-                printf("%s\n", array.componentTagList(comp).value(name).c_str());
-            } else if (optName == "component-tags") {
-                size_t comp = getUInt(optVal);
-                if (comp >= array.componentCount()) {
-                    fprintf(stderr, "tad info: %s: no such component %zu\n", inFileName.c_str(), comp);
-                    err = TAD::ErrorInvalidData;
-                    break;
-                }
-                tad_info_print_taglist(array.componentTagList(comp), false);
-            }
-        }
-        if (err != TAD::ErrorNone) {
-            break;
-        }
-        if (defaultOutput) {
-            std::string sizeString;
-            if (array.dimensionCount() == 0) {
-                sizeString = "0";
-            } else {
-                sizeString = std::to_string(array.dimension(0));
-                for (size_t i = 1; i < array.dimensionCount(); i++) {
-                    sizeString += 'x';
-                    sizeString += std::to_string(array.dimension(i));
-                }
-            }
-            printf("array %d: %zu x %s, size %s (%s)\n",
-                    arrayCounter, array.componentCount(),
-                    TAD::typeToString(array.componentType()),
-                    sizeString.c_str(), tad_info_human_readable_memsize(array.dataSize()).c_str());
-            if (array.globalTagList().size() > 0) {
-                printf("  global:\n");
-                tad_info_print_taglist(array.globalTagList());
-            }
-            for (size_t i = 0; i < array.dimensionCount(); i++) {
-                if (array.dimensionTagList(i).size() > 0) {
-                    printf("  dimension %zu:\n", i);
-                    tad_info_print_taglist(array.dimensionTagList(i));
-                }
-            }
-            for (size_t i = 0; i < array.componentCount(); i++) {
-                if (array.componentTagList(i).size() > 0) {
-                    printf("  component %zu:\n", i);
-                    tad_info_print_taglist(array.componentTagList(i));
-                }
-            }
-            if (cmdLine.isSet("statistics")) {
-                std::vector<size_t> index(array.dimensionCount());
-                std::vector<size_t> localBox;
-                if (box.size() > 0) {
-                    if (box.size() != index.size() * 2) {
-                        fprintf(stderr, "tad info: %s: box does not match dimensions\n", inFileName.c_str());
+            for (size_t o = 0; o < cmdLine.orderedOptionNames().size(); o++) {
+                const std::string& optName = cmdLine.orderedOptionNames()[o];
+                const std::string& optVal = cmdLine.orderedOptionValues()[o];
+                if (optName == "dimensions") {
+                    printf("%zu\n", array.dimensionCount());
+                } else if (optName == "dimension") {
+                    size_t dim = getUInt(optVal);
+                    if (dim >= array.dimensionCount()) {
+                        fprintf(stderr, "tad info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
                         err = TAD::ErrorInvalidData;
                         break;
                     }
-                    localBox = restrictBoxToArray(box, array);
-                } else {
-                    localBox = getBoxFromArray(array);
+                    printf("%zu\n", array.dimension(dim));
+                } else if (optName == "components") {
+                    printf("%zu\n", array.componentCount());
+                } else if (optName == "type") {
+                    printf("%s\n", TAD::typeToString(getType(cmdLine.value("type"))));
+                } else if (optName == "global-tag") {
+                    if (!array.globalTagList().contains(optVal)) {
+                        fprintf(stderr, "tad info: %s: no global tag %s\n", inFileName.c_str(), optVal.c_str());
+                        err = TAD::ErrorInvalidData;
+                        break;
+                    }
+                    printf("%s\n", array.globalTagList().value(optVal).c_str());
+                } else if (optName == "global-tags") {
+                    tad_info_print_taglist(array.globalTagList(), false);
+                } else if (optName == "dimension-tag") {
+                    size_t dim;
+                    std::string name;
+                    getUIntAndName(optVal, &dim, &name);
+                    if (dim >= array.dimensionCount()) {
+                        fprintf(stderr, "tad info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
+                        err = TAD::ErrorInvalidData;
+                        break;
+                    }
+                    if (!array.dimensionTagList(dim).contains(name)) {
+                        fprintf(stderr, "tad info: %s: no tag %s for dimension %zu\n", inFileName.c_str(), name.c_str(), dim);
+                        err = TAD::ErrorInvalidData;
+                        break;
+                    }
+                    printf("%s\n", array.dimensionTagList(dim).value(name).c_str());
+                } else if (optName == "dimension-tags") {
+                    size_t dim = getUInt(optVal);
+                    if (dim >= array.dimensionCount()) {
+                        fprintf(stderr, "tad info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
+                        err = TAD::ErrorInvalidData;
+                        break;
+                    }
+                    tad_info_print_taglist(array.dimensionTagList(dim), false);
+                } else if (optName == "component-tag") {
+                    size_t comp;
+                    std::string name;
+                    getUIntAndName(optVal, &comp, &name);
+                    if (comp >= array.componentCount()) {
+                        fprintf(stderr, "tad info: %s: no such component %zu\n", inFileName.c_str(), comp);
+                        err = TAD::ErrorInvalidData;
+                        break;
+                    }
+                    if (!array.componentTagList(comp).contains(name)) {
+                        fprintf(stderr, "tad info: %s: no tag %s for component %zu\n", inFileName.c_str(), name.c_str(), comp);
+                        err = TAD::ErrorInvalidData;
+                        break;
+                    }
+                    printf("%s\n", array.componentTagList(comp).value(name).c_str());
+                } else if (optName == "component-tags") {
+                    size_t comp = getUInt(optVal);
+                    if (comp >= array.componentCount()) {
+                        fprintf(stderr, "tad info: %s: no such component %zu\n", inFileName.c_str(), comp);
+                        err = TAD::ErrorInvalidData;
+                        break;
+                    }
+                    tad_info_print_taglist(array.componentTagList(comp), false);
                 }
-                TAD::Array<float> floatArray = convert(array, TAD::float32);
-                std::vector<size_t> finiteValues(array.componentCount(), 0);
-                std::vector<float> tmpMinVals(array.componentCount(), 0.0f);
-                std::vector<float> tmpMaxVals(array.componentCount(), 0.0f);
-                std::vector<double> sums(array.componentCount(), 0.0);
-                std::vector<double> sumsOfSquares(array.componentCount(), 0.0);
-                if (!boxIsEmpty(localBox)) {
-                    initBoxIndex(localBox, index);
-                    for (;;) {
-                        size_t e = array.toLinearIndex(index);
-                        for (size_t i = 0; i < array.componentCount(); i++) {
-                            float val = floatArray.get<float>(e, i);
-                            if (std::isfinite(val)) {
-                                finiteValues[i]++;
-                                if (finiteValues[i] == 1) {
-                                    tmpMinVals[i] = val;
-                                    tmpMaxVals[i] = val;
-                                } else if (val < tmpMinVals[i]) {
-                                    tmpMinVals[i] = val;
-                                } else if (val > tmpMaxVals[i]) {
-                                    tmpMaxVals[i] = val;
-                                }
-                                sums[i] += val;
-                                sumsOfSquares[i] += val * val;
-                            }
-                        }
-                        if (!incBoxIndex(localBox, index))
-                            break;
+            }
+            if (err != TAD::ErrorNone) {
+                break;
+            }
+            if (defaultOutput) {
+                std::string sizeString;
+                if (array.dimensionCount() == 0) {
+                    sizeString = "0";
+                } else {
+                    sizeString = std::to_string(array.dimension(0));
+                    for (size_t i = 1; i < array.dimensionCount(); i++) {
+                        sizeString += 'x';
+                        sizeString += std::to_string(array.dimension(i));
+                    }
+                }
+                printf("array %zu: %zu x %s, size %s (%s)\n",
+                        arrayCounter, array.componentCount(),
+                        TAD::typeToString(array.componentType()),
+                        sizeString.c_str(), tad_info_human_readable_memsize(array.dataSize()).c_str());
+                if (array.globalTagList().size() > 0) {
+                    printf("  global:\n");
+                    tad_info_print_taglist(array.globalTagList());
+                }
+                for (size_t i = 0; i < array.dimensionCount(); i++) {
+                    if (array.dimensionTagList(i).size() > 0) {
+                        printf("  dimension %zu:\n", i);
+                        tad_info_print_taglist(array.dimensionTagList(i));
                     }
                 }
                 for (size_t i = 0; i < array.componentCount(); i++) {
-                    float minVal = std::numeric_limits<float>::quiet_NaN();
-                    float maxVal = std::numeric_limits<float>::quiet_NaN();
-                    float sampleMean = std::numeric_limits<float>::quiet_NaN();
-                    float sampleVariance = std::numeric_limits<float>::quiet_NaN();
-                    float sampleDeviation = std::numeric_limits<float>::quiet_NaN();
-                    if (finiteValues[i] > 0) {
-                        minVal = tmpMinVals[i];
-                        maxVal = tmpMaxVals[i];
-                        sampleMean = sums[i] / finiteValues[i];
-                        if (finiteValues[i] > 1) {
-                            sampleVariance = (sumsOfSquares[i] - sums[i] / finiteValues[i] * sums[i]) / (finiteValues[i] - 1);
-                            if (sampleVariance < 0.0f)
-                                sampleVariance = 0.0f;
-                            sampleDeviation = std::sqrt(sampleVariance);
-                        } else if (finiteValues[i] == 1) {
-                            sampleVariance = 0.0f;
-                            sampleDeviation = 0.0f;
+                    if (array.componentTagList(i).size() > 0) {
+                        printf("  component %zu:\n", i);
+                        tad_info_print_taglist(array.componentTagList(i));
+                    }
+                }
+                if (cmdLine.isSet("statistics")) {
+                    std::vector<size_t> index(array.dimensionCount());
+                    std::vector<size_t> localBox;
+                    if (box.size() > 0) {
+                        if (box.size() != index.size() * 2) {
+                            fprintf(stderr, "tad info: %s: box does not match dimensions\n", inFileName.c_str());
+                            err = TAD::ErrorInvalidData;
+                            break;
+                        }
+                        localBox = restrictBoxToArray(box, array);
+                    } else {
+                        localBox = getBoxFromArray(array);
+                    }
+                    TAD::Array<float> floatArray = convert(array, TAD::float32);
+                    std::vector<size_t> finiteValues(array.componentCount(), 0);
+                    std::vector<float> tmpMinVals(array.componentCount(), 0.0f);
+                    std::vector<float> tmpMaxVals(array.componentCount(), 0.0f);
+                    std::vector<double> sums(array.componentCount(), 0.0);
+                    std::vector<double> sumsOfSquares(array.componentCount(), 0.0);
+                    if (!boxIsEmpty(localBox)) {
+                        initBoxIndex(localBox, index);
+                        for (;;) {
+                            size_t e = array.toLinearIndex(index);
+                            for (size_t i = 0; i < array.componentCount(); i++) {
+                                float val = floatArray.get<float>(e, i);
+                                if (std::isfinite(val)) {
+                                    finiteValues[i]++;
+                                    if (finiteValues[i] == 1) {
+                                        tmpMinVals[i] = val;
+                                        tmpMaxVals[i] = val;
+                                    } else if (val < tmpMinVals[i]) {
+                                        tmpMinVals[i] = val;
+                                    } else if (val > tmpMaxVals[i]) {
+                                        tmpMaxVals[i] = val;
+                                    }
+                                    sums[i] += val;
+                                    sumsOfSquares[i] += val * val;
+                                }
+                            }
+                            if (!incBoxIndex(localBox, index))
+                                break;
                         }
                     }
-                    printf("  component %zu: min=%g max=%g mean=%g var=%g dev=%g\n", i,
-                            minVal, maxVal, sampleMean, sampleVariance, sampleDeviation);
+                    for (size_t i = 0; i < array.componentCount(); i++) {
+                        float minVal = std::numeric_limits<float>::quiet_NaN();
+                        float maxVal = std::numeric_limits<float>::quiet_NaN();
+                        float sampleMean = std::numeric_limits<float>::quiet_NaN();
+                        float sampleVariance = std::numeric_limits<float>::quiet_NaN();
+                        float sampleDeviation = std::numeric_limits<float>::quiet_NaN();
+                        if (finiteValues[i] > 0) {
+                            minVal = tmpMinVals[i];
+                            maxVal = tmpMaxVals[i];
+                            sampleMean = sums[i] / finiteValues[i];
+                            if (finiteValues[i] > 1) {
+                                sampleVariance = (sumsOfSquares[i] - sums[i] / finiteValues[i] * sums[i]) / (finiteValues[i] - 1);
+                                if (sampleVariance < 0.0f)
+                                    sampleVariance = 0.0f;
+                                sampleDeviation = std::sqrt(sampleVariance);
+                            } else if (finiteValues[i] == 1) {
+                                sampleVariance = 0.0f;
+                                sampleDeviation = 0.0f;
+                            }
+                        }
+                        printf("  component %zu: min=%g max=%g mean=%g var=%g dev=%g\n", i,
+                                minVal, maxVal, sampleMean, sampleVariance, sampleDeviation);
+                    }
                 }
             }
+            arrayCounter++;
         }
-        arrayCounter++;
+        if (err != TAD::ErrorNone)
+            break;
     }
 
     return (err == TAD::ErrorNone ? 0 : 1);
