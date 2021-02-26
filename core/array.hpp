@@ -72,10 +72,10 @@
  *
  * \section manual TAD Manual
  *
- * The <a href="https://marlam.de/tad/doc/tad-manual.html">tad manual</a> contains
- * <a href="https://marlam.de/tad/doc/tad-manual.html#file-formats">an overview of supported file formats</a>,
- * <a href="https://marlam.de/tad/doc/tad-manual.html#tad-file-format-specification">the specification of the native TAD file format</a>, and
- * <a href="https://marlam.de/tad/doc/tad-manual.html#common-tags">a list of common tags</a>.
+ * The <a href="https://marlam.de/tad/tad-manual.html">tad manual</a> contains
+ * <a href="https://marlam.de/tad/tad-manual.html#file-formats">an overview of supported file formats</a>,
+ * <a href="https://marlam.de/tad/tad-manual.html#tad-file-format-specification">the specification of the native TAD file format</a>, and
+ * <a href="https://marlam.de/tad/tad-manual.html#common-tags">a list of common tags</a>.
  *
  * \section examples Examples
  *
