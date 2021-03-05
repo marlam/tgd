@@ -66,20 +66,20 @@ Error FormatImportExportHDF5::openForReading(const std::string& fileName, const 
 
 Error FormatImportExportHDF5::openForWriting(const std::string& fileName, bool append, const TagList&)
 {
-    if (append)
-        return ErrorFeaturesUnsupported;
     if (fileName == "-") {
         return ErrorInvalidData;
     } else {
-        FILE* f = fopen(fileName.c_str(), "wb");
+        FILE* f = fopen(fileName.c_str(), append ? "rb+" : "wb");
         if (!f) {
             return ErrorSysErrno;
         }
         fclose(f);
-        remove(fileName.c_str());
+        if (!append) {
+            remove(fileName.c_str());
+        }
         _f = new H5::H5File;
         try {
-            *_f = H5::H5File(fileName.c_str(), H5F_ACC_TRUNC);
+            *_f = H5::H5File(fileName.c_str(), append ? H5F_ACC_RDWR : H5F_ACC_TRUNC);
         }
         catch (H5::Exception& error) {
             fprintf(stderr, "%s: %s\n", fileName.c_str(), error.getCDetailMsg());
@@ -87,6 +87,7 @@ Error FormatImportExportHDF5::openForWriting(const std::string& fileName, bool a
             _f = nullptr;
             return ErrorLibrary;
         }
+        _counter = arrayCount();
         return ErrorNone;
     }
 }
@@ -219,10 +220,29 @@ ArrayContainer FormatImportExportHDF5::readArray(Error* error, int arrayIndex)
     H5::StrType strType(H5::PredType::C_S1, H5T_VARIABLE);
     for (int i = 0; i < dataset.getNumAttrs(); i++) {
         H5::Attribute a = dataset.openAttribute(i);
-        std::string key = a.getName();
+        std::string name = a.getName();
         std::string value;
         a.read(strType, value);
-        r.globalTagList().set(key, value);
+        bool tagConsumed = false;
+        if (name.substr(0, 7) == "TAD/DIM") {
+            size_t i = 0;
+            size_t j = std::stoul(name.substr(7), &i);
+            if (j < r.dimensionCount() && name[7 + i] == '/' && name.size() > 7 + i + 1) {
+                r.dimensionTagList(j).set(name.substr(7 + i + 1), value);
+                tagConsumed = true;
+            }
+        }
+        if (!tagConsumed && name.substr(0, 8) == "TAD/COMP") {
+            size_t i = 0;
+            size_t j = std::stoul(name.substr(8), &i);
+            if (j < r.componentCount() && name[8 + i] == '/' && name.size() > 8 + i + 1) {
+                r.componentTagList(j).set(name.substr(8 + i + 1), value);
+                tagConsumed = true;
+            }
+        }
+        if (!tagConsumed) {
+            r.globalTagList().set(name, value);
+        }
     }
     return r;
 }
@@ -294,6 +314,20 @@ Error FormatImportExportHDF5::writeArray(const ArrayContainer& array)
         for (auto it = array.globalTagList().cbegin(); it != array.globalTagList().cend(); it++) {
             H5::Attribute att = dataset.createAttribute(it->first.c_str(), strType, attSpace);
             att.write(strType, it->second);
+        }
+        for (size_t i = 0; i < array.dimensionCount(); i++) {
+            for (auto it = array.dimensionTagList(i).cbegin(); it != array.dimensionTagList(i).cend(); it++) {
+                std::string name = std::string("TAD/DIM") + std::to_string(i) + '/' + it->first;
+                H5::Attribute att = dataset.createAttribute(name.c_str(), strType, attSpace);
+                att.write(strType, it->second);
+            }
+        }
+        for (size_t i = 0; i < array.componentCount(); i++) {
+            for (auto it = array.componentTagList(i).cbegin(); it != array.componentTagList(i).cend(); it++) {
+                std::string name = std::string("TAD/COMP") + std::to_string(i) + '/' + it->first;
+                H5::Attribute att = dataset.createAttribute(name.c_str(), strType, attSpace);
+                att.write(strType, it->second);
+            }
         }
         // TODO: if this is an image, set the appropriate IMAGE attributes
         // See https://support.hdfgroup.org/HDF5/doc/ADGuide/ImageSpec.html
