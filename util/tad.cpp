@@ -943,6 +943,54 @@ private:
         return r;
     }
 
+    static double copy(const double* dx, int n)
+    {
+        const std::vector<TAD::ArrayContainer>& input_arrays = calcSingleton->input_arrays;
+
+        if (n != 2 && n != static_cast<int>(input_arrays[0].dimensionCount() + 1))
+            return std::numeric_limits<double>::quiet_NaN();
+
+        size_t a = 0;
+        std::vector<size_t> index(n - 1);
+        for (int i = 0; i < n; i++) {
+            long long tmp = dx[i];
+            if (i == 0) {
+                if (tmp < 0) {
+                    a = 0;
+                } else if (static_cast<size_t>(tmp) >= input_arrays.size()) {
+                    a = input_arrays.size() - 1;
+                } else {
+                    a = tmp;
+                }
+            } else {
+                if (tmp < 0) {
+                    index[i - 1] = 0;
+                } else if (n == 3 && static_cast<size_t>(tmp) >= input_arrays[a].elementCount()) {
+                    index[i - 1] = input_arrays[a].elementCount() - 1;
+                } else if (n != 3 && static_cast<size_t>(tmp) >= input_arrays[a].dimension(i - 1)) {
+                    index[i - 1] = input_arrays[a].dimension(i - 1) - 1;
+                } else {
+                    index[i - 1] = tmp;
+                }
+            }
+        }
+        size_t linearIndex;
+        if (n == 2) {
+            linearIndex = index[0];
+        } else {
+            linearIndex = input_arrays[a].toLinearIndex(index);
+        }
+
+        std::vector<double>& var_v = calcSingleton->var_v;
+        for (size_t c = 0; c < var_v.size(); c++) {
+            double v = std::numeric_limits<double>::quiet_NaN();
+            if (c < input_arrays[a].componentCount())
+                v = input_value(a, linearIndex, c);
+            var_v[c] = v;
+        }
+        return 0.0;
+    }
+
 public:
     // input arrays
     std::vector<TAD::ArrayContainer> input_arrays;
@@ -990,8 +1038,9 @@ public:
             parsers[i].DefineFun("gaussian", gaussian, false);
             parsers[i].DefineInfixOprt("+", unary_plus);
             parsers[i].SetVarFactory(add_var, &expressionIndex);
-            // function to get values from input arrays
+            // functions to get or copy input array values
             parsers[i].DefineFun("v", v);
+            parsers[i].DefineFun("copy", copy);
             // input-dependent variables
             parsers[i].DefineVar("array_count", &var_array_count);
             parsers[i].DefineVar("stream_index", &var_stream_index);
@@ -1177,15 +1226,19 @@ int tad_calc(int argc, char* argv[])
                 "  v(a, i0, ..., c)- get the value of component c of element (i0, i1, ...) in input array a\n"
                 "Output variables:\n"
                 "  v0, v1, ...     - output element components, e.g. v0=R, v1=G, v2=B for images\n"
+                "Function to copy an element from an input array into the output variables\n"
+                "  (all arguments will be clamped to allowed range):\n"
+                "  copy(a, e)      - set variables v0,v1,... from element e in input array a\n"
+                "  copy(a, i0, ...)- set variables v0,v1,... from element (i0, i1, ...) in input array a\n"
                 "Example expressions:\n"
                 "  convert BGR image data into RGB:\n"
                 "    v0=v(0,index,2), v1=v(0,index,1), v2=v(0,index,0)\n"
                 "  compute the difference of two images:\n"
                 "    v0=v(0,index,0)-v(1,index,0), v1=v(0,index,1)-v(1,index,1), v2=v(0,index,2)-v(1,index,2)\n"
                 "  flip image vertically:\n"
-                "    x=i0, y=dim1-1-i1, v0=v(0,x,y,0), v1=v(0,x,y,1), v2=v(0,x,y,2)\n"
+                "    x=i0, y=dim1-1-i1, copy(0,x,y)\n"
                 "  copy a small image into a larger image at position x=80, y=60:\n"
-                "    --box=80,60,500,500  x=i0-box0, y=i1-box1, v0=v(1,x,y,0), v1=v(1,x,y,1), v2=v(1,x,y,2)\n"
+                "    --box=80,60,500,500  x=i0-box0, y=i1-box1, copy(1,x,y)\n"
                 "  apply a Gaussian filter to an image:\n"
                 "    v0 = (v(0,i0,i1-1,0) + v(0,i0-1,i1,0) + 2*v(0,i0,i1,0) + v(0,i0+1,i1,0) + v(0,i0,i1+1,0)) / 6,\n"
                 "    v1 = (v(0,i0,i1-1,1) + v(0,i0-1,i1,1) + 2*v(0,i0,i1,1) + v(0,i0+1,i1,1) + v(0,i0,i1+1,1)) / 6,\n"
