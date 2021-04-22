@@ -1,6 +1,6 @@
 ---
 title: tad
-date: February 24, 2021
+date: April 22, 2021
 section: 1
 ---
 
@@ -306,6 +306,12 @@ Common options accepted by all commands are
 
         `v0, v1, ...`: values of the output element components, e.g. v0=R, v1=G, v2=B for images
 
+      - Function to copy an element from an input array into the output
+	variables (all arguments will be clamped to allowed range):
+
+	`copy(a, e)`: set variables `v0,v1,...` from element `e` in input array `a`\
+	`copy(a, i0, ...)`: set variables `v0,v1,...` from element `(i0, i1, ...)` in input array `a`
+
     Examples:
 
     - Convert BGR image data into RGB:
@@ -318,11 +324,11 @@ Common options accepted by all commands are
 
     - Flip image vertically:
 
-      `tad calc -e 'x=i0, y=dim1-1-i1, v0=v(0,x,y,0), v1=v(0,x,y,1), v2=v(0,x,y,2)' img.png flipped-img.png`
+      `tad calc -e 'x=i0, y=dim1-1-i1, copy(0,x,y)' img.png flipped-img.png`
 
     - Copy a small image into a larger image at position x=80, y=60:
 
-      `tad calc --box=80,60,500,500 -e 'x=i0-box0, y=i1-box1, v0=v(1,x,y,0), v1=v(1,x,y,1), v2=v(1,x,y,2)' big-image.png small-image.png output.png`
+      `tad calc --box=80,60,500,500 -e 'x=i0-box0, y=i1-box1, copy(1,x,y)' big-image.png small-image.png output.png`
 
     - Apply a Gaussian filter to an image:
 
