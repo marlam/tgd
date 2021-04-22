@@ -307,10 +307,10 @@ Common options accepted by all commands are
         `v0, v1, ...`: values of the output element components, e.g. v0=R, v1=G, v2=B for images
 
       - Function to copy an element from an input array into the output
-	variables (all arguments will be clamped to allowed range):
+        variables (all arguments will be clamped to allowed range):
 
-	`copy(a, e)`: set variables `v0,v1,...` from element `e` in input array `a`\
-	`copy(a, i0, ...)`: set variables `v0,v1,...` from element `(i0, i1, ...)` in input array `a`
+        `copy(a, e)`: set variables `v0,v1,...` from element `e` in input array `a`\
+        `copy(a, i0, ...)`: set variables `v0,v1,...` from element `(i0, i1, ...)` in input array `a`
 
     Examples:
 
