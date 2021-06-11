@@ -107,9 +107,13 @@ bool CmdLine::parse(int argc, char* argv[], int minArgs, int maxArgs, std::strin
             error = true;
             break;
         } else if (optVal == ':') {
-            assert(optopt >= optValBase);
-            errMsg = std::string("option --") + _options[optopt - optValBase].name
-                + std::string(" requires an argument");
+            errMsg = "option ";
+            if (optopt >= optValBase) {
+                errMsg += std::string("--") + _options[optopt - optValBase].name;
+            } else {
+                errMsg += std::string("-") + static_cast<char>(optopt);
+            }
+            errMsg += std::string(" requires an argument");
             error = true;
             break;
         } else if (optVal < optValBase) {
