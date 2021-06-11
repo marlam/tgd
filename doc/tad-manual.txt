@@ -119,6 +119,12 @@ Common options accepted by all commands are
       Set list of input components that will be copied to the output in the given order.
       This allows to extract, reorder and duplicate input components.
 
+    - `-d`, `--dimensions` *D0[,D1[,...]]*
+
+      Set list of input dimensions that will be copied to the output in the given order.
+      The special list entry _ will create a new dimension of size 1.
+      This allows to reduce, reorder and create dimensions.
+
     - `-k`, `--keep` *A-B[,S]*
 
       Keep only the specified range of arrays from the input and drop the

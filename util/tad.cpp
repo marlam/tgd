@@ -49,6 +49,13 @@
 
 /* Helper functions to parse command line options */
 
+bool parseUnderscore(const std::string& value)
+{
+    size_t i = value.find_first_of('_');
+    return (i != std::string::npos && i == value.find_last_of('_')
+            && value.find_first_not_of(" _") == std::string::npos);
+}
+
 bool parseUInt(const std::string& value, bool allowZero)
 {
     bool ok = true;
@@ -82,11 +89,12 @@ size_t getUInt(const std::string& value)
     return std::stoull(value);
 }
 
-bool parseUIntList(const std::string& value, bool allowZero)
+bool parseUIntList(const std::string& value, bool allowZero, bool allowUnderscore)
 {
     for (size_t i = 0; i < value.length();) {
         size_t j = value.find_first_of(',', i);
-        if (!parseUInt(value.substr(i, (j == std::string::npos ? std::string::npos : j - i)), allowZero))
+        std::string singleValue = value.substr(i, (j == std::string::npos ? std::string::npos : j - i));
+        if (!((allowUnderscore && parseUnderscore(singleValue)) || parseUInt(singleValue, allowZero)))
             return false;
         if (j == std::string::npos)
             break;
@@ -97,25 +105,46 @@ bool parseUIntList(const std::string& value, bool allowZero)
 
 bool parseUIntList(const std::string& value)
 {
-    return parseUIntList(value, true);
+    return parseUIntList(value, true, false);
 }
 
 bool parseUIntLargerThanZeroList(const std::string& value)
 {
-    return parseUIntList(value, false);
+    return parseUIntList(value, false, false);
 }
 
-std::vector<size_t> getUIntList(const std::string& value)
+bool parseUIntUnderscoreList(const std::string& value)
+{
+    return parseUIntList(value, true, true);
+}
+
+static const size_t underscoreValue = std::numeric_limits<size_t>::max();
+
+std::vector<size_t> getUIntList(const std::string& value, bool allowUnderscore)
 {
     std::vector<size_t> values;
     for (size_t i = 0; i < value.length();) {
         size_t j = value.find_first_of(',', i);
-        values.push_back(getUInt(value.substr(i, (j == std::string::npos ? std::string::npos : j - i))));
+        std::string singleValue = value.substr(i, (j == std::string::npos ? std::string::npos : j - i));
+        if (allowUnderscore && parseUnderscore(singleValue))
+            values.push_back(underscoreValue);
+        else
+            values.push_back(getUInt(singleValue));
         if (j == std::string::npos)
             break;
         i = j + 1;
     }
     return values;
+}
+
+std::vector<size_t> getUIntList(const std::string& value)
+{
+    return getUIntList(value, false);
+}
+
+std::vector<size_t> getUIntUnderscoreList(const std::string& value)
+{
+    return getUIntList(value, true);
 }
 
 bool parseType(const std::string& value)
@@ -457,9 +486,10 @@ int tad_convert(int argc, char* argv[])
     cmdLine.addOptionWithArg("type", 't', parseType);
     cmdLine.addOptionWithoutArg("append", 'a');
     cmdLine.addOptionWithArg("box", 'b', parseUIntList);
+    cmdLine.addOptionWithArg("components", 'c', parseUIntList);
+    cmdLine.addOptionWithArg("dimensions", 'd', parseUIntUnderscoreList);
     cmdLine.addOptionWithArg("keep", 'k', parseRange);
     cmdLine.addOptionWithArg("drop", 'd', parseRange);
-    cmdLine.addOptionWithArg("components", 'c', parseUIntList);
     cmdLine.addOptionWithoutArg("split", 's');
     cmdLine.addOrderedOptionWithoutArg("unset-all-tags");
     cmdLine.addOrderedOptionWithArg("global-tag", 0, parseNameAndValue);
@@ -491,6 +521,8 @@ int tad_convert(int argc, char* argv[])
                 "  -a|--append          append to the output file instead of overwriting (not always possible)\n"
                 "  -b|--box=INDEX,SIZE  set box to operate on, e.g. X,Y,WIDTH,HEIGHT for 2D\n"
                 "  -c|--components=LIST copy these input components to the output in the given order\n"
+                "  -d|--dimensions=LIST copy these input dimensions to the output in the given order;\n"
+                "                       the special entry _ will create a new dimension of size 1\n"
                 "\n"
                 "The following options allow to keep or drop specific arrays from the input.\n"
                 "Only one of the two alternatives can be used, but each option can be given multiple times.\n"
@@ -540,6 +572,24 @@ int tad_convert(int argc, char* argv[])
         if (components.size() == 0) {
             fprintf(stderr, "tad convert: --components must not be empty\n");
             return 1;
+        }
+    }
+    std::vector<size_t> dimensions;
+    if (cmdLine.isSet("dimensions")) {
+        dimensions = getUIntUnderscoreList(cmdLine.value("dimensions"));
+        if (dimensions.size() == 0) {
+            fprintf(stderr, "tad convert: --dimensions must not be empty\n");
+            return 1;
+        }
+        for (size_t i = 0; i < dimensions.size(); i++) {
+            if (dimensions[i] != underscoreValue) {
+                for (size_t j = 0; j < i; j++) {
+                    if (dimensions[i] == dimensions[j]) {
+                        fprintf(stderr, "tad convert: --dimensions list must not contain duplicates\n");
+                        return 1;
+                    }
+                }
+            }
         }
     }
 
@@ -648,6 +698,43 @@ int tad_convert(int argc, char* argv[])
                     for (size_t i = 0; i < array.componentCount(); i++)
                         arrayBox.componentTagList(i) = array.componentTagList(i);
                     array = arrayBox;
+                }
+                if (cmdLine.isSet("dimensions")) {
+                    for (size_t i = 0; i < dimensions.size(); i++) {
+                        if (dimensions[i] != underscoreValue && dimensions[i] >= array.dimensionCount()) {
+                            fprintf(stderr, "tad convert: %s: no dimension %zu\n", inFileName.c_str(), dimensions[i]);
+                            err = TAD::ErrorInvalidData;
+                            break;
+                        }
+                    }
+                    std::vector<size_t> dimensionsNew(dimensions.size());
+                    std::vector<size_t> srcIndexMap(array.dimensionCount(), underscoreValue);
+                    for (size_t i = 0; i < dimensions.size(); i++) {
+                        if (dimensions[i] == underscoreValue) {
+                            dimensionsNew[i] = 1;
+                        } else {
+                            dimensionsNew[i] = array.dimension(dimensions[i]);
+                            srcIndexMap[dimensions[i]] = i;
+                        }
+                    }
+                    TAD::ArrayContainer arrayNew(dimensionsNew, array.componentCount(), array.componentType());
+                    std::vector<size_t> srcIndex(array.dimensionCount());
+                    std::vector<size_t> dstIndex(arrayNew.dimensionCount());
+                    for (size_t e = 0; e < arrayNew.elementCount(); e++) {
+                        void* dst = arrayNew.get(e);
+                        arrayNew.toVectorIndex(e, dstIndex.data());
+                        for (size_t i = 0; i < srcIndex.size(); i++)
+                            srcIndex[i] = (srcIndexMap[i] == underscoreValue ? 0 : dstIndex[srcIndexMap[i]]);
+                        void* src = array.get(srcIndex);
+                        std::memcpy(dst, src, array.elementSize());
+                    }
+                    arrayNew.globalTagList() = array.globalTagList();
+                    for (size_t i = 0; i < arrayNew.dimensionCount(); i++)
+                        if (dimensions[i] != underscoreValue)
+                            arrayNew.dimensionTagList(i) = array.dimensionTagList(dimensions[i]);
+                    for (size_t i = 0; i < arrayNew.componentCount(); i++)
+                        arrayNew.componentTagList(i) = array.componentTagList(i);
+                    array = arrayNew;
                 }
                 if (cmdLine.isSet("components")) {
                     for (size_t i = 0; i < components.size(); i++) {
