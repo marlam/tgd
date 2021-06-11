@@ -91,7 +91,7 @@ size_t getUInt(const std::string& value)
 
 bool parseUIntList(const std::string& value, bool allowZero, bool allowUnderscore)
 {
-    for (size_t i = 0; i < value.length();) {
+    for (size_t i = 0; i <= value.length();) {
         size_t j = value.find_first_of(',', i);
         std::string singleValue = value.substr(i, (j == std::string::npos ? std::string::npos : j - i));
         if (!((allowUnderscore && parseUnderscore(singleValue)) || parseUInt(singleValue, allowZero)))
