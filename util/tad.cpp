@@ -459,6 +459,7 @@ int tad_convert(int argc, char* argv[])
     cmdLine.addOptionWithArg("box", 'b', parseUIntList);
     cmdLine.addOptionWithArg("keep", 'k', parseRange);
     cmdLine.addOptionWithArg("drop", 'd', parseRange);
+    cmdLine.addOptionWithArg("components", 'c', parseUIntList);
     cmdLine.addOptionWithoutArg("split", 's');
     cmdLine.addOrderedOptionWithoutArg("unset-all-tags");
     cmdLine.addOrderedOptionWithArg("global-tag", 0, parseNameAndValue);
@@ -489,6 +490,7 @@ int tad_convert(int argc, char* argv[])
                 "                       when converting to/from signed/unsigned integer values\n"
                 "  -a|--append          append to the output file instead of overwriting (not always possible)\n"
                 "  -b|--box=INDEX,SIZE  set box to operate on, e.g. X,Y,WIDTH,HEIGHT for 2D\n"
+                "  -c|--components=LIST copy these input components to the output in the given order\n"
                 "\n"
                 "The following options allow to keep or drop specific arrays from the input.\n"
                 "Only one of the two alternatives can be used, but each option can be given multiple times.\n"
@@ -532,6 +534,14 @@ int tad_convert(int argc, char* argv[])
     std::vector<size_t> box;
     if (cmdLine.isSet("box"))
         box = getUIntList(cmdLine.value("box"));
+    std::vector<size_t> components;
+    if (cmdLine.isSet("components")) {
+        components = getUIntList(cmdLine.value("components"));
+        if (components.size() == 0) {
+            fprintf(stderr, "tad convert: --components must not be empty\n");
+            return 1;
+        }
+    }
 
     std::vector<size_t> A, B, S;
     std::vector<std::string> ranges;
@@ -638,6 +648,31 @@ int tad_convert(int argc, char* argv[])
                     for (size_t i = 0; i < array.componentCount(); i++)
                         arrayBox.componentTagList(i) = array.componentTagList(i);
                     array = arrayBox;
+                }
+                if (cmdLine.isSet("components")) {
+                    for (size_t i = 0; i < components.size(); i++) {
+                        if (components[i] >= array.componentCount()) {
+                            fprintf(stderr, "tad convert: %s: no component %zu\n", inFileName.c_str(), components[i]);
+                            err = TAD::ErrorInvalidData;
+                            break;
+                        }
+                    }
+                    TAD::ArrayContainer arrayNew(array.dimensions(), components.size(), array.componentType());
+                    for (size_t i = 0; i < components.size(); i++) {
+                        for (size_t e = 0; e < array.elementCount(); e++) {
+                            const unsigned char* src = reinterpret_cast<const unsigned char*>(array.get(e));
+                            src += components[i] * array.componentSize();
+                            unsigned char* dst = reinterpret_cast<unsigned char*>(arrayNew.get(e));
+                            dst += i * array.componentSize();
+                            std::memcpy(dst, src, array.componentSize());
+                        }
+                    }
+                    arrayNew.globalTagList() = array.globalTagList();
+                    for (size_t i = 0; i < array.dimensionCount(); i++)
+                        arrayNew.dimensionTagList(i) = array.dimensionTagList(i);
+                    for (size_t i = 0; i < arrayNew.componentCount(); i++)
+                        arrayNew.componentTagList(i) = array.componentTagList(components[i]);
+                    array = arrayNew;
                 }
                 if (cmdLine.isSet("type")) {
                     TAD::Type oldType = array.componentType();
