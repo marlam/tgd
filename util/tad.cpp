@@ -700,13 +700,17 @@ int tad_convert(int argc, char* argv[])
                     array = arrayBox;
                 }
                 if (cmdLine.isSet("dimensions")) {
+                    bool valid = true;
                     for (size_t i = 0; i < dimensions.size(); i++) {
                         if (dimensions[i] != underscoreValue && dimensions[i] >= array.dimensionCount()) {
                             fprintf(stderr, "tad convert: %s: no dimension %zu\n", inFileName.c_str(), dimensions[i]);
                             err = TAD::ErrorInvalidData;
+                            valid = false;
                             break;
                         }
                     }
+                    if (!valid)
+                        break;
                     std::vector<size_t> dimensionsNew(dimensions.size());
                     std::vector<size_t> srcIndexMap(array.dimensionCount(), underscoreValue);
                     for (size_t i = 0; i < dimensions.size(); i++) {
