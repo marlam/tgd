@@ -486,7 +486,7 @@ int tad_convert(int argc, char* argv[])
     cmdLine.addOptionWithArg("type", 't', parseType);
     cmdLine.addOptionWithoutArg("append", 'a');
     cmdLine.addOptionWithArg("box", 'b', parseUIntList);
-    cmdLine.addOptionWithArg("components", 'c', parseUIntList);
+    cmdLine.addOptionWithArg("components", 'c', parseUIntUnderscoreList);
     cmdLine.addOptionWithArg("dimensions", 'd', parseUIntUnderscoreList);
     cmdLine.addOptionWithArg("keep", 'k', parseRange);
     cmdLine.addOptionWithArg("drop", 'd', parseRange);
@@ -520,7 +520,8 @@ int tad_convert(int argc, char* argv[])
                 "                       when converting to/from signed/unsigned integer values\n"
                 "  -a|--append          append to the output file instead of overwriting (not always possible)\n"
                 "  -b|--box=INDEX,SIZE  set box to operate on, e.g. X,Y,WIDTH,HEIGHT for 2D\n"
-                "  -c|--components=LIST copy these input components to the output in the given order\n"
+                "  -c|--components=LIST copy these input components to the output in the given order;\n"
+                "                       the special entry _ will create a new component initialized to zero\n"
                 "  -d|--dimensions=LIST copy these input dimensions to the output in the given order;\n"
                 "                       the special entry _ will create a new dimension of size 1\n"
                 "\n"
@@ -568,7 +569,7 @@ int tad_convert(int argc, char* argv[])
         box = getUIntList(cmdLine.value("box"));
     std::vector<size_t> components;
     if (cmdLine.isSet("components")) {
-        components = getUIntList(cmdLine.value("components"));
+        components = getUIntUnderscoreList(cmdLine.value("components"));
         if (components.size() == 0) {
             fprintf(stderr, "tad convert: --components must not be empty\n");
             return 1;
@@ -741,28 +742,38 @@ int tad_convert(int argc, char* argv[])
                     array = arrayNew;
                 }
                 if (cmdLine.isSet("components")) {
+                    bool valid = true;
                     for (size_t i = 0; i < components.size(); i++) {
-                        if (components[i] >= array.componentCount()) {
+                        if (components[i] != underscoreValue && components[i] >= array.componentCount()) {
                             fprintf(stderr, "tad convert: %s: no component %zu\n", inFileName.c_str(), components[i]);
                             err = TAD::ErrorInvalidData;
+                            valid = false;
                             break;
                         }
                     }
+                    if (!valid)
+                        break;
                     TAD::ArrayContainer arrayNew(array.dimensions(), components.size(), array.componentType());
                     for (size_t i = 0; i < components.size(); i++) {
                         for (size_t e = 0; e < array.elementCount(); e++) {
-                            const unsigned char* src = reinterpret_cast<const unsigned char*>(array.get(e));
-                            src += components[i] * array.componentSize();
                             unsigned char* dst = reinterpret_cast<unsigned char*>(arrayNew.get(e));
                             dst += i * array.componentSize();
-                            std::memcpy(dst, src, array.componentSize());
+                            if (components[i] == underscoreValue) {
+                                std::memset(dst, 0, array.componentSize());
+                            } else {
+                                assert(components[i] < array.componentCount());
+                                const unsigned char* src = reinterpret_cast<const unsigned char*>(array.get(e));
+                                src += components[i] * array.componentSize();
+                                std::memcpy(dst, src, array.componentSize());
+                            }
                         }
                     }
                     arrayNew.globalTagList() = array.globalTagList();
                     for (size_t i = 0; i < array.dimensionCount(); i++)
                         arrayNew.dimensionTagList(i) = array.dimensionTagList(i);
                     for (size_t i = 0; i < arrayNew.componentCount(); i++)
-                        arrayNew.componentTagList(i) = array.componentTagList(components[i]);
+                        if (components[i] != underscoreValue)
+                            arrayNew.componentTagList(i) = array.componentTagList(components[i]);
                     array = arrayNew;
                 }
                 if (cmdLine.isSet("type")) {

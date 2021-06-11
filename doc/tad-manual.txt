@@ -117,7 +117,8 @@ Common options accepted by all commands are
     - `-c`, `--components` *C0[,C1[,...]]*
 
       Set list of input components that will be copied to the output in the given order.
-      This allows to extract, reorder and duplicate input components.
+      The special list entry _ will create a new component initialized to zero.
+      This allows to add, extract, reorder and duplicate input components.
 
     - `-d`, `--dimensions` *D0[,D1[,...]]*
 
