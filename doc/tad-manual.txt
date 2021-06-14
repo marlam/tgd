@@ -93,39 +93,6 @@ Common options accepted by all commands are
 
 : Convert data between different formats.
 
-    - `-t`, `--type` *T*
-
-      Convert to new type (int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64)
-
-    - `-n`, `--normalize`
-
-      Create/assume floating point values in [-1,1]/[0,1] when converting to/from signed/unsigned integer values
-
-    - `-a`, `--append`
-
-      Append to the output file instead of overwriting (only possible with
-      output formats supporting multiple arrays per file).
-
-    - `-b`, `--box` *INDEX,SIZE*
-
-      Set box to operate on. Only this box will be converted, the rest of the
-      input will be ignored.
-      INDEX is the start index, and SIZE is the size of the box. Both must
-      match the dimensions of the input array.  For example, for a 2D image,
-      INDEX is X,Y and SIZE is WIDTH,HEIGHT.
-
-    - `-c`, `--components` *C0[,C1[,...]]*
-
-      Set list of input components that will be copied to the output in the given order.
-      The special list entry _ will create a new component initialized to zero.
-      This allows to add, extract, reorder and duplicate input components.
-
-    - `-d`, `--dimensions` *D0[,D1[,...]]*
-
-      Set list of input dimensions that will be copied to the output in the given order.
-      The special list entry _ will create a new dimension of size 1.
-      This allows to reduce, reorder and create dimensions.
-
     - `-k`, `--keep` *A-B[,S]*
 
       Keep only the specified range of arrays from the input and drop the
@@ -147,6 +114,52 @@ Common options accepted by all commands are
       contain the sequence `%[n]N`, which will be replaced by the index of the array.
       The optional parameter n gives the minimum number of digits in the resulting number;
       small numbers will be padded with zeroes.
+
+    - `-a`, `--append`
+
+      Append to the output file instead of overwriting (only possible with
+      output formats supporting multiple arrays per file).
+
+    - `-D`, `--merge-dimension` *D*
+
+      Merge input arrays along the given dimension, e.g. -D0 to arrange images
+      left to right and -D1 to arrange them bottom to top. The special
+      dimension _ will create a new dimension, e.g. to merge 2D images into
+      a 3D volume.
+
+    - `-C`, `--merge-components`
+
+      Merge input arrays at the component level, e.g. to combine an RGB image
+      and an alpha mask into an RGBA image. The components of all input arrays
+      will be concatenated.
+
+    - `-b`, `--box` *INDEX,SIZE*
+
+      Set box to operate on. Only this box will be converted, the rest of the
+      input will be ignored.
+      INDEX is the start index, and SIZE is the size of the box. Both must
+      match the dimensions of the input array.  For example, for a 2D image,
+      INDEX is X,Y and SIZE is WIDTH,HEIGHT.
+
+    - `-d`, `--dimensions` *D0[,D1[,...]]*
+
+      Set list of input dimensions that will be copied to the output in the given order.
+      The special list entry _ will create a new dimension of size 1.
+      This allows to reduce, reorder and create dimensions.
+
+    - `-c`, `--components` *C0[,C1[,...]]*
+
+      Set list of input components that will be copied to the output in the given order.
+      The special list entry _ will create a new component initialized to zero.
+      This allows to add, extract, reorder and duplicate input components.
+
+    - `-t`, `--type` *T*
+
+      Convert to new type (int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64)
+
+    - `-n`, `--normalize`
+
+      Create/assume floating point values in [-1,1]/[0,1] when converting to/from signed/unsigned integer values
 
     - `--unset-all-tags`
 
@@ -211,6 +224,22 @@ Common options accepted by all commands are
     - Cut out a 100x100 pixel box from a larger image at position 15,30:
 
       `tad convert --box 15,30,100,100 image.png cutout.png`
+
+    - Extract the 2D slice with index 30 from a 3D volume:
+
+      `tad convert --box=0,0,30,WIDTH,HEIGHT,DEPTH --dimensions=0,1 volume.tad slice30.tad`
+
+    - Create a 3D volume from a set of 2D images:
+
+      `tad convert --merge-dimension=_ slice0.tad slice1.tad slice2.tad volume.tad`
+
+    - Extract the alpha mask from an RGBA image:
+
+      `tad convert --components=3 rgba.png alpha.png`
+
+    - Combine an RGB image and an alpha mask into an RGBA image:
+
+      `tad convert --merge-components rgb.png alpha.png rgba.png`
 
 `calc`
 
