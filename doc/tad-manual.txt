@@ -225,9 +225,9 @@ Common options accepted by all commands are
 
       `tad convert --box 15,30,100,100 image.png cutout.png`
 
-    - Extract the 2D slice with index 30 from a 3D volume:
+    - Extract the 2D slice with depth z=30 from a 3D volume:
 
-      `tad convert --box=0,0,30,WIDTH,HEIGHT,DEPTH --dimensions=0,1 volume.tad slice30.tad`
+      `tad convert --box=0,0,30,WIDTH,HEIGHT,1 --dimensions=0,1 volume.tad slice30.tad`
 
     - Create a 3D volume from a set of 2D images:
 
