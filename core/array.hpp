@@ -913,9 +913,8 @@ public:
 
     /*! \brief Constructor for an array. */
     Array(const ArrayContainer& container) :
-        ArrayContainer(container)
+        ArrayContainer(convert(container, typeFromTemplate<T>()))
     {
-        assert(typeMatchesTemplate<T>());
     }
 
     /*! \brief Construct an array and perform deep copy of data */
