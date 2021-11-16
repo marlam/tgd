@@ -1245,9 +1245,9 @@ private:
             } else {
                 if (tmp < 0) {
                     index[i - 1] = 0;
-                } else if (n == 3 && static_cast<size_t>(tmp) >= input_arrays[a].elementCount()) {
+                } else if (n == 2 && static_cast<size_t>(tmp) >= input_arrays[a].elementCount()) {
                     index[i - 1] = input_arrays[a].elementCount() - 1;
-                } else if (n != 3 && static_cast<size_t>(tmp) >= input_arrays[a].dimension(i - 1)) {
+                } else if (n != 2 && static_cast<size_t>(tmp) >= input_arrays[a].dimension(i - 1)) {
                     index[i - 1] = input_arrays[a].dimension(i - 1) - 1;
                 } else {
                     index[i - 1] = tmp;
