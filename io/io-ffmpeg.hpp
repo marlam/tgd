@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -36,6 +37,7 @@ private:
     FFmpeg* _ffmpeg;
     ArrayDescription _desc;
     int64_t _minDTS;
+    bool _unreliableTimeStamps;
     std::vector<int64_t> _frameDTSs;
     std::vector<int64_t> _framePTSs;
     std::vector<int> _keyFrames;
