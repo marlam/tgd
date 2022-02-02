@@ -31,6 +31,7 @@ extern "C" {
 #include <libavutil/avutil.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/pixdesc.h>
+#include <libavutil/cpu.h>
 #include <libswscale/swscale.h>
 }
 
@@ -45,13 +46,20 @@ class FFmpeg
 public:
     AVFormatContext* formatCtx;
     AVCodecContext* codecCtx;
-    AVPixelFormat pixFmt;
     int streamIndex;
     AVStream* stream;
     SwsContext* swsCtx;
     AVFrame* videoFrame;
     AVPacket* pkt;
+    bool havePkt;
+    int havePktRet;
     bool fileEof;
+
+    // for hardware-accelerated decoding:
+    AVHWDeviceType hwDeviceType; // may be AV_HWDEVICE_TYPE_NONE if no hw-accel is available
+    AVPixelFormat hwPixelFormat;
+    AVBufferRef* hwDeviceCtx;
+    AVFrame* videoFrameFromHW;
 
     FFmpeg() :
         formatCtx(nullptr),
@@ -61,7 +69,13 @@ public:
         swsCtx(nullptr),
         videoFrame(nullptr),
         pkt(nullptr),
-        fileEof(false)
+        havePkt(false),
+        havePktRet(0),
+        fileEof(false),
+        hwDeviceType(AV_HWDEVICE_TYPE_NONE),
+        hwPixelFormat(AV_PIX_FMT_NONE),
+        hwDeviceCtx(nullptr),
+        videoFrameFromHW(nullptr)
     {
     }
 };
@@ -79,10 +93,55 @@ FormatImportExportFFMPEG::~FormatImportExportFFMPEG()
     delete _ffmpeg;
 }
 
-Error FormatImportExportFFMPEG::openForReading(const std::string& fileName, const TagList&)
+// FFmpeg callback for hw-accel
+static enum AVPixelFormat getHwFormat(AVCodecContext* ctx, const enum AVPixelFormat* pix_fmts)
+{
+    FFmpeg* ffmpeg = reinterpret_cast<FFmpeg*>(ctx->opaque);
+    AVPixelFormat ret = AV_PIX_FMT_NONE;
+    for (const enum AVPixelFormat* p = pix_fmts; *p != AV_PIX_FMT_NONE; p++) {
+        //const AVPixFmtDescriptor* pixFmtDescP = av_pix_fmt_desc_get(*p);
+        //const AVPixFmtDescriptor* pixFmtDescHW = av_pix_fmt_desc_get(ffmpeg->hwPixelFormat);
+        //fprintf(stderr, "pix fmt %d (%s) vs %d (%s)\n", *p, pixFmtDescP->name, ffmpeg->hwPixelFormat, pixFmtDescHW->name);
+        if (*p == ffmpeg->hwPixelFormat) {
+            ret = *p;
+            break;
+        }
+    }
+    if (ret == AV_PIX_FMT_NONE) {
+        // signal that negotiation failed - this may happen late (when decoding the first frame)
+        ffmpeg->hwDeviceType = AV_HWDEVICE_TYPE_NONE;
+    }
+    return ret;
+}
+
+Error FormatImportExportFFMPEG::openForReading(const std::string& fileName, const TagList& hints)
 {
     if (fileName == "-")
         return ErrorInvalidData;
+
+    _hints = hints;
+    int enableHWAccel = _hints.value("HWACCEL", 1);
+    std::string logLevel = _hints.value("LOGLEVEL", "error");
+    if (logLevel == "quiet")
+        av_log_set_level(AV_LOG_QUIET);
+    else if (logLevel == "panic")
+        av_log_set_level(AV_LOG_PANIC);
+    else if (logLevel == "fatal")
+        av_log_set_level(AV_LOG_FATAL);
+    else if (logLevel == "error")
+        av_log_set_level(AV_LOG_ERROR);
+    else if (logLevel == "warning")
+        av_log_set_level(AV_LOG_WARNING);
+    else if (logLevel == "info")
+        av_log_set_level(AV_LOG_INFO);
+    else if (logLevel == "verbose")
+        av_log_set_level(AV_LOG_VERBOSE);
+    else if (logLevel == "debug")
+        av_log_set_level(AV_LOG_DEBUG);
+    else if (logLevel == "trace")
+        av_log_set_level(AV_LOG_TRACE);
+    else
+        av_log_set_level(AV_LOG_ERROR);
 
     if (avformat_open_input(&(_ffmpeg->formatCtx), fileName.c_str(), nullptr, nullptr) < 0
             || avformat_find_stream_info(_ffmpeg->formatCtx, nullptr) < 0
@@ -106,6 +165,32 @@ Error FormatImportExportFFMPEG::openForReading(const std::string& fileName, cons
         close();
         return ErrorLibrary;
     }
+    _ffmpeg->hwDeviceType = AV_HWDEVICE_TYPE_NONE;
+    if (enableHWAccel) {
+        enum AVHWDeviceType deviceTypePreferenceList[6] = {
+            AV_HWDEVICE_TYPE_VAAPI,         // Linux standard
+            AV_HWDEVICE_TYPE_VDPAU,         // Linux NVIDIA
+            AV_HWDEVICE_TYPE_MEDIACODEC,    // Android
+            AV_HWDEVICE_TYPE_VIDEOTOOLBOX,  // Mac
+            AV_HWDEVICE_TYPE_DXVA2,         // W32 D3D9
+            AV_HWDEVICE_TYPE_D3D11VA        // W32 D3D11
+        };
+        for (int typeIndex = 0; typeIndex < 6; typeIndex++) {
+            for (int i = 0; ; i++) {
+                const AVCodecHWConfig* config = avcodec_get_hw_config(dec, i);
+                if (!config)
+                    break;
+                if (config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX
+                        && config->device_type == deviceTypePreferenceList[typeIndex]) {
+                    _ffmpeg->hwDeviceType = deviceTypePreferenceList[typeIndex];
+                    _ffmpeg->hwPixelFormat = config->pix_fmt;
+                    break;
+                }
+            }
+            if (_ffmpeg->hwDeviceType != AV_HWDEVICE_TYPE_NONE)
+                break;
+        }
+    }
     _ffmpeg->codecCtx = avcodec_alloc_context3(dec);
     if (!_ffmpeg->codecCtx) {
         close();
@@ -116,83 +201,27 @@ Error FormatImportExportFFMPEG::openForReading(const std::string& fileName, cons
         close();
         return ErrorLibrary;
     }
-    _ffmpeg->codecCtx->thread_count = 0; // enable automatic multi-threaded decoding
+    if (_ffmpeg->hwDeviceType != AV_HWDEVICE_TYPE_NONE) {
+        _ffmpeg->codecCtx->opaque = _ffmpeg;
+        _ffmpeg->codecCtx->get_format = getHwFormat;
+        if (av_hwdevice_ctx_create(&(_ffmpeg->hwDeviceCtx), _ffmpeg->hwDeviceType, nullptr, nullptr, 0) < 0) {
+            _ffmpeg->hwDeviceType = AV_HWDEVICE_TYPE_NONE;
+            _ffmpeg->codecCtx->opaque = nullptr;
+            _ffmpeg->codecCtx->get_format = nullptr;
+        } else {
+            _ffmpeg->codecCtx->hw_device_ctx = av_buffer_ref(_ffmpeg->hwDeviceCtx);
+        }
+    }
+    _ffmpeg->codecCtx->thread_count = std::min(av_cpu_count(), 16); // enable multi-threaded decoding
     if (avcodec_open2(_ffmpeg->codecCtx, dec, nullptr) < 0) {
         close();
         return ErrorLibrary;
     }
 
-    int w = _ffmpeg->codecCtx->width;
-    int h = _ffmpeg->codecCtx->height;
-    _ffmpeg->pixFmt = _ffmpeg->codecCtx->pix_fmt;
-    const AVPixFmtDescriptor* pixFmtDesc = av_pix_fmt_desc_get(_ffmpeg->pixFmt);
-    int componentCount = pixFmtDesc->nb_components;
-    if (w < 1 || h < 1 || componentCount < 1 || componentCount > 4) {
-        close();
-        return ErrorInvalidData;
-    }
-    Type type = uint8;
-    for (int i = 0; i < componentCount; i++) {
-        if (pixFmtDesc->comp[i].depth > 8) {
-            type = uint16;
-            break;
-        }        
-    }
-    _desc = ArrayDescription({ size_t(w), size_t(h) }, componentCount, type);
-
-    AVPixelFormat dstPixFmt;
-    if (type == uint8) {
-        if (componentCount == 1) {
-            dstPixFmt = AV_PIX_FMT_GRAY8;
-            _desc.componentTagList(0).set("INTERPRETATION", "SRGB/GRAY");
-        } else if (componentCount == 2) {
-            dstPixFmt = AV_PIX_FMT_YA8;
-            _desc.componentTagList(0).set("INTERPRETATION", "SRGB/GRAY");
-            _desc.componentTagList(1).set("INTERPRETATION", "ALPHA");
-        } else if (componentCount == 3) {
-            dstPixFmt = AV_PIX_FMT_RGB24;
-            _desc.componentTagList(0).set("INTERPRETATION", "SRGB/R");
-            _desc.componentTagList(1).set("INTERPRETATION", "SRGB/G");
-            _desc.componentTagList(2).set("INTERPRETATION", "SRGB/B");
-        } else {
-            dstPixFmt = AV_PIX_FMT_RGBA;
-            _desc.componentTagList(0).set("INTERPRETATION", "SRGB/R");
-            _desc.componentTagList(1).set("INTERPRETATION", "SRGB/G");
-            _desc.componentTagList(2).set("INTERPRETATION", "SRGB/B");
-            _desc.componentTagList(3).set("INTERPRETATION", "ALPHA");
-        }
-    } else {
-        if (componentCount == 1) {
-            dstPixFmt = AV_PIX_FMT_GRAY16;
-            _desc.componentTagList(0).set("INTERPRETATION", "SRGB/GRAY");
-        } else if (componentCount == 2) {
-            dstPixFmt = AV_PIX_FMT_YA16;
-            _desc.componentTagList(0).set("INTERPRETATION", "SRGB/GRAY");
-            _desc.componentTagList(1).set("INTERPRETATION", "ALPHA");
-        } else if (componentCount == 3) {
-            dstPixFmt = AV_PIX_FMT_RGB48;
-            _desc.componentTagList(0).set("INTERPRETATION", "SRGB/R");
-            _desc.componentTagList(1).set("INTERPRETATION", "SRGB/G");
-            _desc.componentTagList(2).set("INTERPRETATION", "SRGB/B");
-        } else {
-            dstPixFmt = AV_PIX_FMT_RGBA64;
-            _desc.componentTagList(0).set("INTERPRETATION", "SRGB/R");
-            _desc.componentTagList(1).set("INTERPRETATION", "SRGB/G");
-            _desc.componentTagList(2).set("INTERPRETATION", "SRGB/B");
-            _desc.componentTagList(3).set("INTERPRETATION", "ALPHA");
-        }
-    }
-
-    _ffmpeg->swsCtx = sws_getContext(w, h, _ffmpeg->pixFmt, w, h, dstPixFmt,
-            SWS_BILINEAR, nullptr, nullptr, nullptr);
-    if (!_ffmpeg->swsCtx) {
-        close();
-        return ErrorLibrary;
-    }
-
     _ffmpeg->videoFrame = av_frame_alloc();
+    _ffmpeg->videoFrameFromHW = av_frame_alloc();
     _ffmpeg->pkt = av_packet_alloc();
-    if (!_ffmpeg->videoFrame || !_ffmpeg->pkt) {
+    if (!_ffmpeg->videoFrame || !_ffmpeg->videoFrameFromHW || !_ffmpeg->pkt) {
         close();
         errno = ENOMEM;
         return ErrorSysErrno;
@@ -225,12 +254,28 @@ void FormatImportExportFFMPEG::close()
         av_frame_free(&(_ffmpeg->videoFrame));
         _ffmpeg->videoFrame = nullptr;
     }
+    if (_ffmpeg->videoFrameFromHW) {
+        av_frame_free(&(_ffmpeg->videoFrameFromHW));
+        _ffmpeg->videoFrameFromHW = nullptr;
+    }
+    if (_ffmpeg->havePkt) {
+        av_packet_unref(_ffmpeg->pkt);
+    }
     if (_ffmpeg->pkt) {
         av_packet_free(&(_ffmpeg->pkt));
         _ffmpeg->pkt = nullptr;
     }
+    _ffmpeg->havePkt = false;
+    _ffmpeg->havePktRet = 0;
     _ffmpeg->fileEof = false;
+    _ffmpeg->hwDeviceType = AV_HWDEVICE_TYPE_NONE;
+    _ffmpeg->hwPixelFormat = AV_PIX_FMT_NONE;
+    if (_ffmpeg->hwDeviceCtx) {
+        av_buffer_unref(&(_ffmpeg->hwDeviceCtx));
+        _ffmpeg->hwDeviceCtx = nullptr;
+    }
     _desc = ArrayDescription();
+    _arrayCount = -1;
     _minDTS = 0; // bad guess, but INT64_MIN seems to cause problems when seeking to it
     _unreliableTimeStamps = false;
     _frameDTSs.clear();
@@ -239,17 +284,22 @@ void FormatImportExportFFMPEG::close()
     _indexOfLastReadFrame = -1;
 }
 
-bool FormatImportExportFFMPEG::hardReset()
+bool FormatImportExportFFMPEG::hardReset(bool disableHWAccel = false)
 {
     // Hard reset by closing and reopening, because seeking to minDTS is not reliable
+    // or because hardware acceleration failed
+    int bakArrayCount = _arrayCount;
     int64_t bakMinDTS = _minDTS;
     bool bakUnreliableTimeStamps = _unreliableTimeStamps;
     std::vector<int64_t> bakFrameDTSs = _frameDTSs;
     std::vector<int64_t> bakFramePTSs = _framePTSs;
     std::vector<int> bakKeyFrames = _keyFrames;
     close();
-    if (openForReading(_fileName, TagList()) != ErrorNone)
+    if (disableHWAccel)
+        _hints.set("HWACCEL", "0");
+    if (openForReading(_fileName, _hints) != ErrorNone)
         return false;
+    _arrayCount = bakArrayCount;
     _minDTS = bakMinDTS;
     _unreliableTimeStamps = bakUnreliableTimeStamps;
     _frameDTSs = bakFrameDTSs;
@@ -260,63 +310,40 @@ bool FormatImportExportFFMPEG::hardReset()
 
 int FormatImportExportFFMPEG::arrayCount()
 {
-    if (_frameDTSs.size() == 0) {
-        // We need to decode and scan the whole file, otherwise frame-precise seeking
-        // will not be possible.
-        if (_indexOfLastReadFrame >= 0) {
-            // we already read a frame and therefore need to reset our state
-            close();
-            if (openForReading(_fileName, TagList()) != ErrorNone)
-                return -1;
-        }
-        int ret;
-        for (;;) {
-            ret = avcodec_receive_frame(_ffmpeg->codecCtx, _ffmpeg->videoFrame);
-            if (ret == AVERROR_EOF) {
-                break;
-            } else if (ret == AVERROR(EAGAIN)) {
-                for (;;) {
-                    ret = av_read_frame(_ffmpeg->formatCtx, _ffmpeg->pkt);
-                    if (ret == AVERROR_EOF) {
-                        if (avcodec_send_packet(_ffmpeg->codecCtx, NULL) < 0) {
-                            return -1;
-                        }
-                        break;
-                    } else if (ret < 0) {
-                        return -1;
-                    } else if (_ffmpeg->pkt->stream_index == _ffmpeg->streamIndex) {
-                        if (avcodec_send_packet(_ffmpeg->codecCtx, _ffmpeg->pkt) < 0) {
-                            return -1;
-                        }
-                        av_packet_unref(_ffmpeg->pkt);
-                        break;
-                    } else {
-                        av_packet_unref(_ffmpeg->pkt);
-                    }
-                }
-            } else if (ret < 0) {
-                return -1;
-            } else {
-                int64_t dts = _ffmpeg->videoFrame->pkt_dts;
-                int64_t pts = _ffmpeg->videoFrame->pts;
-                if (dts == AV_NOPTS_VALUE && pts == AV_NOPTS_VALUE) {
-                    _unreliableTimeStamps = true;
-                }
-                _frameDTSs.push_back(dts);
-                _framePTSs.push_back(pts);
-                //fprintf(stderr, "frame %zu: dts=%ld pts=%ld\n", _frameDTSs.size(), dts, pts);
-                if (_frameDTSs.size() == 1 || dts < _minDTS) {
-                    _minDTS = dts;
-                }
-                if (_ffmpeg->videoFrame->key_frame) {
-                    _keyFrames.push_back(_frameDTSs.size() - 1);
+    if (_arrayCount < 0) {
+        if (_ffmpeg->stream->nb_frames > 0) {
+            // XXX should we really trust nb_frames here?
+            _arrayCount = _ffmpeg->stream->nb_frames;
+        } else {
+            // Assume that the number of frames is equal to the number of packets
+            // in this video stream, so that counting the packets is enough and
+            // nothing has to be decoded. Let's hope this assumption holds.
+            if (_indexOfLastReadFrame >= 0 || _ffmpeg->havePkt) {
+                // we already read a frame or at least a packet and therefore need to reset our state
+                close();
+                if (openForReading(_fileName, TagList()) != ErrorNone)
+                    return -1;
+            }
+            _arrayCount = 0;
+            _ffmpeg->codecCtx->flags2 |= AV_CODEC_FLAG2_FAST;
+            for (;;) {
+                int ret = av_read_frame(_ffmpeg->formatCtx, _ffmpeg->pkt);
+                if (ret == AVERROR_EOF) {
+                    break;
+                } else if (ret < 0) {
+                    _arrayCount = -1;
+                    break;
+                } else {
+                    if (_ffmpeg->pkt->stream_index == _ffmpeg->streamIndex)
+                        _arrayCount++;
+                    av_packet_unref(_ffmpeg->pkt);
                 }
             }
+            if (!hardReset())
+                return -1;
         }
-        if (!hardReset())
-            return -1;
     }
-    return _frameDTSs.size();
+    return _arrayCount;
 }
 
 ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
@@ -325,11 +352,6 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
     if (arrayIndex >= 0) {
         // reset file EOF flag
         _ffmpeg->fileEof = false;
-        // build an index of DTS times if we did not do it yet
-        if (arrayIndex >= arrayCount()) {
-            *error = ErrorInvalidData;
-            return ArrayContainer();
-        }
         // only perform proper seeking if we have reliable time stamps
         if (!_unreliableTimeStamps) {
             // find the key frame that has arrayIndex or precedes arrayIndex
@@ -344,6 +366,10 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
             } else if (arrayIndex > _indexOfLastReadFrame && precedingKeyFrameIndex <= _indexOfLastReadFrame) {
                 // it is cheaper to skip frames until we arrive at the frame we want
                 // so do nothing here
+            } else if (size_t(arrayIndex) >= _frameDTSs.size()) {
+                // we did not record the timestamps of at least one frame on the way to the
+                // requested frame, so read and skip frames until we arrive at the frame
+                // we want
             } else {
                 // find the DTS of that key frame
                 int64_t precedingKeyFrameDTS;
@@ -357,6 +383,11 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
                         precedingKeyFrameDTS,
                         precedingKeyFrameDTS,
                         0);
+                // get rid of packet read by hasMore(), if any
+                if (_ffmpeg->havePkt) {
+                    av_packet_unref(_ffmpeg->pkt);
+                    _ffmpeg->havePkt = false;
+                }
                 // flush the decoder buffers
                 avcodec_flush_buffers(_ffmpeg->codecCtx);
                 // set a flag that tells the code below that we did an actual seek
@@ -383,17 +414,17 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
     int ret;
     for (;;) {
         ret = avcodec_receive_frame(_ffmpeg->codecCtx, _ffmpeg->videoFrame);
-        if (ret == AVERROR_EOF) {
-            if (_ffmpeg->fileEof) {
-                break;
-            } else {
-                close();
-                *error = ErrorInvalidData;
-                return ArrayContainer();
-            }
+        if (ret == AVERROR_EOF && _ffmpeg->fileEof) {
+            break;
         } else if (ret == AVERROR(EAGAIN)) {
             for (;;) {
-                ret = av_read_frame(_ffmpeg->formatCtx, _ffmpeg->pkt);
+                if (_ffmpeg->havePkt) {
+                    /* We already have a packet from hasMore(). Consume it now. */
+                    ret = _ffmpeg->havePktRet;
+                    _ffmpeg->havePkt = false;
+                } else {
+                    ret = av_read_frame(_ffmpeg->formatCtx, _ffmpeg->pkt);
+                }
                 if (ret == AVERROR_EOF) {
                     _ffmpeg->fileEof = true;
                     if (avcodec_send_packet(_ffmpeg->codecCtx, NULL) < 0) {
@@ -407,12 +438,24 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
                     *error = ErrorInvalidData;
                     return ArrayContainer();
                 } else if (_ffmpeg->pkt->stream_index == _ffmpeg->streamIndex) {
+                    bool haveHWAccel = (_ffmpeg->hwDeviceType != AV_HWDEVICE_TYPE_NONE);
                     if (avcodec_send_packet(_ffmpeg->codecCtx, _ffmpeg->pkt) < 0) {
                         close();
                         *error = ErrorInvalidData;
                         return ArrayContainer();
                     }
                     av_packet_unref(_ffmpeg->pkt);
+                    if (haveHWAccel && (_ffmpeg->hwDeviceType == AV_HWDEVICE_TYPE_NONE)) {
+                        /* hardware acceleration failed late, signalled by getHwFormat()
+                         * because FFmpeg won't let us know otherwise */
+                        if (hardReset(true)) {
+                            return readArray(error, arrayIndex);
+                        } else {
+                            close();
+                            *error = ErrorInvalidData;
+                            return ArrayContainer();
+                        }
+                    }
                     break;
                 } else {
                     av_packet_unref(_ffmpeg->pkt);
@@ -423,31 +466,45 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
             *error = ErrorInvalidData;
             return ArrayContainer();
         } else {
-            if (_ffmpeg->videoFrame->width != int(_desc.dimension(0))
-                    || _ffmpeg->videoFrame->height != int(_desc.dimension(1))
-                    || _ffmpeg->videoFrame->format != _ffmpeg->pixFmt) {
-                // we don't support changing specs
-                close();
-                *error = ErrorInvalidData;
-                return ArrayContainer();
+            /* Record the timestamps of this frame if it is the next one that needs to be recorded. */
+            if (!seeked && _frameDTSs.size() == size_t(_indexOfLastReadFrame + 1)) {
+                int64_t dts = _ffmpeg->videoFrame->pkt_dts;
+                int64_t pts = _ffmpeg->videoFrame->pts;
+                if (dts == AV_NOPTS_VALUE && pts == AV_NOPTS_VALUE) {
+                    _unreliableTimeStamps = true;
+                }
+                _frameDTSs.push_back(dts);
+                _framePTSs.push_back(pts);
+                //fprintf(stderr, "frame %zu: dts=%ld pts=%ld\n", _frameDTSs.size(), dts, pts);
+                if (_frameDTSs.size() == 1 || dts < _minDTS) {
+                    _minDTS = dts;
+                }
+                if (_ffmpeg->videoFrame->key_frame) {
+                    _keyFrames.push_back(_frameDTSs.size() - 1);
+                }
             }
+            /* Find out if we read the requested frame or if we need to skip until we
+             * arrive at the requested frame. */
             if (arrayIndex < 0) {
                 // We are ok once we read one frame
                 _indexOfLastReadFrame++;
                 break;
+            } else if (!seeked) {
+                int frameIndex = _indexOfLastReadFrame + 1;
+                _indexOfLastReadFrame = frameIndex;
+                // We are ok once we read the frame with the index we seek;
+                // otherwise we read more frames until we arrive there
+                if (frameIndex == arrayIndex)
+                    break;
             } else {
                 // Get frame index from its DTS and PTS pair (the DTS is not necessarily unique)
                 int frameIndex = -1;
-                if (!seeked) {
-                    frameIndex = _indexOfLastReadFrame + 1;
-                } else {
-                    int64_t dts = _ffmpeg->videoFrame->pkt_dts;
-                    int64_t pts = _ffmpeg->videoFrame->pts;
-                    for (size_t i = 0; i < _frameDTSs.size(); i++) {
-                        if (_frameDTSs[i] == dts && _framePTSs[i] == pts) {
-                            frameIndex = i;
-                            break;
-                        }
+                int64_t dts = _ffmpeg->videoFrame->pkt_dts;
+                int64_t pts = _ffmpeg->videoFrame->pts;
+                for (size_t i = 0; i < _frameDTSs.size(); i++) {
+                    if (_frameDTSs[i] == dts && _framePTSs[i] == pts) {
+                        frameIndex = i;
+                        break;
                     }
                 }
                 if (frameIndex == -1) {
@@ -475,24 +532,137 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
         }
     }
 
+    /* Make videoFramePtr point to the video frame in main memory */
+    AVFrame* videoFramePtr;
+    if (_ffmpeg->hwDeviceType == AV_HWDEVICE_TYPE_NONE) {
+        videoFramePtr = _ffmpeg->videoFrame;
+    } else {
+        /* transfer data to main memory */
+        if (av_hwframe_transfer_data(_ffmpeg->videoFrameFromHW, _ffmpeg->videoFrame, 0) < 0) {
+            close();
+            *error = ErrorLibrary;
+            return ArrayContainer();
+        }
+        videoFramePtr = _ffmpeg->videoFrameFromHW;
+    }
+
+    /* Lazily initialize _desc */
+    int w = _ffmpeg->codecCtx->width;
+    int h = _ffmpeg->codecCtx->height;
+    const AVPixFmtDescriptor* pixFmtDesc = av_pix_fmt_desc_get(static_cast<AVPixelFormat>(videoFramePtr->format));
+    int componentCount = pixFmtDesc->nb_components;
+    if (w < 1 || h < 1 || componentCount < 1 || componentCount > 4) {
+        close();
+        *error = ErrorInvalidData;
+        return ArrayContainer();
+    }
+    Type type = uint8;
+    for (int i = 0; i < componentCount; i++) {
+        if (pixFmtDesc->comp[i].depth > 8) {
+            type = uint16;
+            break;
+        }
+    }
+    if (_desc.dimensionCount() != 2
+            || _desc.dimension(0) != size_t(w)
+            || _desc.dimension(1) != size_t(h)
+            || _desc.componentCount() != size_t(componentCount)
+            || _desc.componentType() != type) {
+        _desc = ArrayDescription({ size_t(w), size_t(h) }, componentCount, type);
+        if (componentCount <= 2) {
+            _desc.componentTagList(0).set("INTERPRETATION", "SRGB/GRAY");
+            if (componentCount == 2)
+                _desc.componentTagList(1).set("INTERPRETATION", "ALPHA");
+        } else {
+            _desc.componentTagList(0).set("INTERPRETATION", "SRGB/R");
+            _desc.componentTagList(1).set("INTERPRETATION", "SRGB/G");
+            _desc.componentTagList(2).set("INTERPRETATION", "SRGB/B");
+            if (componentCount == 4)
+                _desc.componentTagList(3).set("INTERPRETATION", "ALPHA");
+        }
+    }
+
+    /* Lazily initialize swsCtx. FFmpeg takes care of reusing an existing context if possible. */
+    AVPixelFormat dstPixFmt;
+    if (type == uint8) {
+        if (componentCount == 1)
+            dstPixFmt = AV_PIX_FMT_GRAY8;
+        else if (componentCount == 2)
+            dstPixFmt = AV_PIX_FMT_YA8;
+        else if (componentCount == 3)
+            dstPixFmt = AV_PIX_FMT_RGB24;
+        else
+            dstPixFmt = AV_PIX_FMT_RGBA;
+    } else {
+        if (componentCount == 1)
+            dstPixFmt = AV_PIX_FMT_GRAY16;
+        else if (componentCount == 2)
+            dstPixFmt = AV_PIX_FMT_YA16;
+        else if (componentCount == 3)
+            dstPixFmt = AV_PIX_FMT_RGB48;
+        else
+            dstPixFmt = AV_PIX_FMT_RGBA64;
+    }
+    _ffmpeg->swsCtx = sws_getCachedContext(_ffmpeg->swsCtx,
+            w, h, static_cast<AVPixelFormat>(videoFramePtr->format),
+            w, h, dstPixFmt,
+            SWS_BILINEAR, nullptr, nullptr, nullptr);
+    if (!_ffmpeg->swsCtx) {
+        close();
+        *error = ErrorLibrary;
+        return ArrayContainer();
+    }
+
     ArrayContainer r(_desc);
     uint8_t* dst[4] = { static_cast<uint8_t*>(r.data()), nullptr, nullptr, nullptr };
     int dstStride[4] = { int(r.dimension(0) * r.elementSize()), 0, 0, 0 };
-    sws_scale(_ffmpeg->swsCtx, _ffmpeg->videoFrame->data, _ffmpeg->videoFrame->linesize, 0, _ffmpeg->videoFrame->height, dst, dstStride);
+    sws_scale(_ffmpeg->swsCtx, videoFramePtr->data, videoFramePtr->linesize, 0, videoFramePtr->height, dst, dstStride);
     reverseY(r);
+
     return r;
 }
 
 bool FormatImportExportFFMPEG::hasMore()
 {
     if (_ffmpeg->fileEof) {
-        /* this flag overrides nb_frames because the latter is unreliable, e.g. with .wmv files */
+        /* This flag overrides nb_frames because the latter is unreliable.
+         * It catches the case where nb_frames is too high (seen with .wmv files). */
         return false;
+    } else if (_ffmpeg->stream->nb_frames > 0) {
+        /* Here we trust nb_frames to not be too low... */
+        return (_indexOfLastReadFrame < _ffmpeg->stream->nb_frames - 1);
+    } else {
+        /* We have no knwoledge about the number of frames in this video.
+         * Calling arrayCount() to count them is potentially very expensive.
+         * So we try to read a packet from the correct stream, and if that succeeds,
+         * we know that we have more frames. Since we cannot "unread" the packet,
+         * we need to consume it in readArray(). */
+        if (_ffmpeg->havePkt) {
+            /* We already read this next packet and it has not been consumed yet */
+            return true;
+        } else {
+            bool ret;
+            for (;;) {
+                _ffmpeg->havePktRet = av_read_frame(_ffmpeg->formatCtx, _ffmpeg->pkt);
+                if (_ffmpeg->havePktRet == AVERROR_EOF) {
+                    _ffmpeg->fileEof = true;
+                    _ffmpeg->havePkt = true;
+                    ret = true;
+                    break;
+                } else if (_ffmpeg->havePktRet < 0) {
+                    ret = false;
+                    break;
+                } else if (_ffmpeg->pkt->stream_index == _ffmpeg->streamIndex) {
+                    _ffmpeg->havePkt = true;
+                    ret = true;
+                    break;
+                } else {
+                    av_packet_unref(_ffmpeg->pkt);
+                }
+            }
+            return ret;
+        }
     }
-    int frameCount = _ffmpeg->stream->nb_frames;
-    if (frameCount <= 0)
-        frameCount = arrayCount();
-    return (_indexOfLastReadFrame < frameCount - 1);
 }
 
 Error FormatImportExportFFMPEG::writeArray(const ArrayContainer&)

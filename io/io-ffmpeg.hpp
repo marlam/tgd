@@ -33,9 +33,11 @@ class FFmpeg;
 
 class FormatImportExportFFMPEG : public FormatImportExport {
 private:
+    TagList _hints;
     std::string _fileName;
     FFmpeg* _ffmpeg;
     ArrayDescription _desc;
+    int _arrayCount;
     int64_t _minDTS;
     bool _unreliableTimeStamps;
     std::vector<int64_t> _frameDTSs;
@@ -43,7 +45,7 @@ private:
     std::vector<int> _keyFrames;
     int _indexOfLastReadFrame;
 
-    bool hardReset();
+    bool hardReset(bool disableHWAccel);
 
 public:
     FormatImportExportFFMPEG();
