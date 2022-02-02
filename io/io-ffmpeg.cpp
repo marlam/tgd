@@ -275,7 +275,6 @@ void FormatImportExportFFMPEG::close()
         _ffmpeg->hwDeviceCtx = nullptr;
     }
     _desc = ArrayDescription();
-    _arrayCount = -1;
     _minDTS = 0; // bad guess, but INT64_MIN seems to cause problems when seeking to it
     _unreliableTimeStamps = false;
     _frameDTSs.clear();
@@ -288,7 +287,6 @@ bool FormatImportExportFFMPEG::hardReset(bool disableHWAccel = false)
 {
     // Hard reset by closing and reopening, because seeking to minDTS is not reliable
     // or because hardware acceleration failed
-    int bakArrayCount = _arrayCount;
     int64_t bakMinDTS = _minDTS;
     bool bakUnreliableTimeStamps = _unreliableTimeStamps;
     std::vector<int64_t> bakFrameDTSs = _frameDTSs;
@@ -299,7 +297,6 @@ bool FormatImportExportFFMPEG::hardReset(bool disableHWAccel = false)
         _hints.set("HWACCEL", "0");
     if (openForReading(_fileName, _hints) != ErrorNone)
         return false;
-    _arrayCount = bakArrayCount;
     _minDTS = bakMinDTS;
     _unreliableTimeStamps = bakUnreliableTimeStamps;
     _frameDTSs = bakFrameDTSs;
@@ -310,40 +307,19 @@ bool FormatImportExportFFMPEG::hardReset(bool disableHWAccel = false)
 
 int FormatImportExportFFMPEG::arrayCount()
 {
-    if (_arrayCount < 0) {
-        if (_ffmpeg->stream->nb_frames > 0) {
-            // XXX should we really trust nb_frames here?
-            _arrayCount = _ffmpeg->stream->nb_frames;
-        } else {
-            // Assume that the number of frames is equal to the number of packets
-            // in this video stream, so that counting the packets is enough and
-            // nothing has to be decoded. Let's hope this assumption holds.
-            if (_indexOfLastReadFrame >= 0 || _ffmpeg->havePkt) {
-                // we already read a frame or at least a packet and therefore need to reset our state
-                close();
-                if (openForReading(_fileName, TagList()) != ErrorNone)
-                    return -1;
-            }
-            _arrayCount = 0;
-            _ffmpeg->codecCtx->flags2 |= AV_CODEC_FLAG2_FAST;
-            for (;;) {
-                int ret = av_read_frame(_ffmpeg->formatCtx, _ffmpeg->pkt);
-                if (ret == AVERROR_EOF) {
-                    break;
-                } else if (ret < 0) {
-                    _arrayCount = -1;
-                    break;
-                } else {
-                    if (_ffmpeg->pkt->stream_index == _ffmpeg->streamIndex)
-                        _arrayCount++;
-                    av_packet_unref(_ffmpeg->pkt);
-                }
-            }
-            if (!hardReset())
-                return -1;
-        }
-    }
-    return _arrayCount;
+    /* Lesson learned: we cannot know the exact number of frames unless we decode the whole
+     * stream.
+     *
+     * 1. According to the documentation, nb_frames should only be > 0 if the number of frames
+     * is known, but often it is only a guess, e.g. based on the number of packets. This is not
+     * good enough.
+     *
+     * 2. Counting the packets in the stream does not help because there is not always a 1:1
+     * correspondence between packets and frames.
+     *
+     * 3. Decoding the whole stream is obviously far too slow.
+     */
+    return -1;
 }
 
 ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
@@ -361,8 +337,8 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
                     precedingKeyFrameIndex = *it;
             }
             // check if we should seek or just skip frames until we're there
-            if (_indexOfLastReadFrame == -1 && arrayIndex == 0) {
-                // we read the first frame, no need to seek or skip
+            if (arrayIndex == _indexOfLastReadFrame + 1) {
+                // we read the next frame, no need to seek or skip
             } else if (arrayIndex > _indexOfLastReadFrame && precedingKeyFrameIndex <= _indexOfLastReadFrame) {
                 // it is cheaper to skip frames until we arrive at the frame we want
                 // so do nothing here
@@ -550,12 +526,12 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
     int w = _ffmpeg->codecCtx->width;
     int h = _ffmpeg->codecCtx->height;
     const AVPixFmtDescriptor* pixFmtDesc = av_pix_fmt_desc_get(static_cast<AVPixelFormat>(videoFramePtr->format));
-    int componentCount = pixFmtDesc->nb_components;
-    if (w < 1 || h < 1 || componentCount < 1 || componentCount > 4) {
+    if (w < 1 || h < 1 || !pixFmtDesc || pixFmtDesc->nb_components < 1 || pixFmtDesc->nb_components > 4) {
         close();
         *error = ErrorInvalidData;
         return ArrayContainer();
     }
+    int componentCount = pixFmtDesc->nb_components;
     Type type = uint8;
     for (int i = 0; i < componentCount; i++) {
         if (pixFmtDesc->comp[i].depth > 8) {
@@ -624,44 +600,37 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
 
 bool FormatImportExportFFMPEG::hasMore()
 {
-    if (_ffmpeg->fileEof) {
-        /* This flag overrides nb_frames because the latter is unreliable.
-         * It catches the case where nb_frames is too high (seen with .wmv files). */
+    /* We have no knwoledge about the number of frames in this video, see also the
+     * comments in arrayCount().
+     * So we try to read a packet from the correct stream, and if that succeeds,
+     * we know that we have more frames. Since we cannot "unread" the packet,
+     * we need to consume it in readArray(). */
+    if (_ffmpeg->havePkt) {
+        /* We already read this next packet and it has not been consumed yet */
+        return true;
+    } else if (_ffmpeg->fileEof) {
         return false;
-    } else if (_ffmpeg->stream->nb_frames > 0) {
-        /* Here we trust nb_frames to not be too low... */
-        return (_indexOfLastReadFrame < _ffmpeg->stream->nb_frames - 1);
     } else {
-        /* We have no knwoledge about the number of frames in this video.
-         * Calling arrayCount() to count them is potentially very expensive.
-         * So we try to read a packet from the correct stream, and if that succeeds,
-         * we know that we have more frames. Since we cannot "unread" the packet,
-         * we need to consume it in readArray(). */
-        if (_ffmpeg->havePkt) {
-            /* We already read this next packet and it has not been consumed yet */
-            return true;
-        } else {
-            bool ret;
-            for (;;) {
-                _ffmpeg->havePktRet = av_read_frame(_ffmpeg->formatCtx, _ffmpeg->pkt);
-                if (_ffmpeg->havePktRet == AVERROR_EOF) {
-                    _ffmpeg->fileEof = true;
-                    _ffmpeg->havePkt = true;
-                    ret = true;
-                    break;
-                } else if (_ffmpeg->havePktRet < 0) {
-                    ret = false;
-                    break;
-                } else if (_ffmpeg->pkt->stream_index == _ffmpeg->streamIndex) {
-                    _ffmpeg->havePkt = true;
-                    ret = true;
-                    break;
-                } else {
-                    av_packet_unref(_ffmpeg->pkt);
-                }
+        bool ret;
+        for (;;) {
+            _ffmpeg->havePktRet = av_read_frame(_ffmpeg->formatCtx, _ffmpeg->pkt);
+            if (_ffmpeg->havePktRet == AVERROR_EOF) {
+                _ffmpeg->fileEof = true;
+                _ffmpeg->havePkt = true;
+                ret = true;
+                break;
+            } else if (_ffmpeg->havePktRet < 0) {
+                ret = false;
+                break;
+            } else if (_ffmpeg->pkt->stream_index == _ffmpeg->streamIndex) {
+                _ffmpeg->havePkt = true;
+                ret = true;
+                break;
+            } else {
+                av_packet_unref(_ffmpeg->pkt);
             }
-            return ret;
         }
+        return ret;
     }
 }
 

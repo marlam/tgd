@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2018, 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2018, 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -138,7 +139,7 @@ public:
      * nullptr) and a null array will be returned.
      *
      * By default, the next array in the file will be read, but you can
-     * give an index to chose the array you want (this only works if \a arrayCount() returns something
+     * give an index to chose the array you want (this only works reliably if \a arrayCount() returns something
      * other than -1).
      */
     ArrayContainer readArray(Error* error = nullptr, int arrayIndex = -1 /* -1 means next */);
