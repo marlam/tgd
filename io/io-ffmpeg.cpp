@@ -119,6 +119,7 @@ Error FormatImportExportFFMPEG::openForReading(const std::string& fileName, cons
     if (fileName == "-")
         return ErrorInvalidData;
 
+    _fileName = fileName;
     _hints = hints;
     int enableHWAccel = _hints.value("HWACCEL", 1);
     std::string logLevel = _hints.value("LOGLEVEL", "error");
@@ -143,7 +144,7 @@ Error FormatImportExportFFMPEG::openForReading(const std::string& fileName, cons
     else
         av_log_set_level(AV_LOG_ERROR);
 
-    if (avformat_open_input(&(_ffmpeg->formatCtx), fileName.c_str(), nullptr, nullptr) < 0
+    if (avformat_open_input(&(_ffmpeg->formatCtx), _fileName.c_str(), nullptr, nullptr) < 0
             || avformat_find_stream_info(_ffmpeg->formatCtx, nullptr) < 0
             || (_ffmpeg->streamIndex = av_find_best_stream(_ffmpeg->formatCtx,
                     AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0)) < 0) {
@@ -208,6 +209,13 @@ Error FormatImportExportFFMPEG::openForReading(const std::string& fileName, cons
             _ffmpeg->hwDeviceType = AV_HWDEVICE_TYPE_NONE;
             _ffmpeg->codecCtx->opaque = nullptr;
             _ffmpeg->codecCtx->get_format = nullptr;
+            /* The above is actually not enough to clean up everything that is
+             * related to hardware acceleration. Something happened to codecCtx
+             * that causes a null pointer dereference if we continue. So we just
+             * retry from the start but without hardware acceleration. */
+            close();
+            _hints.set("HWACCEL", "0");
+            return openForReading(_fileName, _hints);
         } else {
             _ffmpeg->codecCtx->hw_device_ctx = av_buffer_ref(_ffmpeg->hwDeviceCtx);
         }
@@ -227,7 +235,6 @@ Error FormatImportExportFFMPEG::openForReading(const std::string& fileName, cons
         return ErrorSysErrno;
     }
 
-    _fileName = fileName;
     return ErrorNone;
 }
 
