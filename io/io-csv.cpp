@@ -204,7 +204,6 @@ ArrayContainer FormatImportExportCSV::readArray(Error* error, int arrayIndex)
                     determinedDelimiter = true;
                 }
                 for (;;) {
-                    size_t last_j = j;
                     //fprintf(stderr, "j=%zu, nextDQuote=%zu, rest='%s'\n", j, nextDQuote, &(line[j]));
                     char* nextChar;
                     float value = readFloat(&(line[j]), &nextChar);
@@ -215,8 +214,7 @@ ArrayContainer FormatImportExportCSV::readArray(Error* error, int arrayIndex)
                     j = line.find(delimiter, j);
                     if (j == std::string::npos || j >= nextDQuote)
                         break;
-                    if (j == last_j)
-                        j++;
+                    j++;
                 }
             } else { // unquoted value
                 //fprintf(stderr, "i=%zu, rest='%s'\n", i, &(line[i]));
@@ -353,13 +351,13 @@ std::string valueToString(T value)
 template<> std::string valueToString<float>(float value)
 {
     char buf[128];
-    std::snprintf(buf, sizeof(buf), "%.7g", value);
+    std::snprintf(buf, sizeof(buf), "%.10g", value);
     return buf;
 }
 template<> std::string valueToString<double>(double value)
 {
     char buf[128];
-    std::snprintf(buf, sizeof(buf), "%.15g", value);
+    std::snprintf(buf, sizeof(buf), "%.20g", value);
     return buf;
 }
 
