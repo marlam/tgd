@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2018, 2019, 2020 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2018, 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -114,7 +115,7 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
             || format == "webm" || format == "webp"
             || format == "mov" || format == "avi" || format == "wmv"
             || format == "gif" || format == "dds" || format == "bmp"
-            || format == "tga" || format == "xpm" || format == "ico") {
+            || format == "tga" || format == "xpm" || format == "xwd" || format == "ico") {
         // TODO: this list can be much longer; add other extensions when needed
         fieName = "ffmpeg";
     } else if (format == "vrt" || format == "tsx") {
