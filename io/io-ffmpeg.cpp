@@ -54,6 +54,9 @@ public:
     bool havePkt;
     int havePktRet;
     bool fileEof;
+    bool haveFrame;
+    int haveFrameRet;
+    bool codecEof;
 
     // for hardware-accelerated decoding:
     AVHWDeviceType hwDeviceType; // may be AV_HWDEVICE_TYPE_NONE if no hw-accel is available
@@ -72,6 +75,9 @@ public:
         havePkt(false),
         havePktRet(0),
         fileEof(false),
+        haveFrame(false),
+        haveFrameRet(0),
+        codecEof(false),
         hwDeviceType(AV_HWDEVICE_TYPE_NONE),
         hwPixelFormat(AV_PIX_FMT_NONE),
         hwDeviceCtx(nullptr),
@@ -275,6 +281,9 @@ void FormatImportExportFFMPEG::close()
     _ffmpeg->havePkt = false;
     _ffmpeg->havePktRet = 0;
     _ffmpeg->fileEof = false;
+    _ffmpeg->haveFrame = false;
+    _ffmpeg->haveFrameRet = 0;
+    _ffmpeg->codecEof = false;
     _ffmpeg->hwDeviceType = AV_HWDEVICE_TYPE_NONE;
     _ffmpeg->hwPixelFormat = AV_PIX_FMT_NONE;
     if (_ffmpeg->hwDeviceCtx) {
@@ -333,8 +342,6 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
 {
     bool seeked = false;
     if (arrayIndex >= 0) {
-        // reset file EOF flag
-        _ffmpeg->fileEof = false;
         // only perform proper seeking if we have reliable time stamps
         if (!_unreliableTimeStamps) {
             // find the key frame that has arrayIndex or precedes arrayIndex
@@ -373,6 +380,10 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
                 }
                 // flush the decoder buffers
                 avcodec_flush_buffers(_ffmpeg->codecCtx);
+                _ffmpeg->haveFrame = false;
+                // reset EOF flags
+                _ffmpeg->fileEof = false;
+                _ffmpeg->codecEof = false;
                 // set a flag that tells the code below that we did an actual seek
                 seeked = true;
             }
@@ -396,8 +407,15 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
     bool triedHardReset = false;
     int ret;
     for (;;) {
-        ret = avcodec_receive_frame(_ffmpeg->codecCtx, _ffmpeg->videoFrame);
+        if (_ffmpeg->haveFrame) {
+            /* We already have a frame from hasMore(). Consume it now. */
+            ret = _ffmpeg->haveFrameRet;
+            _ffmpeg->haveFrame = false;
+        } else {
+            ret = avcodec_receive_frame(_ffmpeg->codecCtx, _ffmpeg->videoFrame);
+        }
         if (ret == AVERROR_EOF && _ffmpeg->fileEof) {
+            _ffmpeg->codecEof = true;
             break;
         } else if (ret == AVERROR(EAGAIN)) {
             for (;;) {
@@ -607,37 +625,67 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
 
 bool FormatImportExportFFMPEG::hasMore()
 {
-    /* We have no knwoledge about the number of frames in this video, see also the
+    /* We have no knowledge about the number of frames in this video, see also the
      * comments in arrayCount().
      * So we try to read a packet from the correct stream, and if that succeeds,
      * we know that we have more frames. Since we cannot "unread" the packet,
-     * we need to consume it in readArray(). */
+     * we need to consume it in readArray().
+     * Similarly, in drain mode (when there are no more packets in the file but the
+     * codec might still have frames buffered) we try to get the next frame, which
+     * needs to be consumed in readArray(). */
+
     if (_ffmpeg->havePkt) {
-        /* We already read this next packet and it has not been consumed yet */
+        /* There's still a packet in the pipeline */
         return true;
-    } else if (_ffmpeg->fileEof) {
-        return false;
+    } else if (_ffmpeg->haveFrame) {
+        /* There's still a frame in the pipeline */
+        return true;
     } else {
-        bool ret;
-        for (;;) {
-            _ffmpeg->havePktRet = av_read_frame(_ffmpeg->formatCtx, _ffmpeg->pkt);
-            if (_ffmpeg->havePktRet == AVERROR_EOF) {
-                _ffmpeg->fileEof = true;
-                _ffmpeg->havePkt = true;
-                ret = true;
-                break;
-            } else if (_ffmpeg->havePktRet < 0) {
-                ret = false;
-                break;
-            } else if (_ffmpeg->pkt->stream_index == _ffmpeg->streamIndex) {
-                _ffmpeg->havePkt = true;
-                ret = true;
-                break;
+        /* No packet and no frame in the pipeline */
+        if (!_ffmpeg->fileEof) {
+            /* Read another packet */
+            bool ret;
+            for (;;) {
+                _ffmpeg->havePktRet = av_read_frame(_ffmpeg->formatCtx, _ffmpeg->pkt);
+                if (_ffmpeg->havePktRet == AVERROR_EOF) {
+                    _ffmpeg->fileEof = true;
+                    _ffmpeg->havePkt = true;
+                    ret = true;
+                    break;
+                } else if (_ffmpeg->havePktRet < 0) {
+                    ret = false;
+                    break;
+                } else if (_ffmpeg->pkt->stream_index == _ffmpeg->streamIndex) {
+                    _ffmpeg->havePkt = true;
+                    ret = true;
+                    break;
+                } else {
+                    av_packet_unref(_ffmpeg->pkt);
+                }
+            }
+            return ret;
+        } else {
+            /* No more packets to read */
+            if (_ffmpeg->codecEof) {
+                /* No more frames to be drained */
+                return false;
             } else {
-                av_packet_unref(_ffmpeg->pkt);
+                /* Try to receive another frame */
+                _ffmpeg->haveFrameRet = avcodec_receive_frame(_ffmpeg->codecCtx, _ffmpeg->videoFrame);
+                if (_ffmpeg->haveFrameRet == AVERROR_EOF) {
+                    /* Nothing more to drain */
+                    _ffmpeg->codecEof = true;
+                    return false;
+                } else if (_ffmpeg->haveFrameRet < 0) {
+                    /* Some decoding error - give up */
+                    return false;
+                } else {
+                    /* We got a frame */
+                    _ffmpeg->haveFrame = true;
+                    return true;
+                }
             }
         }
-        return ret;
     }
 }
 
