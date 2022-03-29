@@ -46,6 +46,7 @@
 #include "io-pfs.hpp"
 #include "io-png.hpp"
 #include "io-tiff.hpp"
+#include "io-magick.hpp"
 
 
 namespace TAD {
@@ -112,10 +113,8 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
     } else if (format == "mp4" || format == "m4v"
             || format == "mkv" || format == "ogv"
             || format == "mpeg" || format == "mpg"
-            || format == "webm" || format == "webp"
-            || format == "mov" || format == "avi" || format == "wmv"
-            || format == "gif" || format == "dds" || format == "bmp"
-            || format == "tga" || format == "xpm" || format == "xwd" || format == "ico") {
+            || format == "webm"
+            || format == "mov" || format == "avi" || format == "wmv") {
         // TODO: this list can be much longer; add other extensions when needed
         fieName = "ffmpeg";
     } else if (format == "vrt" || format == "tsx") {
@@ -127,6 +126,11 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
         fieName = "jpeg";
     } else if (format == "tif") {
         fieName = "tiff";
+    } else if (format == "gif" || format == "dds" || format == "bmp"
+            || format == "tga" || format == "xpm" || format == "xwd"
+            || format == "ico" || format == "webp") {
+        // TODO: this list can be much longer; add other extensions when needed
+        fieName = "magick";
     }
 
     // first builtin formats...
@@ -192,6 +196,10 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
 #  ifdef TAD_WITH_TIFF
     } else if (fieName == "tiff") {
         return new FormatImportExportTIFF;
+#  endif
+#  ifdef TAD_WITH_MAGICK
+    } else if (fieName == "magick") {
+        return new FormatImportExportMagick;
 #  endif
 #endif
     } else {
