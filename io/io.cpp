@@ -33,6 +33,7 @@
 #include "io-pnm.hpp"
 #include "io-raw.hpp"
 #include "io-rgbe.hpp"
+#include "io-stb.hpp"
 #include "io-dcmtk.hpp"
 #include "io-exr.hpp"
 #include "io-ffmpeg.hpp"
@@ -100,127 +101,137 @@ static std::string getExtension(const std::string& fileName)
 
 static FormatImportExport* openFormatImportExport(const std::string& format)
 {
-    std::string fieName(format);
-    // set fieName for importers that handle multiple file formats
+    /* Create vector of FormatImportExport names in order of preference for the given format */
+    std::vector<std::string> fieNames;
     if (format == "pbm" || format == "pgm" || format == "ppm" || format == "pnm" || format == "pam" || format == "pfm") {
-        fieName = "pnm";
+        fieNames.push_back("pnm");
     } else if (format == "hdr" || format == "pic") {
-        fieName = "rgbe";
+        fieNames.push_back("rgbe");
     } else if (format == "dcm" || format == "dicom") {
-        fieName = "dcmtk";
+        fieNames.push_back("dcmtk");
     } else if (format == "fit") {
-        fieName = "fits";
-    } else if (format == "mp4" || format == "m4v"
-            || format == "mkv" || format == "ogv"
-            || format == "mpeg" || format == "mpg"
-            || format == "webm"
+        fieNames.push_back("fits");
+    } else if (format == "mp4" || format == "m4v" || format == "mkv" || format == "ogv"
+            || format == "mpeg" || format == "mpg" || format == "webm"
             || format == "mov" || format == "avi" || format == "wmv") {
         // TODO: this list can be much longer; add other extensions when needed
-        fieName = "ffmpeg";
+        fieNames.push_back("ffmpeg");
     } else if (format == "vrt" || format == "tsx") {
         // TODO: this list can be much longer; add other extensions when needed
-        fieName = "gdal";
+        fieNames.push_back("gdal");
     } else if (format == "h5" || format == "he5" || format == "hdf5") {
-        fieName = "hdf5";
-    } else if (format == "jpg") {
-        fieName = "jpeg";
-    } else if (format == "tif") {
-        fieName = "tiff";
-    } else if (format == "gif" || format == "dds" || format == "bmp"
-            || format == "tga" || format == "xpm" || format == "xwd"
-            || format == "ico" || format == "webp") {
+        fieNames.push_back("hdf5");
+    } else if (format == "jpg" || format == "jpeg") {
+        fieNames.push_back("jpeg");
+        fieNames.push_back("stb");
+    } else if (format == "png") {
+        fieNames.push_back("png");
+        fieNames.push_back("stb");
+    } else if (format == "tif" || format == "tiff") {
+        fieNames.push_back("tiff");
+        fieNames.push_back("magick");
+    } else if (format == "bmp" || format == "tga" || format == "psd") {
+        fieNames.push_back("stb");
+    } else if (format == "gif" || format == "dds" || format == "xpm"
+            || format == "xwd" || format == "ico" || format == "webp") {
         // TODO: this list can be much longer; add other extensions when needed
-        fieName = "magick";
+        fieNames.push_back("magick");
+    } else {
+        // fallback: assume there is an importer/exporter with the extension name
+        fieNames.push_back(format);
     }
 
-    // first builtin formats...
-    if (fieName == "tad") {
-        return new FormatImportExportTAD;
-    } else if (fieName == "csv") {
-        return new FormatImportExportCSV;
-    } else if (fieName == "pnm") {
-        return new FormatImportExportPNM;
-    } else if (fieName == "raw") {
-        return new FormatImportExportRAW;
-    } else if (fieName == "rgbe") {
-        return new FormatImportExportRGBE;
+    FormatImportExport* fie = nullptr;
+    for (size_t i = 0; !fie && i < fieNames.size(); i++) {
+        const std::string& fieName = fieNames[i];
+        // first builtin formats...
+        if (fieName == "tad") {
+            fie = new FormatImportExportTAD;
+        } else if (fieName == "csv") {
+            fie = new FormatImportExportCSV;
+        } else if (fieName == "pnm") {
+            fie = new FormatImportExportPNM;
+        } else if (fieName == "raw") {
+            fie = new FormatImportExportRAW;
+        } else if (fieName == "rgbe") {
+            fie = new FormatImportExportRGBE;
+        } else if (fieName == "stb") {
+            fie = new FormatImportExportSTB;
 #ifdef TAD_STATIC
 #  ifdef TAD_WITH_DCMTK
-    } else if (fieName == "dcmtk") {
-        return new FormatImportExportDCMTK;
+        } else if (fieName == "dcmtk") {
+            fie = new FormatImportExportDCMTK;
 #  endif
 #  ifdef TAD_WITH_OPENEXR
-    } else if (fieName == "exr") {
-        return new FormatImportExportEXR;
+        } else if (fieName == "exr") {
+            fie = new FormatImportExportEXR;
 #  endif
 #  ifdef TAD_WITH_CFITSIO
-    } else if (fieName == "fits") {
-        return new FormatImportExportFITS;
+        } else if (fieName == "fits") {
+            fie = new FormatImportExportFITS;
 #  endif
 #  ifdef TAD_WITH_FFMPEG
-    } else if (fieName == "ffmpeg") {
-        return new FormatImportExportFFMPEG;
+        } else if (fieName == "ffmpeg") {
+            fie = new FormatImportExportFFMPEG;
 #  endif
 #  ifdef TAD_WITH_GDAL
-    } else if (fieName == "gdal") {
-        return new FormatImportExportGDAL;
+        } else if (fieName == "gdal") {
+            fie = new FormatImportExportGDAL;
 #  endif
 #  ifdef TAD_WITH_GTA
-    } else if (fieName == "gta") {
-        return new FormatImportExportGTA;
+        } else if (fieName == "gta") {
+            fie = new FormatImportExportGTA;
 #  endif
 #  ifdef TAD_WITH_HDF5
-    } else if (fieName == "hdf5") {
-        return new FormatImportExportHDF5;
+        } else if (fieName == "hdf5") {
+            fie = new FormatImportExportHDF5;
 #  endif
 #  ifdef TAD_WITH_JPEG
-    } else if (fieName == "jpeg") {
-        return new FormatImportExportJPEG;
+        } else if (fieName == "jpeg") {
+            fie = new FormatImportExportJPEG;
 #  endif
 #  ifdef TAD_WITH_MATIO
-    } else if (fieName == "mat") {
-        return new FormatImportExportMAT;
+        } else if (fieName == "mat") {
+            fie = new FormatImportExportMAT;
 #  endif
 #  ifdef TAD_WITH_POPPLER
-    } else if (fieName == "pdf") {
-        return new FormatImportExportPDF;
+        } else if (fieName == "pdf") {
+            fie = new FormatImportExportPDF;
 #  endif
 #  ifdef TAD_WITH_PFS
-    } else if (fieName == "pfs") {
-        return new FormatImportExportPFS;
+        } else if (fieName == "pfs") {
+            fie = new FormatImportExportPFS;
 #  endif
 #  ifdef TAD_WITH_PNG
-    } else if (fieName == "png") {
-        return new FormatImportExportPNG;
+        } else if (fieName == "png") {
+            fie = new FormatImportExportPNG;
 #  endif
 #  ifdef TAD_WITH_TIFF
-    } else if (fieName == "tiff") {
-        return new FormatImportExportTIFF;
+        } else if (fieName == "tiff") {
+            fie = new FormatImportExportTIFF;
 #  endif
 #  ifdef TAD_WITH_MAGICK
-    } else if (fieName == "magick") {
-        return new FormatImportExportMagick;
+        } else if (fieName == "magick") {
+            fie = new FormatImportExportMagick;
 #  endif
 #endif
-    } else {
+        } else {
 #ifndef TAD_STATIC
-        // ... then plugin formats
-        std::string pluginName = std::string("libtadio-") + fieName + DOT_SO_STR;
-        void* plugin = dlopen(pluginName.c_str(), RTLD_NOW);
-        if (!plugin) {
-            return nullptr;
-        }
-        std::string factoryName = std::string("FormatImportExportFactory_") + fieName;
-        void* factory = dlsym(plugin, factoryName.c_str());
-        if (!factory) {
-            return nullptr;
-        }
-        FormatImportExport* (*fieFactory)() = reinterpret_cast<FormatImportExport* (*)()>(factory);
-        return fieFactory();
-#else
-        return nullptr;
+            // ... then plugin formats
+            std::string pluginName = std::string("libtadio-") + fieName + DOT_SO_STR;
+            void* plugin = dlopen(pluginName.c_str(), RTLD_NOW);
+            if (plugin) {
+                std::string factoryName = std::string("FormatImportExportFactory_") + fieName;
+                void* factory = dlsym(plugin, factoryName.c_str());
+                if (factory) {
+                    FormatImportExport* (*fieFactory)() = reinterpret_cast<FormatImportExport* (*)()>(factory);
+                    fie = fieFactory();
+                }
+            }
 #endif
+        }
     }
+    return fie;
 }
 
 Importer::Importer()

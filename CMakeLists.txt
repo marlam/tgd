@@ -95,7 +95,8 @@ set(libtad_SOURCES
 	io/io-csv.hpp io/io-csv.cpp
 	io/io-raw.hpp io/io-raw.cpp
 	io/io-pnm.hpp io/io-pnm.cpp
-        io/io-rgbe.hpp io/io-rgbe.cpp
+	io/io-rgbe.hpp io/io-rgbe.cpp
+	io/io-stb.hpp io/io-stb.cpp
 	io/io-exiv2.hpp
 	io/dl.hpp)
 if(TAD_STATIC)
