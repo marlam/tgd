@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,6 +30,18 @@
 #include "array.hpp"
 
 namespace TAD {
+
+inline std::string getExtension(const std::string& fileName)
+{
+    std::string extension;
+    size_t lastDot = fileName.find_last_of('.');
+    if (lastDot != std::string::npos) {
+        extension = fileName.substr(lastDot + 1);
+        for (size_t i = 0; i < extension.size(); i++)
+            extension[i] = std::tolower(extension[i]);
+    }
+    return extension;
+}
 
 inline void swapEndianness(ArrayContainer& array)
 {

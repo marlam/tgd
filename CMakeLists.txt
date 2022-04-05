@@ -98,7 +98,9 @@ set(libtad_SOURCES
 	io/io-rgbe.hpp io/io-rgbe.cpp
 	io/io-stb.hpp io/io-stb.cpp
 	io/io-exiv2.hpp
-	io/dl.hpp)
+	io/dl.hpp
+	ext/stb_image.h
+	ext/stb_image_write.h)
 if(TAD_STATIC)
     add_definitions(-DTAD_STATIC)
     set(libtad_STATIC_EXTRA_SOURCES "")

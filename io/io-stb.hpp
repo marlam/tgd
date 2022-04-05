@@ -35,7 +35,8 @@ class TADSTB;
 class FormatImportExportSTB : public FormatImportExport {
 private:
     FILE* _f;
-    bool _hasMore;
+    bool _hasMore; // only for reading
+    std::string _extension; // only for writing
 
 public:
     FormatImportExportSTB();

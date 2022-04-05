@@ -27,6 +27,7 @@
 #include <string>
 
 #include "io.hpp"
+#include "io-utils.hpp"
 #include "dl.hpp"
 #include "io-tad.hpp"
 #include "io-csv.hpp"
@@ -85,18 +86,6 @@ const char* strerror(Error e)
         break;
     }
     return str;
-}
-
-static std::string getExtension(const std::string& fileName)
-{
-    std::string extension;
-    size_t lastDot = fileName.find_last_of('.');
-    if (lastDot != std::string::npos) {
-        extension = fileName.substr(lastDot + 1);
-        for (size_t i = 0; i < extension.size(); i++)
-            extension[i] = std::tolower(extension[i]);
-    }
-    return extension;
 }
 
 static FormatImportExport* openFormatImportExport(const std::string& format)

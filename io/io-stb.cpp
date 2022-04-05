@@ -31,7 +31,11 @@
 #define STBI_NO_PIC
 #define STBI_NO_HDR
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "../ext/stb_image.h"
+
+#define STBI_WRITE_NO_STDIO
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "../ext/stb_image_write.h"
 
 
 namespace TAD {
@@ -39,6 +43,7 @@ namespace TAD {
 FormatImportExportSTB::FormatImportExportSTB() : _f(nullptr), _hasMore(true)
 {
     stbi_set_flip_vertically_on_load(1);
+    stbi_flip_vertically_on_write(1);
 }
 
 FormatImportExportSTB::~FormatImportExportSTB()
@@ -54,19 +59,31 @@ Error FormatImportExportSTB::openForReading(const std::string& fileName, const T
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
-Error FormatImportExportSTB::openForWriting(const std::string&, bool, const TagList&)
+Error FormatImportExportSTB::openForWriting(const std::string& fileName, bool append, const TagList&)
 {
-    return ErrorFeaturesUnsupported;
+    if (append)
+        return ErrorFeaturesUnsupported;
+    if (fileName == "-") {
+        _f = stdout;
+        _extension = "png";
+    } else {
+        _f = fopen(fileName.c_str(), "wb");
+        _extension = getExtension(fileName);
+        if (_extension == "jpeg")
+            _extension = "jpg";
+    }
+    return _f ? ErrorNone : ErrorSysErrno;
 }
 
 void FormatImportExportSTB::close()
 {
     if (_f) {
-        if (_f != stdin) {
+        if (_f != stdin && _f != stdout) {
             fclose(_f);
         }
         _f = nullptr;
         _hasMore = true;
+        _extension.clear();
     }
 }
 
@@ -129,9 +146,42 @@ bool FormatImportExportSTB::hasMore()
     return _hasMore;
 }
 
-Error FormatImportExportSTB::writeArray(const ArrayContainer&)
+static void writeFunc(void* context, void* data, int size)
 {
-    return ErrorFeaturesUnsupported;
+    FILE* f = static_cast<FILE*>(context);
+    fwrite(data, size, 1, f);
+}
+
+Error FormatImportExportSTB::writeArray(const ArrayContainer& array)
+{
+    if (array.componentCount() < 1 || array.componentCount() > 4
+            || array.dimensionCount() != 2
+            || array.dimension(0) < 1 || array.dimension(0) > 65535
+            || array.dimension(1) < 1 || array.dimension(1) > 65535
+            || array.componentType() != uint8) {
+        return ErrorFeaturesUnsupported;
+    }
+
+    int err = 0;
+    if (_extension == "png") {
+        err = stbi_write_png_to_func(writeFunc, _f, array.dimension(0), array.dimension(1), array.componentCount(), array.data(), 0);
+    } else if (_extension == "bmp") {
+        err = stbi_write_bmp_to_func(writeFunc, _f, array.dimension(0), array.dimension(1), array.componentCount(), array.data());
+    } else if (_extension == "tga") {
+        err = stbi_write_tga_to_func(writeFunc, _f, array.dimension(0), array.dimension(1), array.componentCount(), array.data());
+    } else if (_extension == "jpg") {
+        err = stbi_write_jpg_to_func(writeFunc, _f, array.dimension(0), array.dimension(1), array.componentCount(), array.data(), 85);
+    } else {
+        return ErrorFeaturesUnsupported;
+    }
+    if (err == 0) {
+        return ErrorLibrary;
+    }
+
+    if (ferror(_f) || fflush(_f) != 0) {
+        return ErrorSysErrno;
+    }
+    return ErrorNone;
 }
 
 extern "C" FormatImportExport* FormatImportExportFactory_stb()
