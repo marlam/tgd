@@ -50,6 +50,21 @@ for i in int8 uint8 int16 uint16 int32 uint32 int64 uint64 float32 float64; do
         cmp tmp-in-rgbe.tad tmp-out-rgbe.tad
     fi
 
+    if [ $i = "uint8" ]; then
+        echo "Converting to/from stb"
+        ./tad convert -o FORMAT=stb tmp-in.tad tmp-out-stb.png
+        ./tad convert -i FORMAT=stb --unset-all-tags tmp-out-stb.png tmp-out-stb.tad
+        cmp tmp-in.tad tmp-out-stb.tad
+    fi
+
+    if [ $i = "float32" ]; then
+        echo "Converting to/from tinyexr"
+        ./tad create -d 7,13 -c 3 -t $i tmp-in-tinyexr.tad
+        ./tad convert -o FORMAT=tinyexr tmp-in-tinyexr.tad tmp-out-tinyexr.exr
+        ./tad convert -i FORMAT=tinyexr --unset-all-tags tmp-out-tinyexr.exr tmp-out-tinyexr.tad
+        cmp tmp-in-tinyexr.tad tmp-out-tinyexr.tad
+    fi
+
     if [[ $@ == *"WITH_GTA"* ]]; then
         echo "Converting to/from gta"
         ./tad convert tmp-in.tad tmp-out.gta
