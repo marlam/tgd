@@ -1,4 +1,4 @@
-# Copyright (C) 2018, 2019, 2020, 2021
+# Copyright (C) 2018, 2019, 2020, 2021, 2022
 # Computer Graphics Group, University of Siegen
 # Written by Martin Lambers <martin.lambers@uni-siegen.de>
 #
@@ -97,10 +97,12 @@ set(libtad_SOURCES
 	io/io-pnm.hpp io/io-pnm.cpp
 	io/io-rgbe.hpp io/io-rgbe.cpp
 	io/io-stb.hpp io/io-stb.cpp
+	io/io-tinyexr.hpp io/io-tinyexr.cpp
 	io/io-exiv2.hpp
 	io/dl.hpp
 	ext/stb_image.h
-	ext/stb_image_write.h)
+	ext/stb_image_write.h
+	ext/tinyexr.h)
 if(TAD_STATIC)
     add_definitions(-DTAD_STATIC)
     set(libtad_STATIC_EXTRA_SOURCES "")

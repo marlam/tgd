@@ -35,6 +35,7 @@
 #include "io-raw.hpp"
 #include "io-rgbe.hpp"
 #include "io-stb.hpp"
+#include "io-tinyexr.hpp"
 #include "io-dcmtk.hpp"
 #include "io-exr.hpp"
 #include "io-ffmpeg.hpp"
@@ -96,6 +97,9 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
         fieNames.push_back("pnm");
     } else if (format == "hdr" || format == "pic") {
         fieNames.push_back("rgbe");
+    } else if (format == "exr") {
+        fieNames.push_back("exr");
+        fieNames.push_back("tinyexr");
     } else if (format == "dcm" || format == "dicom") {
         fieNames.push_back("dcmtk");
     } else if (format == "fit") {
@@ -146,6 +150,8 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
             fie = new FormatImportExportRGBE;
         } else if (fieName == "stb") {
             fie = new FormatImportExportSTB;
+        } else if (fieName == "tinyexr") {
+            fie = new FormatImportExportTinyEXR;
 #ifdef TAD_STATIC
 #  ifdef TAD_WITH_DCMTK
         } else if (fieName == "dcmtk") {
