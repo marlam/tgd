@@ -28,47 +28,8 @@
 #include "io-tinyexr.hpp"
 #include "io-utils.hpp"
 
-/* We want to use the ZLIB implementation included in STB for tinyexr instead of
- * using miniz or an external zlib to reduce code duplication. For that purpose
- * we need to define the three zlib functions compressBound(), compress() and
- * uncompress() in terms of their STB counterparts, and define a few more zlib symbols
- * that tinyexr expects. The STB implementation is included via the io-stb module. */
-
-extern "C" int stbi_zlib_decode_buffer(char *obuffer, int olen, const char *ibuffer, int ilen);
-extern "C" unsigned char *stbi_zlib_compress(unsigned char *data, int data_len, int *out_len, int quality);
-
-static unsigned long compressBound(unsigned long sourceLen)
-{
-    return 256 + 2 * sourceLen; // grossly overestimated, but should work
-}
-
-static int compress(unsigned char* dest, unsigned long* destLen, const unsigned char* source, unsigned long sourceLen)
-{
-    int out_len;
-    unsigned char* r = stbi_zlib_compress(const_cast<unsigned char*>(source), sourceLen, &out_len, 8);
-    if (!r) {
-        return -4; // Z_MEM_ERROR
-    }
-    if (*destLen < unsigned(out_len)) {
-        return -5; // Z_BUF_ERROR
-    }
-    memcpy(dest, r, out_len);
-    free(r);
-    return 0;
-}
-
-static int uncompress(unsigned char* dest, unsigned long* destLen, const unsigned char* source, unsigned long sourceLen)
-{
-    int r = stbi_zlib_decode_buffer(reinterpret_cast<char*>(dest), *destLen,
-            reinterpret_cast<const char*>(source), sourceLen);
-    return (r < 0 ? -3 /* Z_DATA_ERROR */ : 0 /* Z_OK */);
-}
-
-typedef unsigned long uLong;
-typedef unsigned char Bytef;
-constexpr static int Z_OK = 0;
-
 #define TINYEXR_USE_MINIZ (0)
+#define TINYEXR_USE_STB_ZLIB (1)
 #define TINYEXR_IMPLEMENTATION
 #include "../ext/tinyexr.h"
 
@@ -280,6 +241,7 @@ Error FormatImportExportTinyEXR::writeArray(const ArrayContainer& array)
 
     EXRHeader header;
     InitEXRHeader(&header);
+    header.compression_type = TINYEXR_COMPRESSIONTYPE_PIZ;
 
     EXRImage image;
     InitEXRImage(&image);
