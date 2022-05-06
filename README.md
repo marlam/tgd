@@ -18,15 +18,16 @@ or lamba expressions to array contents in a single line of code.
 
 The core TAD library is header-only; you just include `<tad/array.hpp>`.
 
-For input and output you can optionally link against libtad. This library
-supports various file formats including png, jpeg, tiff, exr, hdr, DICOM, hdf5,
-pdf, pfs, pfm, ppm, fits, CSV, and the native (and therefore very fast) tad
-format. It can be built without any external libraries, but then only supports
-a few core file formats.
+For input and output you can optionally link against libtad. This library has
+builtin support for various file formats including png, jpeg, exr, hdr, pfm,
+ppm, bmp, tga, csv, and the native (and therefore very fast) tad format.
+
+When built with additional libraries, it supports additional file formats, e.g.
+tiff, dicom, hdf5, pdf, pfs, fits, mp4.
 
 There is also a command line utility named `tad` that can create, convert and
 modify files in supported formats, and print information about them. The `tad`
-utility does not require any external libraries either, but can use the muparser
-library for its `calc` command.
+utility does not require any libraries either, but can use the muparser library
+for its `calc` command.
 
 This project uses the MIT license.
