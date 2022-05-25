@@ -1,6 +1,6 @@
 ---
 title: tad
-date: April 22, 2021
+date: May 25, 2022
 section: 1
 ---
 
@@ -467,60 +467,69 @@ The `tad` utility supports many file formats. Some are builtin and some require 
 library. Some file formats are supported for reading and writing (rw), some only for reading (r).
 Different file formats can store different types of arrays. Here's an overview:
 
----------------------------------------------------------------------------------------------------------------------------------------------------------
-Name   File Format(s) Library      Read/Write Arrays per file Dimensions Components   Data Types                  Comment
------- -------------- ------------ ---------- --------------- ---------- ------------ --------------------------- ---------------------------------------
-tad    .tad           builtin      rw         unlimited       unlimited  unlimited    all                         Native format, very fast.
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+Name    File Format(s) Library      Read/Write Arrays per file Dimensions Components   Data Types                  Comment
+------- -------------- ------------ ---------- --------------- ---------- ------------ --------------------------- ---------------------------------------
+tad     .tad           builtin      rw         unlimited       unlimited  unlimited    all                         Native format, very fast.
 
-raw    (raw)          builtin      rw         unlimited       unlimited  unlimited    all                         Requires the following input tags for
-                                                                                                                  reading: DIMENSIONS, COMPONENTS, TYPES.
+raw     (raw)          builtin      rw         unlimited       unlimited  unlimited    all                         Requires the following input tags for
+                                                                                                                   reading: DIMENSIONS, COMPONENTS, TYPES.
 
-csv    .csv           builtin      rw         unlimited       unlimited  unlimited    all, interpreted as float32 Simple text format, easy to edit.
-                                                                                      when reading and simplified
-                                                                                      to int8, uint8, int16 or
-                                                                                      uint16 if the values fit
+csv     .csv           builtin      rw         unlimited       unlimited  unlimited    all, interpreted as float32 Simple text format, easy to edit.
+                                                                                       when reading and simplified
+                                                                                       to int8, uint8, int16 or
+                                                                                       uint16 if the values fit
 
-pnm    .pgm, .ppm,    builtin      rw         unlimited       2          1-4, with    uint8, uint16, float32      Simple image file formats.
-       .pam, .pfm                                                        float32
-                                                                         only 1 or 3
+pnm     .pgm, .ppm,    builtin      rw         unlimited       2          1-4, with    uint8, uint16, float32      Simple image file formats.
+        .pam, .pfm                                                        float32
+                                                                          only 1 or 3
 
-rgbe   .pic, .hdr     builtin      rw         unlimited       2          3            float32                     Simple format for HDR images.
+rgbe    .pic, .hdr     builtin      rw         unlimited       2          3            float32                     Simple format for HDR images.
 
-dcmtk  .dcm, .dicom   [DCMTK]      r          1               2          1 or 3       uint8, uint16, uint32,      Used for medical image data.
-                                                                                      uint64
+dcmtk   .dcm, .dicom   [DCMTK]      r          1               2          1 or 3       uint8, uint16, uint32,      Used for medical image data.
+                                                                                       uint64
 
-exr    .exr           [OpenEXR]    rw         1               2          unlimited    float32                     Used for HDR images.
+exr     .exr           [OpenEXR]    rw         1               2          unlimited    float32                     Used for HDR images.
 
-fits   .fits, .fit    [CFITSIO]    r          unlimited       unlimited  1            all                         Used for astronomy data.
+fits    .fits, .fit    [CFITSIO]    r          unlimited       unlimited  1            all                         Used for astronomy data.
 
-ffmpeg Many video     [FFmpeg]     r          unlimited       2          1-4          uint8, uint16               Can import all kinds of video and
-       and image                                                                                                  image data.
-       formats
+ffmpeg  Many video     [FFmpeg]     r          unlimited       2          1-4          uint8, uint16               Can import all kinds of video and
+        and image                                                                                                  image data.
+        formats
 
-gdal   Many remote    [GDAL]       r          1               2          unlimited    uint8, int16, uint16,       Used for remote sensing image data.
-       sensing file                                                                   int32, uint32, float32,
-       formats                                                                        float64
+gdal    Many remote    [GDAL]       r          1               2          unlimited    uint8, int16, uint16,       Used for remote sensing image data.
+        sensing file                                                                   int32, uint32, float32,
+        formats                                                                        float64
 
-gta    .gta           [libgta]     rw         unlimited       unlimited  unlimited    all                         Obsoleted by tad.
+gta     .gta           [libgta]     rw         unlimited       unlimited  unlimited    all                         Obsoleted by tad.
 
-hdf5   .h5, .he5,     [HDF5]       rw         unlimited       unlimited  unlimited    all                         Universal, but slow and awful.
-       .hdf5
+hdf5    .h5, .he5,     [HDF5]       rw         unlimited       unlimited  unlimited    all                         Universal, but slow and awful.
+        .hdf5
 
-jpeg   .jpg, .jpeg    [libjpeg]    rw         1               2          1 or 3       uint8                       Lossy image format.
+jpeg    .jpg, .jpeg    [libjpeg]    rw         1               2          1 or 3       uint8                       Lossy image format.
 
-matio  .mat           [libmatio]   rw         unlimited       unlimited  unlimited    all                         Old Matlab file format.
+magick  Many image     [magick]     r          unlimited       2          1-4          uint8, uint16, float32      Used as a fallback for exotic image
+        file formats                                                                                               file formats.
 
-pdf    .pdf           [libpoppler] r          unlimited       2          3            uint8                       Rasterized PDF documents. Supports
-                                              (one per page)                                                      input tag DPI to set resolution.
+matio   .mat           [libmatio]   rw         unlimited       unlimited  unlimited    all                         Old Matlab file format.
 
-pfs    .pfs           [libpfs]     rw         unlimited       2          1-1024       float32                     Simple format for 2D floating point
-                                                                                                                  data.
+pdf     .pdf           [libpoppler] r          unlimited       2          3            uint8                       Rasterized PDF documents. Supports
+                                              (one per page)                                                       input tag DPI to set resolution.
 
-png    .png           [libpng]     rw         1               2          1-4          uint8, uint16               Lossless image file format.
+pfs     .pfs           [libpfs]     rw         unlimited       2          1-1024       float32                     Simple format for 2D floating point
+                                                                                                                   data.
 
-tiff   .tiff          [libtiff]    rw         unlimited       2          unlimited    all                         Versatile image file format.
+png     .png           [libpng]     rw         1               2          1-4          uint8, uint16               Lossless image file format.
 
----------------------------------------------------------------------------------------------------------------------------------------------------------
+stb     Some image     [stb]        rw         1               2          1-4          uint8, uint16               Default for bmp, tga, psd; fallback
+        file formats                                                                                               for png and jpeg. Always built in.
+
+tiff    .tiff          [libtiff]    rw         unlimited       2          unlimited    all                         Versatile image file format.
+
+tinyexr .exr           [tinyexr]    rw         1               2          65535        float                       Used for HDR images; fallback for
+                                                                                                                   the .exr format. Always built in.
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 [Tagged Array Data]: https://marlam.de/tad
 [CSV]: https://en.wikipedia.org/wiki/Comma-separated_values
@@ -537,6 +546,9 @@ tiff   .tiff          [libtiff]    rw         unlimited       2          unlimit
 [libpfs]: http://pfstools.sourceforge.net/
 [libpng]: http://www.libpng.org/pub/png/libpng.html
 [libtiff]: http://www.libtiff.org/
+[magick]: https://imagemagick.org/
+[stb]: https://github.com/nothings/stb
+[tinyexr]: https://github.com/syoyo/tinyexr
 
 # TAD File Format Specification
 
