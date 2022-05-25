@@ -20,10 +20,11 @@ The core TAD library is header-only; you just include `<tad/array.hpp>`.
 
 For input and output you can optionally link against libtad. This library has
 builtin support for various file formats including png, jpeg, exr, hdr, pfm,
-ppm, bmp, tga, csv, and the native (and therefore very fast) tad format.
+ppm, bmp, tga, csv, and the native tad format.
 
-When built with additional libraries, it supports additional file formats, e.g.
-tiff, dicom, hdf5, pdf, pfs, fits, mp4.
+No external libraries are required. Optionally, additional libraries can be
+used to support file formats such as tiff, dicom, hdf5, pdf, pfs, fits, mp4 and
+others.
 
 There is also a command line utility named `tad` that can create, convert and
 modify files in supported formats, and print information about them. The `tad`
