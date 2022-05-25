@@ -486,6 +486,12 @@ pnm     .pgm, .ppm,    builtin      rw         unlimited       2          1-4, w
 
 rgbe    .pic, .hdr     builtin      rw         unlimited       2          3            float32                     Simple format for HDR images.
 
+stb     Some image     builtin      rw         1               2          1-4          uint8, uint16               Default for bmp, tga, psd; fallback
+        file formats   [stb]                                                                                       for png and jpeg.
+
+tinyexr .exr           builtin      rw         1               2          65535        float                       Used for HDR images; fallback for
+                       [tinyexr]                                                                                   the .exr format.
+
 dcmtk   .dcm, .dicom   [DCMTK]      r          1               2          1 or 3       uint8, uint16, uint32,      Used for medical image data.
                                                                                        uint64
 
@@ -521,13 +527,7 @@ pfs     .pfs           [libpfs]     rw         unlimited       2          1-1024
 
 png     .png           [libpng]     rw         1               2          1-4          uint8, uint16               Lossless image file format.
 
-stb     Some image     [stb]        rw         1               2          1-4          uint8, uint16               Default for bmp, tga, psd; fallback
-        file formats                                                                                               for png and jpeg. Always built in.
-
 tiff    .tiff          [libtiff]    rw         unlimited       2          unlimited    all                         Versatile image file format.
-
-tinyexr .exr           [tinyexr]    rw         1               2          65535        float                       Used for HDR images; fallback for
-                                                                                                                   the .exr format. Always built in.
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
