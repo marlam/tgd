@@ -28,7 +28,10 @@
 #include <limits>
 
 #include <Magick++.h>
-
+#if MagickLibVersion < 0x700
+# define alpha matte
+# define colorSpaceType colorspaceType
+#endif
 
 namespace TAD {
 
@@ -117,8 +120,8 @@ ArrayContainer FormatImportExportMagick::readArray(Error* error, int arrayIndex)
         Type type = (img.depth() <= 8 ? uint8
                 : img.depth() <= 16 ? uint16
                 : float32);
-        bool hasAlpha = (img.matte());
-        bool isGray = (img.colorspaceType() == Magick::GRAYColorspace);
+        bool hasAlpha = (img.alpha());
+        bool isGray = (img.colorSpaceType() == Magick::GRAYColorspace);
         unsigned int channels = (isGray ? 1 : 3) + (hasAlpha ? 1 : 0);
 
         array = TAD::ArrayContainer({ width, height }, channels, type);
