@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019, 2020, 2021
+ * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
@@ -2020,8 +2020,9 @@ int tad_info(int argc, char* argv[])
                                 sampleDeviation = 0.0f;
                             }
                         }
-                        printf("  component %zu: min=%g max=%g mean=%g var=%g dev=%g\n", i,
-                                minVal, maxVal, sampleMean, sampleVariance, sampleDeviation);
+                        printf("  component %zu: min=%g max=%g mean=%g var=%g dev=%g invalid=%zu\n", i,
+                                minVal, maxVal, sampleMean, sampleVariance, sampleDeviation,
+                                array.elementCount() - finiteValues[i]);
                     }
                 }
             }
