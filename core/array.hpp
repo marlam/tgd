@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018, 2019, 2020, 2021
+ * Copyright (C) 2018, 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
@@ -932,13 +932,17 @@ public:
     /*@{*/
 
     /*! \brief Iterator over all components in the array. This is a random access iterator. */
-    class ComponentIterator : public std::iterator<std::random_access_iterator_tag, T>
+    class ComponentIterator
     {
     private:
         T* _ptr;
 
     public:
-        using difference_type = typename std::iterator<std::random_access_iterator_tag, T>::difference_type;
+        using iterator_category = std::random_access_iterator_tag;
+        using value_type = T;
+        using pointer = T*;
+        using reference = T&;
+        using difference_type = std::ptrdiff_t;
 
         ComponentIterator() : _ptr(nullptr) {}
         ComponentIterator(T* rhs) : _ptr(rhs) {}
@@ -968,13 +972,17 @@ public:
     };
 
     /*! \brief Const iterator over all components in the array. This is a random access iterator. */
-    class ConstComponentIterator : public std::iterator<std::random_access_iterator_tag, T>
+    class ConstComponentIterator
     {
     private:
         const T* _ptr;
 
     public:
-        using difference_type = typename std::iterator<std::random_access_iterator_tag, T>::difference_type;
+        using iterator_category = std::random_access_iterator_tag;
+        using value_type = T;
+        using pointer = const T*;
+        using reference = const T&;
+        using difference_type = std::ptrdiff_t;
 
         ConstComponentIterator() : _ptr(nullptr) {}
         ConstComponentIterator(const T* rhs) : _ptr(rhs) {}
@@ -1005,14 +1013,18 @@ public:
 
     /*! \brief Iterator over all elements in the array. When dereferenced, this returns a pointer
      * to the components of an element. This is a random access iterator. */
-    class ElementIterator : public std::iterator<std::random_access_iterator_tag, T>
+    class ElementIterator
     {
     private:
         T* _ptr;
         const size_t _compCount;
 
     public:
-        using difference_type = typename std::iterator<std::random_access_iterator_tag, T>::difference_type;
+        using iterator_category = std::random_access_iterator_tag;
+        using value_type = T;
+        using pointer = T*;
+        using reference = T&;
+        using difference_type = std::ptrdiff_t;
 
         ElementIterator() : _ptr(nullptr) {}
         ElementIterator(T* rhs, size_t componentCount = 1) : _ptr(rhs), _compCount(componentCount) {}
@@ -1043,14 +1055,18 @@ public:
 
     /*! \brief Const iterator over all elements in the array. When dereferenced, this returns a pointer
      * to the components of an element. This is a random access iterator. */
-    class ConstElementIterator : public std::iterator<std::random_access_iterator_tag, T>
+    class ConstElementIterator
     {
     private:
         const T* _ptr;
         const size_t _compCount;
 
     public:
-        using difference_type = typename std::iterator<std::random_access_iterator_tag, T>::difference_type;
+        using iterator_category = std::random_access_iterator_tag;
+        using value_type = T;
+        using pointer = const T*;
+        using reference = const T&;
+        using difference_type = std::ptrdiff_t;
 
         ConstElementIterator() : _ptr(nullptr) {}
         ConstElementIterator(const T* rhs, size_t componentCount = 1) : _ptr(rhs), _compCount(componentCount) {}
