@@ -94,7 +94,7 @@ private:
         if (!contains(key))
             return false;
         T r;
-        const std::string& str = value(key, std::string());
+        const std::string str = value(key, std::string());
         char* p;
         int errnobak = errno;
         errno = 0;
