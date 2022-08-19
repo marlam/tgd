@@ -15,8 +15,8 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Project
 project(tad)
 set(TAD_VERSION 2.4)
-set(TAD_LIBVERSION 1.0.0)
-set(TAD_SOVERSION 1)
+set(TAD_LIBVERSION 2.0.0)
+set(TAD_SOVERSION 2)
 
 # Build options
 option(TAD_BUILD_TOOL "Build the tad command line tool" ON)
