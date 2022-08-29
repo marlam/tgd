@@ -25,10 +25,13 @@
 #include <cstdio>
 #include <cstring>
 
-#include <ImfChannelList.h>
-#include <ImfInputFile.h>
-#include <ImfOutputFile.h>
-#include <ImfStringAttribute.h>
+#include <OpenEXR/openexr.h>
+#include <OpenEXR/ImfChannelList.h>
+#include <OpenEXR/ImfInputFile.h>
+#include <OpenEXR/ImfOutputFile.h>
+#include <OpenEXR/ImfHeader.h>
+#include <OpenEXR/ImfStringAttribute.h>
+#include <OpenEXR/ImfFrameBuffer.h>
 
 #include "io-exr.hpp"
 #include "io-utils.hpp"
