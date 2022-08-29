@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2018, 2019, 2020 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2018, 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_OPERATORS_HPP
-#define TAD_OPERATORS_HPP
+#ifndef TGD_OPERATORS_HPP
+#define TGD_OPERATORS_HPP
 
 /**
  * \file operators.hpp
@@ -34,7 +35,7 @@
 #include "array.hpp"
 #include "foreach.hpp"
 
-namespace TAD {
+namespace TGD {
 
 template<typename T>
 Array<T> operator-(const Array<T>& a)

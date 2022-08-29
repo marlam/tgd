@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019, 2020 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,7 +30,7 @@
 #include "io-utils.hpp"
 
 
-namespace TAD {
+namespace TGD {
 
 FormatImportExportMAT::FormatImportExportMAT() : _mat(nullptr), _counter(0)
 {
@@ -72,7 +73,7 @@ Error FormatImportExportMAT::openForWriting(const std::string& fileName, bool ap
         fclose(f);
         remove(fileName.c_str());
         _mat = Mat_Create(fileName.c_str(),
-                "MATLAB 5.0 MAT-file, Platform: generic, Created By: libtadio-mat using libmatio");
+                "MATLAB 5.0 MAT-file, Platform: generic, Created By: libtgdio-mat using libmatio");
         if (!_mat) {
             return ErrorLibrary;
         }
@@ -216,7 +217,7 @@ Error FormatImportExportMAT::writeArray(const ArrayContainer& array)
     }
     std::string name = array.globalTagList().value("NAME");
     if (name.size() == 0)
-        name = std::string("TAD") + std::to_string(_counter);
+        name = std::string("TGD") + std::to_string(_counter);
     _counter++;
     ArrayContainer dataArray = reorderMatlabOutputData(array);
     matvar_t* matvar = Mat_VarCreate(name.c_str(), classType, dataType,

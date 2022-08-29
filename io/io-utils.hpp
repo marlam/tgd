@@ -22,14 +22,14 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_IO_UTILS_HPP
-#define TAD_IO_UTILS_HPP
+#ifndef TGD_IO_UTILS_HPP
+#define TGD_IO_UTILS_HPP
 
 #include <cstdint>
 
 #include "array.hpp"
 
-namespace TAD {
+namespace TGD {
 
 inline std::string getExtension(const std::string& fileName)
 {

@@ -22,12 +22,12 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_IO_TINYEXR_HPP
-#define TAD_IO_TINYEXR_HPP
+#ifndef TGD_IO_TINYEXR_HPP
+#define TGD_IO_TINYEXR_HPP
 
 #include "io.hpp"
 
-namespace TAD {
+namespace TGD {
 
 class FormatImportExportTinyEXR : public FormatImportExport {
 private:

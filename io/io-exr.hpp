@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019, 2020, 2021
+ * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
@@ -22,12 +22,12 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_IO_EXR_HPP
-#define TAD_IO_EXR_HPP
+#ifndef TGD_IO_EXR_HPP
+#define TGD_IO_EXR_HPP
 
 #include "io.hpp"
 
-namespace TAD {
+namespace TGD {
 
 class FormatImportExportEXR : public FormatImportExport {
 private:

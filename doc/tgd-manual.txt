@@ -1,17 +1,17 @@
 ---
-title: tad
-date: May 25, 2022
+title: tgd
+date: August 29, 2022
 section: 1
 ---
 
 # Synopsis
 
-`tad` *command* [*options*] *input-file*... *output-file*
+`tgd` *command* [*options*] *input-file*... *output-file*
 
 # Description
 
-Tad is a tool that works on multi-dimensional arrays with metadata ([Tagged
-Array Data]). It provides a set of commands to manipulate arrays in various
+Tgd is a tool that works on multi-dimensional arrays with metadata ([Tagged
+Grid Data]). It provides a set of commands to manipulate arrays in various
 ways or print information about them.
 
 Arrays consist of array elements, and each element consists of a fixed number
@@ -33,7 +33,7 @@ beach" and element component tags INTERPRETATION=SRGB/R,
 INTERPRETATION=SRGB/G, and INTERPRETATION=SRGB/B for the three element
 components.
 
-# Tad Commands
+# Tgd Commands
 
 All commands require one or more *input-files*, and all except the `info`
 command require an *output-file*. Input and output files cannot be omitted,
@@ -83,11 +83,11 @@ Common options accepted by all commands are
 
     - Create a 800x600 PNG image:
 
-      `tad create -d 800,600 -c 3 -t uint8 -n 1 image.png`
+      `tgd create -d 800,600 -c 3 -t uint8 -n 1 image.png`
 
     - Create a sequence of 10 images in floating point precision:
 
-      `tad create -d 800,600 -c 3 -t float32 -n 10 images.pfm`
+      `tgd create -d 800,600 -c 3 -t float32 -n 10 images.pfm`
 
 `convert`
 
@@ -205,41 +205,41 @@ Common options accepted by all commands are
 
     - Convert from PNG to JPEG format:
 
-      `tad convert image.png image.jpg`
+      `tgd convert image.png image.jpg`
 
     - Split a video file into many images, but consider only every fifth video
       frame:
 
-      `tad convert --split --keep -,5 video.mp4 frame-%6N.png`
+      `tgd convert --split --keep -,5 video.mp4 frame-%6N.png`
 
     - Combine multiple images into an image sequence:
 
-      `tad convert image1.png image2.png image3.png image-sequence.ppm`
+      `tgd convert image1.png image2.png image3.png image-sequence.ppm`
 
     - Convert uint8 image data to normalized floating point for analysis in
       Octave:
 
-      `tad convert --type float32 --normalize image.png image.h5`
+      `tgd convert --type float32 --normalize image.png image.h5`
 
     - Cut out a 100x100 pixel box from a larger image at position 15,30:
 
-      `tad convert --box 15,30,100,100 image.png cutout.png`
+      `tgd convert --box 15,30,100,100 image.png cutout.png`
 
     - Extract the 2D slice with depth z=30 from a 3D volume:
 
-      `tad convert --box=0,0,30,WIDTH,HEIGHT,1 --dimensions=0,1 volume.tad slice30.tad`
+      `tgd convert --box=0,0,30,WIDTH,HEIGHT,1 --dimensions=0,1 volume.tgd slice30.tgd`
 
     - Create a 3D volume from a set of 2D images:
 
-      `tad convert --merge-dimension=_ slice0.tad slice1.tad slice2.tad volume.tad`
+      `tgd convert --merge-dimension=_ slice0.tgd slice1.tgd slice2.tgd volume.tgd`
 
     - Extract the alpha mask from an RGBA image:
 
-      `tad convert --components=3 rgba.png alpha.png`
+      `tgd convert --components=3 rgba.png alpha.png`
 
     - Combine an RGB image and an alpha mask into an RGBA image:
 
-      `tad convert --merge-components rgb.png alpha.png rgba.png`
+      `tgd convert --merge-components rgb.png alpha.png rgba.png`
 
 `calc`
 
@@ -357,23 +357,23 @@ Common options accepted by all commands are
 
     - Convert BGR image data into RGB:
 
-      `tad calc -e 'v0=v(0,index,2), v1=v(0,index,1), v2=v(0,index,0)' bgr.png rgb.png`
+      `tgd calc -e 'v0=v(0,index,2), v1=v(0,index,1), v2=v(0,index,0)' bgr.png rgb.png`
 
     - Compute the difference of two images:
 
-      `tad calc -e 'v0=v(0,index,0)-v(1,index,0), v1=v(0,index,1)-v(1,index,1), v2=v(0,index,2)-v(1,index,2)' img0.png img1.png diff.png`
+      `tgd calc -e 'v0=v(0,index,0)-v(1,index,0), v1=v(0,index,1)-v(1,index,1), v2=v(0,index,2)-v(1,index,2)' img0.png img1.png diff.png`
 
     - Flip image vertically:
 
-      `tad calc -e 'x=i0, y=dim1-1-i1, copy(0,x,y)' img.png flipped-img.png`
+      `tgd calc -e 'x=i0, y=dim1-1-i1, copy(0,x,y)' img.png flipped-img.png`
 
     - Copy a small image into a larger image at position x=80, y=60:
 
-      `tad calc --box=80,60,500,500 -e 'x=i0-box0, y=i1-box1, copy(1,x,y)' big-image.png small-image.png output.png`
+      `tgd calc --box=80,60,500,500 -e 'x=i0-box0, y=i1-box1, copy(1,x,y)' big-image.png small-image.png output.png`
 
     - Apply a Gaussian filter to an image:
 
-      `tad calc -e 'v0 = (v(0,i0,i1-1,0) + v(0,i0-1,i1,0) + 2*v(0,i0,i1,0) + v(0,i0+1,i1,0) + v(0,i0,i1+1,0)) / 6,
+      `tgd calc -e 'v0 = (v(0,i0,i1-1,0) + v(0,i0-1,i1,0) + 2*v(0,i0,i1,0) + v(0,i0+1,i1,0) + v(0,i0,i1+1,0)) / 6,
       v1 = (v(0,i0,i1-1,1) + v(0,i0-1,i1,1) + 2*v(0,i0,i1,1) + v(0,i0+1,i1,1) + v(0,i0,i1+1,1)) / 6,
       v2 = (v(0,i0,i1-1,2) + v(0,i0-1,i1,2) + 2*v(0,i0,i1,2) + v(0,i0+1,i1,2) + v(0,i0,i1+1,2)) / 6' image.png filtered.png`
 
@@ -385,7 +385,7 @@ Common options accepted by all commands are
 
     - Compute a difference image:
 
-      `tad diff img1.png img2.png diff.png`
+      `tgd diff img1.png img2.png diff.png`
 
 `info`
 
@@ -452,25 +452,25 @@ instead print their own output in the order in which they are given.
 
     - Print default information and statistics about an image:
 
-      `tad info -s image.png`
+      `tgd info -s image.png`
     
     - Set environment variables to the width and height of an image:
 
       ~~~
-      WIDTH="`tad info -d 0 image.png`"
-      HEIGHT="`tad info -d 1 image.png`"
+      WIDTH="`tgd info -d 0 image.png`"
+      HEIGHT="`tgd info -d 1 image.png`"
       ~~~
 
 # File Formats
 
-The `tad` utility supports many file formats. Some are builtin and some require an external
+The `tgd` utility supports many file formats. Some are builtin and some require an external
 library. Some file formats are supported for reading and writing (rw), some only for reading (r).
 Different file formats can store different types of arrays. Here's an overview:
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
 Name    File Format(s) Library      Read/Write Arrays per file Dimensions Components   Data Types                  Comment
 ------- -------------- ------------ ---------- --------------- ---------- ------------ --------------------------- ---------------------------------------
-tad     .tad           builtin      rw         unlimited       unlimited  unlimited    all                         Native format, very fast.
+tgd     .tgd           builtin      rw         unlimited       unlimited  unlimited    all                         Native format, very fast.
 
 raw     (raw)          builtin      rw         unlimited       unlimited  unlimited    all                         Requires the following input tags for
                                                                                                                    reading: DIMENSIONS, COMPONENTS, TYPES.
@@ -507,7 +507,7 @@ gdal    Many remote    [GDAL]       r          1               2          unlimi
         sensing file                                                                   int32, uint32, float32,
         formats                                                                        float64
 
-gta     .gta           [libgta]     rw         unlimited       unlimited  unlimited    all                         Obsoleted by tad.
+gta     .gta           [libgta]     rw         unlimited       unlimited  unlimited    all                         Obsoleted by tgd.
 
 hdf5    .h5, .he5,     [HDF5]       rw         unlimited       unlimited  unlimited    all                         Universal, but slow and awful.
         .hdf5
@@ -531,7 +531,7 @@ tiff    .tiff          [libtiff]    rw         unlimited       2          unlimi
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-[Tagged Array Data]: https://marlam.de/tad
+[Tagged Grid Data]: https://marlam.de/tgd
 [CSV]: https://en.wikipedia.org/wiki/Comma-separated_values
 [DCMTK]: https://dicom.offis.de/dcmtk.php.en
 [OpenEXR]: https://www.openexr.com/
@@ -550,9 +550,9 @@ tiff    .tiff          [libtiff]    rw         unlimited       2          unlimi
 [stb]: https://github.com/nothings/stb
 [tinyexr]: https://github.com/syoyo/tinyexr
 
-# TAD File Format Specification
+# TGD File Format Specification
 
-TAD files (.tad) start with the four bytes `T`, `A`, `D`, and 0.
+TGD files (.tgd) start with the four bytes `T`, `G`, `D`, and 0.
 
 The fifth byte defines the data type: 0 for int8, 1 for uint8, 2 for int16, 3 for uint16, 4 for
 int32, 5 for uint32, 6 for int64, 7 for uint64, 8 for float32, and 9 for float64.
@@ -575,8 +575,8 @@ After that, the array data follows using the data type described above. The size
 calculated as the number of array elements (the product over all dimensions) times the
 number of element components times the size of the data type.
 
-Directly after the array data, another TAD may follow, again starting with the four bytes `T`,
-`A`, `D`, and 0. A file can store any number of TADs.
+Directly after the array data, another TGD may follow, again starting with the four bytes `T`,
+`A`, `D`, and 0. A file can store any number of TGDs.
 
 This format is simple and direct and does not involve data conversion of any kind, so it is very
 efficient. If and when a future platform becomes relevant that does not use todays

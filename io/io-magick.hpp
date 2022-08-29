@@ -21,20 +21,20 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_IO_MAGICK_HPP
-#define TAD_IO_MAGICK_HPP
+#ifndef TGD_IO_MAGICK_HPP
+#define TGD_IO_MAGICK_HPP
 
 #include "io.hpp"
 
-namespace TAD {
+namespace TGD {
 
-class TADMagick;
+class TGDMagick;
 
 class FormatImportExportMagick : public FormatImportExport {
 private:
     std::string _fileName;
     bool _triedReading;
-    TADMagick* _magick;
+    TGDMagick* _magick;
     int _lastArrayIndex;
 
 public:

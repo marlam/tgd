@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2018, 2019, 2020 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2018, 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,23 +24,23 @@
 
 #include <cstdio>
 
-#include "io-tad.hpp"
+#include "io-tgd.hpp"
 
 
-namespace TAD {
+namespace TGD {
 
-FormatImportExportTAD::FormatImportExportTAD() :
+FormatImportExportTGD::FormatImportExportTGD() :
     _f(nullptr),
     _arrayCount(-2)
 {
 }
 
-FormatImportExportTAD::~FormatImportExportTAD()
+FormatImportExportTGD::~FormatImportExportTGD()
 {
     close();
 }
 
-Error FormatImportExportTAD::openForReading(const std::string& fileName, const TagList&)
+Error FormatImportExportTGD::openForReading(const std::string& fileName, const TagList&)
 {
     if (fileName == "-")
         _f = stdin;
@@ -48,7 +49,7 @@ Error FormatImportExportTAD::openForReading(const std::string& fileName, const T
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
-Error FormatImportExportTAD::openForWriting(const std::string& fileName, bool append, const TagList&)
+Error FormatImportExportTGD::openForWriting(const std::string& fileName, bool append, const TagList&)
 {
     if (fileName == "-")
         _f = stdout;
@@ -57,7 +58,7 @@ Error FormatImportExportTAD::openForWriting(const std::string& fileName, bool ap
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
-void FormatImportExportTAD::close()
+void FormatImportExportTGD::close()
 {
     if (_f) {
         if (_f != stdin && _f != stdout) {
@@ -67,7 +68,7 @@ void FormatImportExportTAD::close()
     }
 }
 
-static bool writeTadTagList(FILE* f, const TagList& tl)
+static bool writeTgdTagList(FILE* f, const TagList& tl)
 {
     std::vector<char> data(sizeof(uint64_t), 0);
     for (auto it = tl.cbegin(); it != tl.cend(); it++) {
@@ -79,11 +80,11 @@ static bool writeTadTagList(FILE* f, const TagList& tl)
     return std::fwrite(data.data(), data.size(), 1, f) == 1;
 }
 
-static bool writeTad(FILE* f, const ArrayContainer& array)
+static bool writeTgd(FILE* f, const ArrayContainer& array)
 {
     std::vector<uint8_t> start(5 + 2 * sizeof(uint64_t) + array.dimensionCount() * sizeof(uint64_t));
     start[0] = 'T';
-    start[1] = 'A';
+    start[1] = 'G';
     start[2] = 'D';
     start[3] = 0;
     start[4] = array.componentType();
@@ -97,15 +98,15 @@ static bool writeTad(FILE* f, const ArrayContainer& array)
         std::memcpy(start.data() + 5 + 2 * sizeof(uint64_t) + d * sizeof(uint64_t), &v, sizeof(uint64_t));
     }
     if (std::fwrite(start.data(), start.size(), 1, f) != 1
-            || !writeTadTagList(f, array.globalTagList())) {
+            || !writeTgdTagList(f, array.globalTagList())) {
         return false;
     }
     for (size_t c = 0; c < array.componentCount(); c++) {
-        if (!writeTadTagList(f, array.componentTagList(c)))
+        if (!writeTgdTagList(f, array.componentTagList(c)))
             return false;
     }
     for (size_t d = 0; d < array.dimensionCount(); d++) {
-        if (!writeTadTagList(f, array.dimensionTagList(d)))
+        if (!writeTgdTagList(f, array.dimensionTagList(d)))
             return false;
     }
     if (std::fwrite(array.data(), array.dataSize(), 1, f) != 1 || std::fflush(f) != 0) {
@@ -130,7 +131,7 @@ static bool readString(const char* data, std::string& s, size_t& len)
     return true;
 }
 
-static Error readTadTagList(FILE* f, TagList& tl)
+static Error readTgdTagList(FILE* f, TagList& tl)
 {
     uint64_t n;
     if (std::fread(&n, sizeof(uint64_t), 1, f) != 1)
@@ -157,7 +158,7 @@ static Error readTadTagList(FILE* f, TagList& tl)
     return ErrorNone;
 }
 
-static Error readTadHeader(FILE* f, ArrayContainer& array)
+static Error readTgdHeader(FILE* f, ArrayContainer& array)
 {
     uint8_t start[5 + 2 * sizeof(uint64_t)];
     if (std::fread(start, 5 + 2 * sizeof(uint64_t), 1, f) != 1)
@@ -166,7 +167,7 @@ static Error readTadHeader(FILE* f, ArrayContainer& array)
     uint64_t dimCount;
     std::memcpy(&compCount, start + 5, sizeof(uint64_t));
     std::memcpy(&dimCount, start + 5 + sizeof(uint64_t), sizeof(uint64_t));
-    if (start[0] != 'T' || start[1] != 'A' || start[2] != 'D' || start[3] != 0
+    if (start[0] != 'T' || (start[1] != 'G' && start[1] != 'A') || start[2] != 'D' || start[3] != 0
             || start[4] > 15
             || compCount > std::numeric_limits<size_t>::max()
             || dimCount > std::numeric_limits<size_t>::max()) {
@@ -186,28 +187,28 @@ static Error readTadHeader(FILE* f, ArrayContainer& array)
 
     array = ArrayContainer(dimensions, compCount, static_cast<Type>(start[4]));
     Error e;
-    if ((e = readTadTagList(f, array.globalTagList())) != ErrorNone)
+    if ((e = readTgdTagList(f, array.globalTagList())) != ErrorNone)
         return e;
     for (size_t c = 0; c < array.componentCount(); c++)
-        if ((e = readTadTagList(f, array.componentTagList(c))) != ErrorNone)
+        if ((e = readTgdTagList(f, array.componentTagList(c))) != ErrorNone)
             return e;
     for (size_t d = 0; d < array.dimensionCount(); d++)
-        if ((e = readTadTagList(f, array.dimensionTagList(d))) != ErrorNone)
+        if ((e = readTgdTagList(f, array.dimensionTagList(d))) != ErrorNone)
             return e;
     return ErrorNone;
 }
 
-static bool readTadData(FILE *f, ArrayContainer& array)
+static bool readTgdData(FILE *f, ArrayContainer& array)
 {
     return (std::fread(array.data(), array.dataSize(), 1, f) == 1);
 }
 
-static bool skipTadData(FILE *f, const ArrayContainer& array)
+static bool skipTgdData(FILE *f, const ArrayContainer& array)
 {
     return (fseeko(f, array.dataSize(), SEEK_CUR) == 0 ? true : false);
 }
 
-int FormatImportExportTAD::arrayCount()
+int FormatImportExportTGD::arrayCount()
 {
     if (_arrayCount >= -1)
         return _arrayCount;
@@ -215,7 +216,7 @@ int FormatImportExportTAD::arrayCount()
     if (!_f)
         return -1;
 
-    // find offsets of all TADs in the file
+    // find offsets of all TGDs in the file
     off_t curPos = ftello(_f);
     if (curPos < 0) {
         _arrayCount = -1;
@@ -230,8 +231,8 @@ int FormatImportExportTAD::arrayCount()
             return -1;
         }
         ArrayContainer array;
-        Error e = readTadHeader(_f, array);
-        if (e != ErrorNone || !skipTadData(_f, array)) {
+        Error e = readTgdHeader(_f, array);
+        if (e != ErrorNone || !skipTgdData(_f, array)) {
             _arrayOffsets.clear();
             _arrayCount = -1;
             return -1;
@@ -252,7 +253,7 @@ int FormatImportExportTAD::arrayCount()
     return _arrayCount;
 }
 
-ArrayContainer FormatImportExportTAD::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportTGD::readArray(Error* error, int arrayIndex)
 {
     // Seek if necessary
     if (arrayIndex >= 0) {
@@ -270,16 +271,16 @@ ArrayContainer FormatImportExportTAD::readArray(Error* error, int arrayIndex)
         }
     }
 
-    // Read the TAD header
+    // Read the TGD header
     ArrayContainer array;
-    Error e = readTadHeader(_f, array);
+    Error e = readTgdHeader(_f, array);
     if (e != ErrorNone) {
         *error = e;
         return ArrayContainer();
     }
 
     // Read the data
-    if (!readTadData(_f, array)) {
+    if (!readTgdData(_f, array)) {
         e = (std::ferror(_f) ? ErrorSysErrno : ErrorInvalidData);
     }
     if (e != ErrorNone) {
@@ -291,7 +292,7 @@ ArrayContainer FormatImportExportTAD::readArray(Error* error, int arrayIndex)
     return array;
 }
 
-bool FormatImportExportTAD::hasMore()
+bool FormatImportExportTGD::hasMore()
 {
     int c = fgetc(_f);
     if (c == EOF) {
@@ -302,9 +303,9 @@ bool FormatImportExportTAD::hasMore()
     }
 }
 
-Error FormatImportExportTAD::writeArray(const ArrayContainer& array)
+Error FormatImportExportTGD::writeArray(const ArrayContainer& array)
 {
-    return (writeTad(_f, array) ? ErrorNone : ErrorSysErrno);
+    return (writeTgd(_f, array) ? ErrorNone : ErrorSysErrno);
 }
 
 }

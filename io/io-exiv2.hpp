@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,21 +22,21 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_IO_EXIV2_HPP
-#define TAD_IO_EXIV2_HPP
+#ifndef TGD_IO_EXIV2_HPP
+#define TGD_IO_EXIV2_HPP
 
-#ifdef TAD_WITH_EXIV2
+#ifdef TGD_WITH_EXIV2
 # include <exiv2/exiv2.hpp>
 #endif
 
 #include "io-utils.hpp"
 
-namespace TAD {
+namespace TGD {
 
 inline ImageOriginLocation getImageOriginLocation(const std::string& fileName)
 {
     ImageOriginLocation originLocation = OriginTopLeft;
-#if TAD_WITH_EXIV2
+#if TGD_WITH_EXIV2
     if (fileName.size() != 0) {
         Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(fileName.c_str());
         if (image.get()) {

@@ -33,7 +33,7 @@
 #define TINYEXR_IMPLEMENTATION
 #include "../ext/tinyexr.h"
 
-namespace TAD {
+namespace TGD {
 
 FormatImportExportTinyEXR::FormatImportExportTinyEXR() : _arrayWasReadOrWritten(false)
 {
@@ -190,7 +190,7 @@ ArrayContainer FormatImportExportTinyEXR::readArray(Error* error, int arrayIndex
             channelPermutation.push_back(c);
     }
 
-    TAD::Array<float> r({ w, h }, nc);
+    TGD::Array<float> r({ w, h }, nc);
     for (size_t c = 0; c < nc; c++) {
         std::string interpretation = exr_header.channels[channelPermutation[c]].name;
         if (interpretation == "R")

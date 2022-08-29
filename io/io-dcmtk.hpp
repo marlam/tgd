@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,15 +22,15 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_IO_DCMTK_HPP
-#define TAD_IO_DCMTK_HPP
+#ifndef TGD_IO_DCMTK_HPP
+#define TGD_IO_DCMTK_HPP
 
 #include "io.hpp"
 
 class DcmFileFormat;
 class DicomImage;
 
-namespace TAD {
+namespace TGD {
 
 class FormatImportExportDCMTK : public FormatImportExport {
 private:

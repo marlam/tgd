@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_IO_PDF_HPP
-#define TAD_IO_PDF_HPP
+#ifndef TGD_IO_PDF_HPP
+#define TGD_IO_PDF_HPP
 
 #include "io.hpp"
 
@@ -31,7 +32,7 @@ namespace poppler {
     class document;
 }
 
-namespace TAD {
+namespace TGD {
 
 class FormatImportExportPDF : public FormatImportExport {
 private:

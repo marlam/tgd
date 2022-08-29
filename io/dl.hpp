@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2018, 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2018, 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_DL_HPP
-#define TAD_DL_HPP
+#ifndef TGD_DL_HPP
+#define TGD_DL_HPP
 
 /* Provide the POSIX dlopen/dlclose/dlsym API on all operating systems.
  * The different file endings for dynamic libraries are defined with

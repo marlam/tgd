@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_ARRAY_HPP
-#define TAD_ARRAY_HPP
+#ifndef TGD_ARRAY_HPP
+#define TGD_ARRAY_HPP
 
 #include <cassert>
 #include <cstdint>
@@ -36,15 +36,15 @@
 
 /**
  * \file array.hpp
- * \brief The libtad C++ interface.
+ * \brief The libtgd C++ interface.
  */
 
 /**
- * \mainpage libtad Reference
+ * \mainpage libtgd Reference
  *
- * \section overview Tagged Array Data (TAD): Overview
+ * \section overview Tagged Grid Data (TGD): Overview
  *
- * TAD manages multidimensional arrays. Each array element consists of a fixed
+ * TGD manages multidimensional arrays. Each array element consists of a fixed
  * number of components. All components are of the same data type (integer or
  * floating point). For example, an array holding image data could be a
  * two-dimensional array with size 800x600, and each element could consist of
@@ -56,37 +56,37 @@
  * describing the dimensions), and component-specific tag lists (typically
  * describing the interpretation of each component).
  *
- * \section lib The libtad Library
+ * \section lib The libtgd Library
  *
- * The library works with the following classes: \a TAD::TagList to manage metadata,
- * \a TAD::ArrayDescription to handle all metadata describing an array, \a TAD::ArrayContainer
- * to handle array data of any type, and finally \a TAD::Array to handle arrays with
+ * The library works with the following classes: \a TGD::TagList to manage metadata,
+ * \a TGD::ArrayDescription to handle all metadata describing an array, \a TGD::ArrayContainer
+ * to handle array data of any type, and finally \a TGD::Array to handle arrays with
  * a specific data type so that convenient operations on the data are possible.
  *
  * All array data is shared by default when making copies of an array. If you want
- * a copy of the data, use \a TAD::ArrayContainer::deepCopy() or \a TAD::Array::deepCopy().
+ * a copy of the data, use \a TGD::ArrayContainer::deepCopy() or \a TGD::Array::deepCopy().
  *
- * Input and output are managed by the \a TAD::Importer and \a TAD::Exporter classes,
- * and there are shortcuts \a TAD::load() and \a TAD::save() to read and write arrays
+ * Input and output are managed by the \a TGD::Importer and \a TGD::Exporter classes,
+ * and there are shortcuts \a TGD::load() and \a TGD::save() to read and write arrays
  * in just one line of code.
  *
- * \section manual TAD Manual
+ * \section manual TGD Manual
  *
- * The <a href="https://marlam.de/tad/tad-manual.html">tad manual</a> contains
- * <a href="https://marlam.de/tad/tad-manual.html#file-formats">an overview of supported file formats</a>,
- * <a href="https://marlam.de/tad/tad-manual.html#tad-file-format-specification">the specification of the native TAD file format</a>, and
- * <a href="https://marlam.de/tad/tad-manual.html#common-tags">a list of common tags</a>.
+ * The <a href="https://marlam.de/tgd/tgd-manual.html">tgd manual</a> contains
+ * <a href="https://marlam.de/tgd/tgd-manual.html#file-formats">an overview of supported file formats</a>,
+ * <a href="https://marlam.de/tgd/tgd-manual.html#tgd-file-format-specification">the specification of the native TGD file format</a>, and
+ * <a href="https://marlam.de/tgd/tgd-manual.html#common-tags">a list of common tags</a>.
  *
  * \section examples Examples
  *
  * This program creates an image:
  * ~~~~~{.cpp}
- * #include <tad/array.hpp>
- * #include <tad/io.hpp>
+ * #include <tgd/array.hpp>
+ * #include <tgd/io.hpp>
  * 
  * int main(void)
  * {
- *     TAD::Array<uint8_t> image({800, 600}, 3);
+ *     TGD::Array<uint8_t> image({800, 600}, 3);
  *     for (size_t y = 0; y < image.dimension(1); y++) {
  *         for (size_t x = 0; x < image.dimension(0); x++) {
  *             image[{x, y}][0] = x / (image.dimension(0) - 1.0f) * 255; // red
@@ -94,37 +94,37 @@
  *             image[{x, y}][2] = 0;                                     // blue
  *         }
  *     }
- *     TAD::save(image, "image.ppm");
+ *     TGD::save(image, "image.ppm");
  *     return 0;
  * }
  * ~~~~~
  *
  * This example loads an image, extracts the red channel, and saves it to a file:
  * ~~~~~{.cpp}
- * #include <tad/array.hpp>
- * #include <tad/io.hpp>
+ * #include <tgd/array.hpp>
+ * #include <tgd/io.hpp>
  * 
  * int main(void)
  * {
- *     TAD::Array<uint8_t> image = TAD::load("image.ppm");
- *     TAD::Array<uint8_t> greenChannel(image.dimensions(), 1);
+ *     TGD::Array<uint8_t> image = TGD::load("image.ppm");
+ *     TGD::Array<uint8_t> greenChannel(image.dimensions(), 1);
  *     for (size_t i = 0; i < greenChannel.elementCount(); i++) {
  *         greenChannel[i][0] = image[i][1];
  *     }
- *     TAD::save(greenChannel, "green.pgm");
+ *     TGD::save(greenChannel, "green.pgm");
  *     return 0;
  * }
  * ~~~~~
  *
  * This example modifies array data using operators and alternatively
- * TAD::forEachComponent() which works with lambdas, functors and functions.
+ * TGD::forEachComponent() which works with lambdas, functors and functions.
  * There are also variants that take two arrays as input, and variants that
  * work on elements instead of components.
  * ~~~~~{.cpp}
- * #include <tad/array.hpp>
- * #include <tad/foreach.hpp>
- * #include <tad/operators.hpp>
- * #include <tad/io.hpp>
+ * #include <tgd/array.hpp>
+ * #include <tgd/foreach.hpp>
+ * #include <tgd/operators.hpp>
+ * #include <tgd/io.hpp>
  * 
  * uint8_t func(uint8_t a)
  * {
@@ -140,52 +140,52 @@
  * 
  * int main(void)
  * {
- *     TAD::Array<uint8_t> image = TAD::load("image.ppm");
+ *     TGD::Array<uint8_t> image = TGD::load("image.ppm");
  * 
  *     // Modify via operator
- *     TAD::Array<uint8_t> r3 = image * image;
+ *     TGD::Array<uint8_t> r3 = image * image;
  *     // Modify via lambda
- *     TAD::Array<uint8_t> r0 = TAD::forEachComponent(image, [] (uint8_t a) -> uint8_t { return a * a; });
+ *     TGD::Array<uint8_t> r0 = TGD::forEachComponent(image, [] (uint8_t a) -> uint8_t { return a * a; });
  *     // Modify via function
- *     TAD::Array<uint8_t> r1 = TAD::forEachComponent(image, func);
+ *     TGD::Array<uint8_t> r1 = TGD::forEachComponent(image, func);
  *     // Modify via functor
- *     TAD::Array<uint8_t> r2 = TAD::forEachComponent(image, functor);
+ *     TGD::Array<uint8_t> r2 = TGD::forEachComponent(image, functor);
  * 
  *     // Save results. All are the same.
  *     // Note that a*a will overflow an uint8_t, but that creates a nice pattern ;)
- *     TAD::save(r0, "r0.ppm");
- *     TAD::save(r1, "r1.ppm");
- *     TAD::save(r2, "r2.ppm");
- *     TAD::save(r3, "r3.ppm");
+ *     TGD::save(r0, "r0.ppm");
+ *     TGD::save(r1, "r1.ppm");
+ *     TGD::save(r2, "r2.ppm");
+ *     TGD::save(r3, "r3.ppm");
  *
  *     return 0;
  * }
  * ~~~~~
  *
- * This example shows that STL algorithms can work on TAD arrays both on
+ * This example shows that STL algorithms can work on TGD arrays both on
  * component and on element level:
  * ~~~~~{.cpp}
  * #include <algorithm>
- * #include <tad/array.hpp>
- * #include <tad/io.hpp>
+ * #include <tgd/array.hpp>
+ * #include <tgd/io.hpp>
  * 
  * int main(void)
  * {
- *     TAD::Array<uint8_t> image = TAD::load("image.ppm");
+ *     TGD::Array<uint8_t> image = TGD::load("image.ppm");
  * 
- *     TAD::Array<uint8_t> sorted = image.deepCopy();
+ *     TGD::Array<uint8_t> sorted = image.deepCopy();
  *     std::sort(sorted.componentBegin(), sorted.componentEnd());
- *     TAD::save(sorted, "sorted.ppm");
+ *     TGD::save(sorted, "sorted.ppm");
  * 
- *     TAD::Array<uint8_t> answer = image.deepCopy();
+ *     TGD::Array<uint8_t> answer = image.deepCopy();
  *     std::for_each(answer.componentBegin(), answer.componentEnd(),
  *             [](uint8_t& v) { v = 42; });
- *     TAD::save(answer, "answer.ppm");
+ *     TGD::save(answer, "answer.ppm");
  * 
- *     TAD::Array<uint8_t> orange = image.deepCopy();
+ *     TGD::Array<uint8_t> orange = image.deepCopy();
  *     std::for_each(orange.elementBegin(), orange.elementEnd(),
  *             [](uint8_t* v) { v[0] = 255; v[1] = 128; v[2] = 64; });
- *     TAD::save(orange, "orange.ppm");
+ *     TGD::save(orange, "orange.ppm");
  * 
  *     return 0;
  * }
@@ -193,7 +193,7 @@
  *
  */
 
-namespace TAD {
+namespace TGD {
 
 /*! \brief The data type that array element components can represent. */
 enum Type
@@ -210,7 +210,7 @@ enum Type
     float64 = 9,   /**< \brief IEEE 754 double precision floating point (on all relevant platforms: double) */
 };
 
-/*! \brief Returns the size of a TAD type. */
+/*! \brief Returns the size of a TGD type. */
 inline constexpr size_t typeSize(Type t)
 {
     static_assert(sizeof(int8_t) == 1);
@@ -236,7 +236,7 @@ inline constexpr size_t typeSize(Type t)
             : 0);
 }
 
-/*! \brief Returns the TAD component type that corresponds to the template parameter. */
+/*! \brief Returns the TGD component type that corresponds to the template parameter. */
 template<typename T> inline constexpr Type typeFromTemplate();
 /*! \cond */
 template<> inline constexpr Type typeFromTemplate<int8_t>() { return int8; }
@@ -251,7 +251,7 @@ template<> inline constexpr Type typeFromTemplate<float>() { return float32; }
 template<> inline constexpr Type typeFromTemplate<double>() { return float64; }
 /*! \endcond */
 
-/*! \brief Determine the TAD component type described in the string, return false if this fails. */
+/*! \brief Determine the TGD component type described in the string, return false if this fails. */
 inline bool typeFromString(const std::string& s, Type* t)
 {
     bool ok = true;

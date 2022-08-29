@@ -39,7 +39,7 @@ extern "C" {
 #include "io-utils.hpp"
 
 
-namespace TAD {
+namespace TGD {
 
 class FFmpeg
 {

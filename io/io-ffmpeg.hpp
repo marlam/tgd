@@ -22,12 +22,12 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_IO_FFMPEG_HPP
-#define TAD_IO_FFMPEG_HPP
+#ifndef TGD_IO_FFMPEG_HPP
+#define TGD_IO_FFMPEG_HPP
 
 #include "io.hpp"
 
-namespace TAD {
+namespace TGD {
 
 class FFmpeg;
 

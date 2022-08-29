@@ -33,7 +33,7 @@
 #include <string>
 #include <vector>
 
-#ifdef TAD_WITH_MUPARSER
+#ifdef TGD_WITH_MUPARSER
 # include <chrono>
 # include <random>
 # include <muParser.h>
@@ -159,14 +159,14 @@ std::vector<size_t> getUIntUnderscoreList(const std::string& value)
 
 bool parseType(const std::string& value)
 {
-    TAD::Type t;
-    return TAD::typeFromString(value, &t);
+    TGD::Type t;
+    return TGD::typeFromString(value, &t);
 }
 
-TAD::Type getType(const std::string& value)
+TGD::Type getType(const std::string& value)
 {
-    TAD::Type t = TAD::uint8;
-    TAD::typeFromString(value, &t);
+    TGD::Type t = TGD::uint8;
+    TGD::typeFromString(value, &t);
     return t;
 }
 
@@ -263,7 +263,7 @@ bool indexInRange(size_t i, size_t a, size_t b, size_t s)
 
 /* Helper functions for handling tags */
 
-void addTag(TAD::TagList& tl, const std::string& tag)
+void addTag(TGD::TagList& tl, const std::string& tag)
 {
     size_t i = tag.find('=', 1);
     if (i == std::string::npos) {
@@ -273,15 +273,15 @@ void addTag(TAD::TagList& tl, const std::string& tag)
     }
 }
 
-TAD::TagList createTagList(const std::vector<std::string>& tags)
+TGD::TagList createTagList(const std::vector<std::string>& tags)
 {
-    TAD::TagList tl;
+    TGD::TagList tl;
     for (size_t i = 0; i < tags.size(); i++)
         addTag(tl, tags[i]);
     return tl;
 }
 
-void removeValueRelatedTags(TAD::ArrayContainer& array)
+void removeValueRelatedTags(TGD::ArrayContainer& array)
 {
     for (size_t i = 0; i < array.componentCount(); i++) {
         array.componentTagList(i).unset("MINVAL");
@@ -291,7 +291,7 @@ void removeValueRelatedTags(TAD::ArrayContainer& array)
 
 /* Helper function for handling boxes */
 
-std::vector<size_t> getBoxFromArray(const TAD::ArrayContainer& array)
+std::vector<size_t> getBoxFromArray(const TGD::ArrayContainer& array)
 {
     std::vector<size_t> box(array.dimensionCount() * 2);
     for (size_t i = 0; i < array.dimensionCount(); i++) {
@@ -301,7 +301,7 @@ std::vector<size_t> getBoxFromArray(const TAD::ArrayContainer& array)
     return box;
 }
 
-std::vector<size_t> restrictBoxToArray(const std::vector<size_t>& box, const TAD::ArrayContainer& array)
+std::vector<size_t> restrictBoxToArray(const std::vector<size_t>& box, const TGD::ArrayContainer& array)
 {
     std::vector<size_t> newBox(array.dimensionCount() * 2, 0);
     bool isEmpty = false;
@@ -352,12 +352,12 @@ bool incBoxIndex(const std::vector<size_t>& box, std::vector<size_t>& index, siz
     return true;
 }
 
-/* tad commands */
+/* tgd commands */
 
-int tad_help(void)
+int tgd_help(void)
 {
     fprintf(stderr,
-            "Usage: tad <command> [options...] [arguments...]\n"
+            "Usage: tgd <command> [options...] [arguments...]\n"
             "Available commands:\n"
             "  create\n"
             "  convert\n"
@@ -368,13 +368,13 @@ int tad_help(void)
     return 0;
 }
 
-int tad_version(void)
+int tgd_version(void)
 {
-    fprintf(stderr, "tad version %s\n", TAD_VERSION);
+    fprintf(stderr, "tgd version %s\n", TGD_VERSION);
     return 0;
 }
 
-int tad_create(int argc, char* argv[])
+int tgd_create(int argc, char* argv[])
 {
     CmdLine cmdLine;
     cmdLine.addOptionWithArg("output", 'o');
@@ -384,11 +384,11 @@ int tad_create(int argc, char* argv[])
     cmdLine.addOptionWithArg("n", 'n', parseUIntLargerThanZero, "1");
     std::string errMsg;
     if (!cmdLine.parse(argc, argv, 1, 1, errMsg)) {
-        fprintf(stderr, "tad create: %s\n", errMsg.c_str());
+        fprintf(stderr, "tgd create: %s\n", errMsg.c_str());
         return 1;
     }
     if (cmdLine.isSet("help")) {
-        fprintf(stderr, "Usage: tad create [option]... <outfile|->\n"
+        fprintf(stderr, "Usage: tgd create [option]... <outfile|->\n"
                 "\n"
                 "Create zero-filled arrays.\n"
                 "\n"
@@ -402,92 +402,92 @@ int tad_create(int argc, char* argv[])
         return 0;
     }
     if (!cmdLine.isSet("dimensions")) {
-        fprintf(stderr, "tad create: --dimensions is missing\n");
+        fprintf(stderr, "tgd create: --dimensions is missing\n");
         return 1;
     }
     if (!cmdLine.isSet("components")) {
-        fprintf(stderr, "tad create: --components is missing\n");
+        fprintf(stderr, "tgd create: --components is missing\n");
         return 1;
     }
     if (!cmdLine.isSet("type")) {
-        fprintf(stderr, "tad create: --type is missing\n");
+        fprintf(stderr, "tgd create: --type is missing\n");
         return 1;
     }
 
     const std::string& outFileName = cmdLine.arguments()[0];
-    TAD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
-    TAD::Exporter exporter(outFileName, TAD::Overwrite, exporterHints);
-    TAD::Error err = TAD::ErrorNone;
+    TGD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
+    TGD::Exporter exporter(outFileName, TGD::Overwrite, exporterHints);
+    TGD::Error err = TGD::ErrorNone;
     std::vector<size_t> dimensions = getUIntList(cmdLine.value("dimensions"));
     size_t components = getUInt(cmdLine.value("components"));
-    TAD::Type type = getType(cmdLine.value("type"));
+    TGD::Type type = getType(cmdLine.value("type"));
     size_t n = getUInt(cmdLine.value("n"));
-    TAD::ArrayContainer array(dimensions, components, type);
+    TGD::ArrayContainer array(dimensions, components, type);
     std::memset(array.data(), 0, array.dataSize());
     for (size_t i = 0; i < n; i++) {
         err = exporter.writeArray(array);
-        if (err != TAD::ErrorNone) {
-            fprintf(stderr, "tad create: %s: %s\n", outFileName.c_str(), TAD::strerror(err));
+        if (err != TGD::ErrorNone) {
+            fprintf(stderr, "tgd create: %s: %s\n", outFileName.c_str(), TGD::strerror(err));
             break;
         }
     }
 
-    return (err == TAD::ErrorNone ? 0 : 1);
+    return (err == TGD::ErrorNone ? 0 : 1);
 }
 
 template<typename T>
-void tad_convert_normalize_helper_to_float(TAD::Array<T>& array, TAD::Type oldType)
+void tgd_convert_normalize_helper_to_float(TGD::Array<T>& array, TGD::Type oldType)
 {
-    if (oldType == TAD::int8) {
-        TAD::forEachComponentInplace(array,
+    if (oldType == TGD::int8) {
+        TGD::forEachComponentInplace(array,
                 [] (T v) -> T { return (v < T(0)
                     ? v / -std::numeric_limits<int8_t>::min()
                     : v / std::numeric_limits<int8_t>::max()); });
         removeValueRelatedTags(array);
-    } else if (oldType == TAD::uint8) {
-        TAD::forEachComponentInplace(array,
+    } else if (oldType == TGD::uint8) {
+        TGD::forEachComponentInplace(array,
                 [] (T v) -> T { return v / std::numeric_limits<uint8_t>::max(); });
         removeValueRelatedTags(array);
-    } else if (oldType == TAD::int16) {
-        TAD::forEachComponentInplace(array,
+    } else if (oldType == TGD::int16) {
+        TGD::forEachComponentInplace(array,
                 [] (T v) -> T { return (v < T(0)
                     ? v / -std::numeric_limits<int16_t>::min()
                     : v / std::numeric_limits<int16_t>::max()); });
         removeValueRelatedTags(array);
-    } else if (oldType == TAD::uint16) {
-        TAD::forEachComponentInplace(array,
+    } else if (oldType == TGD::uint16) {
+        TGD::forEachComponentInplace(array,
                 [] (T v) -> T { return v / std::numeric_limits<uint16_t>::max(); });
         removeValueRelatedTags(array);
     }
 }
 
 template<typename T>
-void tad_convert_normalize_helper_from_float(TAD::Array<T>& array, TAD::Type newType)
+void tgd_convert_normalize_helper_from_float(TGD::Array<T>& array, TGD::Type newType)
 {
-    if (newType == TAD::int8) {
-        TAD::forEachComponentInplace(array,
+    if (newType == TGD::int8) {
+        TGD::forEachComponentInplace(array,
                 [] (T v) -> T { return (v < T(0)
                     ? v * -std::numeric_limits<int8_t>::min()
                     : v * std::numeric_limits<int8_t>::max()); });
         removeValueRelatedTags(array);
-    } else if (newType == TAD::uint8) {
-        TAD::forEachComponentInplace(array,
+    } else if (newType == TGD::uint8) {
+        TGD::forEachComponentInplace(array,
                 [] (T v) -> T { return v * std::numeric_limits<uint8_t>::max(); });
         removeValueRelatedTags(array);
-    } else if (newType == TAD::int16) {
-        TAD::forEachComponentInplace(array,
+    } else if (newType == TGD::int16) {
+        TGD::forEachComponentInplace(array,
                 [] (T v) -> T { return (v < T(0)
                     ? v * -std::numeric_limits<int16_t>::min()
                     : v * std::numeric_limits<int16_t>::max()); });
         removeValueRelatedTags(array);
-    } else if (newType == TAD::uint16) {
-        TAD::forEachComponentInplace(array,
+    } else if (newType == TGD::uint16) {
+        TGD::forEachComponentInplace(array,
                 [] (T v) -> T { return v * std::numeric_limits<uint16_t>::max(); });
         removeValueRelatedTags(array);
     }
 }
 
-int tad_convert(int argc, char* argv[])
+int tgd_convert(int argc, char* argv[])
 {
     CmdLine cmdLine;
     cmdLine.addOptionWithArg("input", 'i');
@@ -515,11 +515,11 @@ int tad_convert(int argc, char* argv[])
     cmdLine.addOrderedOptionWithArg("unset-component-tags", 0, parseUInt);
     std::string errMsg;
     if (!cmdLine.parse(argc, argv, 2, -1, errMsg)) {
-        fprintf(stderr, "tad convert: %s\n", errMsg.c_str());
+        fprintf(stderr, "tgd convert: %s\n", errMsg.c_str());
         return 1;
     }
     if (cmdLine.isSet("help")) {
-        fprintf(stderr, "Usage: tad convert [option]... <infile|-> [<infile...>] <outfile|->\n"
+        fprintf(stderr, "Usage: tgd convert [option]... <infile|-> [<infile...>] <outfile|->\n"
                 "\n"
                 "Convert input(s) and write to a new output.\n"
                 "\n"
@@ -563,18 +563,18 @@ int tad_convert(int argc, char* argv[])
         return 0;
     }
     if (cmdLine.isSet("keep") && cmdLine.isSet("drop")) {
-        fprintf(stderr, "tad convert: cannot use both --keep and --drop\n");
+        fprintf(stderr, "tgd convert: cannot use both --keep and --drop\n");
         return 1;
     }
 
-    TAD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
-    TAD::TagList importerHints = createTagList(cmdLine.valueList("input"));
-    TAD::Type type = getType(cmdLine.value("type"));
+    TGD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
+    TGD::TagList importerHints = createTagList(cmdLine.valueList("input"));
+    TGD::Type type = getType(cmdLine.value("type"));
 
     bool mergeComponents = cmdLine.isSet("merge-components");
     bool mergeDimension = cmdLine.isSet("merge-dimension");
     if (mergeComponents && mergeDimension) {
-        fprintf(stderr, "tad convert: cannot use both --merge-components and --merge-dimension\n");
+        fprintf(stderr, "tgd convert: cannot use both --merge-components and --merge-dimension\n");
         return 1;
     }
     size_t mergeDimensionArg = (mergeDimension ? getUIntUnderscore(cmdLine.value("merge-dimension")) : 0);
@@ -587,14 +587,14 @@ int tad_convert(int argc, char* argv[])
     if (cmdLine.isSet("dimensions")) {
         dimensions = getUIntUnderscoreList(cmdLine.value("dimensions"));
         if (dimensions.size() == 0) {
-            fprintf(stderr, "tad convert: --dimensions must not be empty\n");
+            fprintf(stderr, "tgd convert: --dimensions must not be empty\n");
             return 1;
         }
         for (size_t i = 0; i < dimensions.size(); i++) {
             if (dimensions[i] != underscoreValue) {
                 for (size_t j = 0; j < i; j++) {
                     if (dimensions[i] == dimensions[j]) {
-                        fprintf(stderr, "tad convert: --dimensions list must not contain duplicates\n");
+                        fprintf(stderr, "tgd convert: --dimensions list must not contain duplicates\n");
                         return 1;
                     }
                 }
@@ -606,7 +606,7 @@ int tad_convert(int argc, char* argv[])
     if (cmdLine.isSet("components")) {
         components = getUIntUnderscoreList(cmdLine.value("components"));
         if (components.size() == 0) {
-            fprintf(stderr, "tad convert: --components must not be empty\n");
+            fprintf(stderr, "tgd convert: --components must not be empty\n");
             return 1;
         }
     }
@@ -630,7 +630,7 @@ int tad_convert(int argc, char* argv[])
     size_t splitTemplateLastIndex = 0;
     size_t splitTemplateFieldWidth = 0;
     std::string outFileName;
-    TAD::Exporter exporter;
+    TGD::Exporter exporter;
     if (cmdLine.isSet("split")) {
         splitTemplate = cmdLine.arguments()[cmdLine.arguments().size() - 1];
         splitTemplateFirstIndex = splitTemplate.find_first_of('%');
@@ -639,48 +639,48 @@ int tad_convert(int argc, char* argv[])
         if (splitTemplateFirstIndex == std::string::npos
                 || splitTemplateLastIndex == std::string::npos
                 || (l > 0 && !parseUIntLargerThanZero(splitTemplate.substr(splitTemplateFirstIndex + 1, l)))) {
-            fprintf(stderr, "tad convert: --split: output file template does not contain valid %%[n]N\n");
+            fprintf(stderr, "tgd convert: --split: output file template does not contain valid %%[n]N\n");
             return 1;
         }
         splitTemplateFieldWidth = (l == 0 ? 6 : getUInt(splitTemplate.substr(splitTemplateFirstIndex + 1, l)));
     } else {
         outFileName = cmdLine.arguments()[cmdLine.arguments().size() - 1];
-        exporter.initialize(outFileName, cmdLine.isSet("append") ? TAD::Append : TAD::Overwrite, exporterHints);
+        exporter.initialize(outFileName, cmdLine.isSet("append") ? TGD::Append : TGD::Overwrite, exporterHints);
     }
 
-    TAD::Error err = TAD::ErrorNone;
+    TGD::Error err = TGD::ErrorNone;
     size_t arrayIndex = 0;
-    std::vector<TAD::Importer> importers(cmdLine.arguments().size() - 1);
+    std::vector<TGD::Importer> importers(cmdLine.arguments().size() - 1);
     for (size_t i = 0; i < importers.size(); i++)
         importers[i].initialize(cmdLine.arguments()[i], importerHints);
     bool loopOverInputArgs = !mergeComponents && !mergeDimension;
     for (size_t i = 0; i < (loopOverInputArgs ? importers.size() : 1); i++) {
         for (;;) {
             if (!importers[i].hasMore(&err)) {
-                if (err != TAD::ErrorNone) {
-                    fprintf(stderr, "tad convert: %s: %s\n", importers[i].fileName().c_str(), TAD::strerror(err));
+                if (err != TGD::ErrorNone) {
+                    fprintf(stderr, "tgd convert: %s: %s\n", importers[i].fileName().c_str(), TGD::strerror(err));
                 }
                 break;
             }
-            TAD::ArrayContainer array;
+            TGD::ArrayContainer array;
             std::string inputName;
             if (!mergeComponents && !mergeDimension) {
                 array = importers[i].readArray(&err);
-                if (err != TAD::ErrorNone) {
-                    fprintf(stderr, "tad convert: %s: %s\n", importers[i].fileName().c_str(), TAD::strerror(err));
+                if (err != TGD::ErrorNone) {
+                    fprintf(stderr, "tgd convert: %s: %s\n", importers[i].fileName().c_str(), TGD::strerror(err));
                     break;
                 }
                 inputName = importers[i].fileName() + std::string(" array ") + std::to_string(arrayIndex);
             } else {
-                std::vector<TAD::ArrayContainer> arrays(importers.size());
+                std::vector<TGD::ArrayContainer> arrays(importers.size());
                 for (size_t j = 0; j < importers.size(); j++) {
                     arrays[j] = importers[j].readArray(&err);
-                    if (err != TAD::ErrorNone) {
-                        fprintf(stderr, "tad convert: %s: %s\n", importers[j].fileName().c_str(), TAD::strerror(err));
+                    if (err != TGD::ErrorNone) {
+                        fprintf(stderr, "tgd convert: %s: %s\n", importers[j].fileName().c_str(), TGD::strerror(err));
                         break;
                     }
                 }
-                if (err != TAD::ErrorNone)
+                if (err != TGD::ErrorNone)
                     break;
                 inputName = std::string("merged array ") + std::to_string(arrayIndex);
                 if (mergeComponents) {
@@ -703,11 +703,11 @@ int tad_convert(int argc, char* argv[])
                         componentCount += arrays[j].componentCount();
                     }
                     if (!compatible) {
-                        fprintf(stderr, "tad convert: %s: incompatible input arrays\n", inputName.c_str());
-                        err = TAD::ErrorInvalidData;
+                        fprintf(stderr, "tgd convert: %s: incompatible input arrays\n", inputName.c_str());
+                        err = TGD::ErrorInvalidData;
                         break;
                     }
-                    array = TAD::ArrayContainer(arrays[0].dimensions(), componentCount, arrays[0].componentType());
+                    array = TGD::ArrayContainer(arrays[0].dimensions(), componentCount, arrays[0].componentType());
                     for (size_t e = 0; e < array.elementCount(); e++) {
                         unsigned char* dst = static_cast<unsigned char*>(array.get(e));
                         for (size_t j = 0; j < arrays.size(); j++) {
@@ -726,8 +726,8 @@ int tad_convert(int argc, char* argv[])
                 } else { // mergeDimension
                     bool compatible = true;
                     if (mergeDimensionArg != underscoreValue && mergeDimensionArg >= arrays[0].dimensionCount()) {
-                        fprintf(stderr, "tad convert: %s: no dimension %zu\n", inputName.c_str(), mergeDimensionArg);
-                        err = TAD::ErrorInvalidData;
+                        fprintf(stderr, "tgd convert: %s: no dimension %zu\n", inputName.c_str(), mergeDimensionArg);
+                        err = TGD::ErrorInvalidData;
                         break;
                     }
                     for (size_t j = 1; j < importers.size(); j++) {
@@ -749,8 +749,8 @@ int tad_convert(int argc, char* argv[])
                             break;
                     }
                     if (!compatible) {
-                        fprintf(stderr, "tad convert: %s: incompatible input arrays\n", inputName.c_str());
-                        err = TAD::ErrorInvalidData;
+                        fprintf(stderr, "tgd convert: %s: incompatible input arrays\n", inputName.c_str());
+                        err = TGD::ErrorInvalidData;
                         break;
                     }
                     std::vector<size_t> dimensions = arrays[0].dimensions();
@@ -760,7 +760,7 @@ int tad_convert(int argc, char* argv[])
                         for (size_t j = 1; j < arrays.size(); j++)
                             dimensions[mergeDimensionArg] += arrays[j].dimension(mergeDimensionArg);
                     }
-                    array = TAD::ArrayContainer(dimensions, arrays[0].componentCount(), arrays[0].componentType());
+                    array = TGD::ArrayContainer(dimensions, arrays[0].componentCount(), arrays[0].componentType());
 
                     std::vector<size_t> blockSizes(arrays.size(), 0);
                     size_t blockSizeSum = 0;
@@ -811,17 +811,17 @@ int tad_convert(int argc, char* argv[])
             if (keep) {
                 if (box.size() > 0) {
                     if (box.size() != array.dimensionCount() * 2) {
-                        fprintf(stderr, "tad convert: %s: box does not match dimensions\n", inputName.c_str());
-                        err = TAD::ErrorInvalidData;
+                        fprintf(stderr, "tgd convert: %s: box does not match dimensions\n", inputName.c_str());
+                        err = TGD::ErrorInvalidData;
                         break;
                     }
                     std::vector<size_t> localBox = restrictBoxToArray(box, array);
                     if (boxIsEmpty(localBox)) {
-                        fprintf(stderr, "tad convert: %s: empty box\n", inputName.c_str());
-                        err = TAD::ErrorInvalidData;
+                        fprintf(stderr, "tgd convert: %s: empty box\n", inputName.c_str());
+                        err = TGD::ErrorInvalidData;
                         break;
                     }
-                    TAD::ArrayContainer arrayBox(
+                    TGD::ArrayContainer arrayBox(
                             std::vector<size_t>(localBox.begin() + array.dimensionCount(), localBox.end()),
                             array.componentCount(), array.componentType());
                     std::vector<size_t> arrayIndex(array.dimensionCount());
@@ -847,8 +847,8 @@ int tad_convert(int argc, char* argv[])
                     bool valid = true;
                     for (size_t i = 0; i < dimensions.size(); i++) {
                         if (dimensions[i] != underscoreValue && dimensions[i] >= array.dimensionCount()) {
-                            fprintf(stderr, "tad convert: %s: no dimension %zu\n", inputName.c_str(), dimensions[i]);
-                            err = TAD::ErrorInvalidData;
+                            fprintf(stderr, "tgd convert: %s: no dimension %zu\n", inputName.c_str(), dimensions[i]);
+                            err = TGD::ErrorInvalidData;
                             valid = false;
                             break;
                         }
@@ -865,7 +865,7 @@ int tad_convert(int argc, char* argv[])
                             srcIndexMap[dimensions[i]] = i;
                         }
                     }
-                    TAD::ArrayContainer arrayNew(dimensionsNew, array.componentCount(), array.componentType());
+                    TGD::ArrayContainer arrayNew(dimensionsNew, array.componentCount(), array.componentType());
                     std::vector<size_t> srcIndex(array.dimensionCount());
                     std::vector<size_t> dstIndex(arrayNew.dimensionCount());
                     for (size_t e = 0; e < arrayNew.elementCount(); e++) {
@@ -888,15 +888,15 @@ int tad_convert(int argc, char* argv[])
                     bool valid = true;
                     for (size_t i = 0; i < components.size(); i++) {
                         if (components[i] != underscoreValue && components[i] >= array.componentCount()) {
-                            fprintf(stderr, "tad convert: %s: no component %zu\n", inputName.c_str(), components[i]);
-                            err = TAD::ErrorInvalidData;
+                            fprintf(stderr, "tgd convert: %s: no component %zu\n", inputName.c_str(), components[i]);
+                            err = TGD::ErrorInvalidData;
                             valid = false;
                             break;
                         }
                     }
                     if (!valid)
                         break;
-                    TAD::ArrayContainer arrayNew(array.dimensions(), components.size(), array.componentType());
+                    TGD::ArrayContainer arrayNew(array.dimensions(), components.size(), array.componentType());
                     for (size_t i = 0; i < components.size(); i++) {
                         for (size_t e = 0; e < array.elementCount(); e++) {
                             unsigned char* dst = reinterpret_cast<unsigned char*>(arrayNew.get(e));
@@ -920,26 +920,26 @@ int tad_convert(int argc, char* argv[])
                     array = arrayNew;
                 }
                 if (cmdLine.isSet("type")) {
-                    TAD::Type oldType = array.componentType();
+                    TGD::Type oldType = array.componentType();
                     if (cmdLine.isSet("normalize")) {
-                        if (type == TAD::float32) {
+                        if (type == TGD::float32) {
                             array = convert(array, type);
-                            TAD::Array<float> floatArray(array);
-                            tad_convert_normalize_helper_to_float<float>(floatArray, oldType);
-                        } else if (type == TAD::float64) {
+                            TGD::Array<float> floatArray(array);
+                            tgd_convert_normalize_helper_to_float<float>(floatArray, oldType);
+                        } else if (type == TGD::float64) {
                             array = convert(array, type);
-                            TAD::Array<double> doubleArray(array);
-                            tad_convert_normalize_helper_to_float<double>(doubleArray, oldType);
-                        } else if (oldType == TAD::float32) {
-                            if (type == TAD::int8 || type == TAD::uint8 || type == TAD::int16 || type == TAD::uint16) {
-                                TAD::Array<float> floatArray(array);
-                                tad_convert_normalize_helper_from_float<float>(floatArray, type);
+                            TGD::Array<double> doubleArray(array);
+                            tgd_convert_normalize_helper_to_float<double>(doubleArray, oldType);
+                        } else if (oldType == TGD::float32) {
+                            if (type == TGD::int8 || type == TGD::uint8 || type == TGD::int16 || type == TGD::uint16) {
+                                TGD::Array<float> floatArray(array);
+                                tgd_convert_normalize_helper_from_float<float>(floatArray, type);
                             }
                             array = convert(array, type);
-                        } else if (oldType == TAD::float64) {
-                            if (type == TAD::int8 || type == TAD::uint8 || type == TAD::int16 || type == TAD::uint16) {
-                                TAD::Array<double> doubleArray(array);
-                                tad_convert_normalize_helper_from_float<double>(doubleArray, type);
+                        } else if (oldType == TGD::float64) {
+                            if (type == TGD::int8 || type == TGD::uint8 || type == TGD::int16 || type == TGD::uint16) {
+                                TGD::Array<double> doubleArray(array);
+                                tgd_convert_normalize_helper_from_float<double>(doubleArray, type);
                             }
                             array = convert(array, type);
                         }
@@ -969,8 +969,8 @@ int tad_convert(int argc, char* argv[])
                         std::string n, v;
                         getUIntAndNameAndValue(optVal, &d, &n, &v);
                         if (d >= array.dimensionCount()) {
-                            fprintf(stderr, "tad convert: %s: no such dimension %zu\n", inputName.c_str(), d);
-                            err = TAD::ErrorInvalidData;
+                            fprintf(stderr, "tgd convert: %s: no such dimension %zu\n", inputName.c_str(), d);
+                            err = TGD::ErrorInvalidData;
                             break;
                         }
                         array.dimensionTagList(d).set(n, v);
@@ -979,16 +979,16 @@ int tad_convert(int argc, char* argv[])
                         std::string n;
                         getUIntAndName(optVal, &d, &n);
                         if (d >= array.dimensionCount()) {
-                            fprintf(stderr, "tad convert: %s: no such dimension %zu\n", inputName.c_str(), d);
-                            err = TAD::ErrorInvalidData;
+                            fprintf(stderr, "tgd convert: %s: no such dimension %zu\n", inputName.c_str(), d);
+                            err = TGD::ErrorInvalidData;
                             break;
                         }
                         array.dimensionTagList(d).unset(n);
                     } else if (optName == "unset-dimension-tags") {
                         size_t d = getUInt(optVal);
                         if (d >= array.dimensionCount()) {
-                            fprintf(stderr, "tad convert: %s: no such dimension %zu\n", inputName.c_str(), d);
-                            err = TAD::ErrorInvalidData;
+                            fprintf(stderr, "tgd convert: %s: no such dimension %zu\n", inputName.c_str(), d);
+                            err = TGD::ErrorInvalidData;
                             break;
                         }
                         array.dimensionTagList(d).clear();
@@ -997,8 +997,8 @@ int tad_convert(int argc, char* argv[])
                         std::string n, v;
                         getUIntAndNameAndValue(optVal, &c, &n, &v);
                         if (c >= array.componentCount()) {
-                            fprintf(stderr, "tad convert: %s: no such component %zu\n", inputName.c_str(), c);
-                            err = TAD::ErrorInvalidData;
+                            fprintf(stderr, "tgd convert: %s: no such component %zu\n", inputName.c_str(), c);
+                            err = TGD::ErrorInvalidData;
                             break;
                         }
                         array.componentTagList(c).set(n, v);
@@ -1007,22 +1007,22 @@ int tad_convert(int argc, char* argv[])
                         std::string n;
                         getUIntAndName(optVal, &c, &n);
                         if (c >= array.componentCount()) {
-                            fprintf(stderr, "tad convert: %s: no such component %zu\n", inputName.c_str(), c);
-                            err = TAD::ErrorInvalidData;
+                            fprintf(stderr, "tgd convert: %s: no such component %zu\n", inputName.c_str(), c);
+                            err = TGD::ErrorInvalidData;
                             break;
                         }
                         array.componentTagList(c).unset(n);
                     } else if (optName == "unset-component-tags") {
                         size_t c = getUInt(optVal);
                         if (c >= array.componentCount()) {
-                            fprintf(stderr, "tad convert: %s: no such component %zu\n", inputName.c_str(), c);
-                            err = TAD::ErrorInvalidData;
+                            fprintf(stderr, "tgd convert: %s: no such component %zu\n", inputName.c_str(), c);
+                            err = TGD::ErrorInvalidData;
                             break;
                         }
                         array.componentTagList(c).clear();
                     }
                 }
-                if (err != TAD::ErrorNone) {
+                if (err != TGD::ErrorNone) {
                     break;
                 }
                 if (cmdLine.isSet("split")) {
@@ -1032,25 +1032,25 @@ int tad_convert(int argc, char* argv[])
                         outFileName += std::string(splitTemplateFieldWidth - arrayIndexString.length(), '0');
                     outFileName += arrayIndexString;
                     outFileName += splitTemplate.substr(splitTemplateLastIndex + 1);
-                    exporter.initialize(outFileName, cmdLine.isSet("append") ? TAD::Append : TAD::Overwrite, exporterHints);
+                    exporter.initialize(outFileName, cmdLine.isSet("append") ? TGD::Append : TGD::Overwrite, exporterHints);
                 }
                 err = exporter.writeArray(array);
-                if (err != TAD::ErrorNone) {
-                    fprintf(stderr, "tad convert: %s: %s\n", outFileName.c_str(), TAD::strerror(err));
+                if (err != TGD::ErrorNone) {
+                    fprintf(stderr, "tgd convert: %s: %s\n", outFileName.c_str(), TGD::strerror(err));
                     break;
                 }
             }
             arrayIndex++;
         }
-        if (err != TAD::ErrorNone) {
+        if (err != TGD::ErrorNone) {
             break;
         }
     }
 
-    return (err == TAD::ErrorNone ? 0 : 1);
+    return (err == TGD::ErrorNone ? 0 : 1);
 }
 
-#ifdef TAD_WITH_MUPARSER
+#ifdef TGD_WITH_MUPARSER
 class Calc;
 Calc* calcSingleton;
 
@@ -1135,37 +1135,37 @@ private:
 
     static double input_value(size_t a, size_t e, size_t c)
     {
-        const std::vector<TAD::ArrayContainer>& input_arrays = calcSingleton->input_arrays;
+        const std::vector<TGD::ArrayContainer>& input_arrays = calcSingleton->input_arrays;
         double v = std::numeric_limits<double>::quiet_NaN();
         switch (input_arrays[a].componentType()) {
-        case TAD::int8:
+        case TGD::int8:
             v = input_arrays[a].get<int8_t>(e)[c];
             break;
-        case TAD::uint8:
+        case TGD::uint8:
             v = input_arrays[a].get<uint8_t>(e)[c];
             break;
-        case TAD::int16:
+        case TGD::int16:
             v = input_arrays[a].get<int16_t>(e)[c];
             break;
-        case TAD::uint16:
+        case TGD::uint16:
             v = input_arrays[a].get<uint16_t>(e)[c];
             break;
-        case TAD::int32:
+        case TGD::int32:
             v = input_arrays[a].get<int32_t>(e)[c];
             break;
-        case TAD::uint32:
+        case TGD::uint32:
             v = input_arrays[a].get<uint32_t>(e)[c];
             break;
-        case TAD::int64:
+        case TGD::int64:
             v = input_arrays[a].get<int64_t>(e)[c];
             break;
-        case TAD::uint64:
+        case TGD::uint64:
             v = input_arrays[a].get<uint64_t>(e)[c];
             break;
-        case TAD::float32:
+        case TGD::float32:
             v = input_arrays[a].get<float>(e)[c];
             break;
-        case TAD::float64:
+        case TGD::float64:
             v = input_arrays[a].get<double>(e)[c];
             break;
         }
@@ -1174,7 +1174,7 @@ private:
 
     static double v(const double* dx, int n)
     {
-        const std::vector<TAD::ArrayContainer>& input_arrays = calcSingleton->input_arrays;
+        const std::vector<TGD::ArrayContainer>& input_arrays = calcSingleton->input_arrays;
 
         if (n != 3 && n != static_cast<int>(input_arrays[0].dimensionCount() + 2))
             return std::numeric_limits<double>::quiet_NaN();
@@ -1225,7 +1225,7 @@ private:
 
     static double copy(const double* dx, int n)
     {
-        const std::vector<TAD::ArrayContainer>& input_arrays = calcSingleton->input_arrays;
+        const std::vector<TGD::ArrayContainer>& input_arrays = calcSingleton->input_arrays;
 
         if (n != 2 && n != static_cast<int>(input_arrays[0].dimensionCount() + 1))
             return std::numeric_limits<double>::quiet_NaN();
@@ -1273,7 +1273,7 @@ private:
 
 public:
     // input arrays
-    std::vector<TAD::ArrayContainer> input_arrays;
+    std::vector<TGD::ArrayContainer> input_arrays;
 
     // constructor
     Calc(const std::vector<std::string>& expressions, size_t inputCount) :
@@ -1405,9 +1405,9 @@ public:
                     token.pop_back();
                 mu::Parser::exception_type fixed_err(code, pos, token);
                 // Report the fixed error
-                fprintf(stderr, "tad calc: expression %zu: %s\n", i, fixed_err.GetMsg().c_str());
-                fprintf(stderr, "tad calc: %s\n", expressions[i].c_str());
-                fprintf(stderr, "tad calc: %s^\n", std::string(fixed_err.GetPos() - 1, ' ').c_str());
+                fprintf(stderr, "tgd calc: expression %zu: %s\n", i, fixed_err.GetMsg().c_str());
+                fprintf(stderr, "tgd calc: %s\n", expressions[i].c_str());
+                fprintf(stderr, "tgd calc: %s^\n", std::string(fixed_err.GetPos() - 1, ' ').c_str());
                 ok = false;
                 break;
             }
@@ -1415,38 +1415,38 @@ public:
         return ok;
     }
 
-    void getElement(TAD::ArrayContainer& array, size_t e)
+    void getElement(TGD::ArrayContainer& array, size_t e)
     {
         for (size_t i = 0; i < array.componentCount(); i++) {
             switch (array.componentType()) {
-            case TAD::int8:
+            case TGD::int8:
                 array.set<int8_t>(e, i, var_v[i]);
                 break;
-            case TAD::uint8:
+            case TGD::uint8:
                 array.set<uint8_t>(e, i, var_v[i]);
                 break;
-            case TAD::int16:
+            case TGD::int16:
                 array.set<int16_t>(e, i, var_v[i]);
                 break;
-            case TAD::uint16:
+            case TGD::uint16:
                 array.set<uint16_t>(e, i, var_v[i]);
                 break;
-            case TAD::int32:
+            case TGD::int32:
                 array.set<int32_t>(e, i, var_v[i]);
                 break;
-            case TAD::uint32:
+            case TGD::uint32:
                 array.set<uint32_t>(e, i, var_v[i]);
                 break;
-            case TAD::int64:
+            case TGD::int64:
                 array.set<int64_t>(e, i, var_v[i]);
                 break;
-            case TAD::uint64:
+            case TGD::uint64:
                 array.set<uint64_t>(e, i, var_v[i]);
                 break;
-            case TAD::float32:
+            case TGD::float32:
                 array.set<float>(e, i, var_v[i]);
                 break;
-            case TAD::float64:
+            case TGD::float64:
                 array.set<double>(e, i, var_v[i]);
                 break;
             }
@@ -1455,7 +1455,7 @@ public:
 };
 #endif
 
-int tad_calc(int argc, char* argv[])
+int tgd_calc(int argc, char* argv[])
 {
     CmdLine cmdLine;
     cmdLine.addOptionWithArg("input", 'i');
@@ -1464,11 +1464,11 @@ int tad_calc(int argc, char* argv[])
     cmdLine.addOptionWithArg("expression", 'e');
     std::string errMsg;
     if (!cmdLine.parse(argc, argv, 2, -1, errMsg)) {
-        fprintf(stderr, "tad calc: %s\n", errMsg.c_str());
+        fprintf(stderr, "tgd calc: %s\n", errMsg.c_str());
         return 1;
     }
     if (cmdLine.isSet("help")) {
-        fprintf(stderr, "Usage: tad calc [option]... <infile|-> [<infile|->...] <outfile|->\n"
+        fprintf(stderr, "Usage: tgd calc [option]... <infile|-> [<infile|->...] <outfile|->\n"
                 "\n"
                 "Calculate array element components via mathematical expressions given with the\n"
                 "option -e.\n"
@@ -1542,23 +1542,23 @@ int tad_calc(int argc, char* argv[])
         return 0;
     }
     if (!cmdLine.isSet("expression")) {
-        fprintf(stderr, "tad calc: missing --expression\n");
+        fprintf(stderr, "tgd calc: missing --expression\n");
         return 1;
     }
 
-#ifndef TAD_WITH_MUPARSER
-    fprintf(stderr, "tad calc: command not available (libmuparser is missing)\n");
+#ifndef TGD_WITH_MUPARSER
+    fprintf(stderr, "tgd calc: command not available (libmuparser is missing)\n");
     return 1;
 #else
     size_t inputCount = cmdLine.arguments().size() - 1;
     const std::vector<std::string>& inFileNames = cmdLine.arguments();
     const std::string& outFileName = cmdLine.arguments().back();
-    TAD::TagList importerHints = createTagList(cmdLine.valueList("input"));
-    TAD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
-    std::vector<TAD::Importer> importers(inputCount);
+    TGD::TagList importerHints = createTagList(cmdLine.valueList("input"));
+    TGD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
+    std::vector<TGD::Importer> importers(inputCount);
     for (size_t i = 0; i < inputCount; i++)
         importers[i].initialize(inFileNames[i], importerHints);
-    TAD::Exporter exporter(outFileName, TAD::Overwrite, exporterHints);
+    TGD::Exporter exporter(outFileName, TGD::Overwrite, exporterHints);
 
     std::vector<size_t> box;
     if (cmdLine.isSet("box"))
@@ -1566,58 +1566,58 @@ int tad_calc(int argc, char* argv[])
 
     Calc calc(cmdLine.valueList("expression"), inputCount);
 
-    TAD::Error err = TAD::ErrorNone;
+    TGD::Error err = TGD::ErrorNone;
 
     size_t arrayIndex = 0;
     for (;;) {
         /* read inputs */
         if (!importers[0].hasMore(&err)) {
-            if (err != TAD::ErrorNone) {
-                fprintf(stderr, "tad calc: %s: %s\n", inFileNames[0].c_str(), TAD::strerror(err));
+            if (err != TGD::ErrorNone) {
+                fprintf(stderr, "tgd calc: %s: %s\n", inFileNames[0].c_str(), TGD::strerror(err));
             }
             break;
         }
         calc.input_arrays[0] = importers[0].readArray(&err);
-        if (err != TAD::ErrorNone) {
-            fprintf(stderr, "tad calc: %s: %s\n", inFileNames[0].c_str(), TAD::strerror(err));
+        if (err != TGD::ErrorNone) {
+            fprintf(stderr, "tgd calc: %s: %s\n", inFileNames[0].c_str(), TGD::strerror(err));
             break;
         }
         if (calc.input_arrays[0].dimensionCount() > Calc::maxDimensionCount
                 || calc.input_arrays[0].componentCount() > Calc::maxComponentCount) {
-            fprintf(stderr, "tad calc: %s: too many dimensions or components\n", inFileNames[0].c_str());
+            fprintf(stderr, "tgd calc: %s: too many dimensions or components\n", inFileNames[0].c_str());
             break;
         }
         for (size_t i = 1; i < importers.size(); i++) {
             if (!importers[i].hasMore(&err)) {
                 // give up only on error, but not on EOF if at least one array from that input was read
-                if (err != TAD::ErrorNone) {
-                    fprintf(stderr, "tad calc: %s: %s\n", inFileNames[i].c_str(), TAD::strerror(err));
+                if (err != TGD::ErrorNone) {
+                    fprintf(stderr, "tgd calc: %s: %s\n", inFileNames[i].c_str(), TGD::strerror(err));
                 } else if (arrayIndex == 0) {
-                    fprintf(stderr, "tad calc: %s: missing array\n", inFileNames[i].c_str());
-                    err = TAD::ErrorInvalidData;
+                    fprintf(stderr, "tgd calc: %s: missing array\n", inFileNames[i].c_str());
+                    err = TGD::ErrorInvalidData;
                 }
                 break;
             }
             calc.input_arrays[i] = importers[i].readArray(&err);
-            if (err != TAD::ErrorNone) {
-                fprintf(stderr, "tad calc: %s: %s\n", inFileNames[i].c_str(), TAD::strerror(err));
+            if (err != TGD::ErrorNone) {
+                fprintf(stderr, "tgd calc: %s: %s\n", inFileNames[i].c_str(), TGD::strerror(err));
                 break;
             }
         }
-        if (err != TAD::ErrorNone) {
+        if (err != TGD::ErrorNone) {
             break;
         }
 
         /* set up output array */
-        TAD::ArrayContainer array = calc.input_arrays[0].deepCopy();
+        TGD::ArrayContainer array = calc.input_arrays[0].deepCopy();
 
         /* set up box to operate on */
         std::vector<size_t> index(array.dimensionCount());
         std::vector<size_t> localBox;
         if (box.size() > 0) {
             if (box.size() != index.size() * 2) {
-                fprintf(stderr, "tad calc: %s: box does not match dimensions\n", inFileNames[0].c_str());
-                err = TAD::ErrorInvalidData;
+                fprintf(stderr, "tgd calc: %s: box does not match dimensions\n", inFileNames[0].c_str());
+                err = TGD::ErrorInvalidData;
                 break;
             }
             localBox = restrictBoxToArray(box, array);
@@ -1639,7 +1639,7 @@ int tad_calc(int argc, char* argv[])
                 calc.setIndex(index, e);
                 /* evaluate */
                 if (!calc.evaluate()) {
-                    err = TAD::ErrorInvalidData;
+                    err = TGD::ErrorInvalidData;
                     break;
                 }
                 /* read back the updated element */
@@ -1649,34 +1649,34 @@ int tad_calc(int argc, char* argv[])
                     break;
             }
         }
-        if (err != TAD::ErrorNone) {
+        if (err != TGD::ErrorNone) {
             break;
         }
 
         err = exporter.writeArray(array);
-        if (err != TAD::ErrorNone) {
-            fprintf(stderr, "tad calc: %s: %s\n", outFileName.c_str(), TAD::strerror(err));
+        if (err != TGD::ErrorNone) {
+            fprintf(stderr, "tgd calc: %s: %s\n", outFileName.c_str(), TGD::strerror(err));
             break;
         }
         arrayIndex++;
     }
 
-    return (err == TAD::ErrorNone ? 0 : 1);
+    return (err == TGD::ErrorNone ? 0 : 1);
 #endif
 }
 
-int tad_diff(int argc, char* argv[])
+int tgd_diff(int argc, char* argv[])
 {
     CmdLine cmdLine;
     cmdLine.addOptionWithArg("input", 'i');
     cmdLine.addOptionWithArg("output", 'o');
     std::string errMsg;
     if (!cmdLine.parse(argc, argv, 3, 3, errMsg)) {
-        fprintf(stderr, "tad diff: %s\n", errMsg.c_str());
+        fprintf(stderr, "tgd diff: %s\n", errMsg.c_str());
         return 1;
     }
     if (cmdLine.isSet("help")) {
-        fprintf(stderr, "Usage: tad diff [option]... <infile0|-> <infile1|-> <outfile|->\n"
+        fprintf(stderr, "Usage: tgd diff [option]... <infile0|-> <infile1|-> <outfile|->\n"
                 "\n"
                 "Compute the absolute difference.\n"
                 "\n"
@@ -1689,64 +1689,64 @@ int tad_diff(int argc, char* argv[])
     const std::string& inFileName0 = cmdLine.arguments()[0];
     const std::string& inFileName1 = cmdLine.arguments()[1];
     const std::string& outFileName = cmdLine.arguments()[2];
-    TAD::TagList importerHints = createTagList(cmdLine.valueList("input"));
-    TAD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
-    TAD::Importer importer0(inFileName0, importerHints);
-    TAD::Importer importer1(inFileName1, importerHints);
-    TAD::Exporter exporter(outFileName, TAD::Overwrite, exporterHints);
-    TAD::Error err = TAD::ErrorNone;
+    TGD::TagList importerHints = createTagList(cmdLine.valueList("input"));
+    TGD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
+    TGD::Importer importer0(inFileName0, importerHints);
+    TGD::Importer importer1(inFileName1, importerHints);
+    TGD::Exporter exporter(outFileName, TGD::Overwrite, exporterHints);
+    TGD::Error err = TGD::ErrorNone;
     for (;;) {
         if (!importer0.hasMore(&err)) {
-            if (err != TAD::ErrorNone) {
-                fprintf(stderr, "tad diff: %s: %s\n", inFileName0.c_str(), TAD::strerror(err));
+            if (err != TGD::ErrorNone) {
+                fprintf(stderr, "tgd diff: %s: %s\n", inFileName0.c_str(), TGD::strerror(err));
             }
             break;
         }
         if (!importer1.hasMore(&err)) {
-            if (err != TAD::ErrorNone) {
-                fprintf(stderr, "tad diff: %s: %s\n", inFileName1.c_str(), TAD::strerror(err));
+            if (err != TGD::ErrorNone) {
+                fprintf(stderr, "tgd diff: %s: %s\n", inFileName1.c_str(), TGD::strerror(err));
             }
             break;
         }
-        TAD::ArrayContainer array0 = importer0.readArray(&err);
-        if (err != TAD::ErrorNone) {
-            fprintf(stderr, "tad diff: %s: %s\n", inFileName0.c_str(), TAD::strerror(err));
+        TGD::ArrayContainer array0 = importer0.readArray(&err);
+        if (err != TGD::ErrorNone) {
+            fprintf(stderr, "tgd diff: %s: %s\n", inFileName0.c_str(), TGD::strerror(err));
             break;
         }
-        TAD::ArrayContainer array1 = importer1.readArray(&err);
-        if (err != TAD::ErrorNone) {
-            fprintf(stderr, "tad diff: %s: %s\n", inFileName1.c_str(), TAD::strerror(err));
+        TGD::ArrayContainer array1 = importer1.readArray(&err);
+        if (err != TGD::ErrorNone) {
+            fprintf(stderr, "tgd diff: %s: %s\n", inFileName1.c_str(), TGD::strerror(err));
             break;
         }
         if (!array0.isCompatible(array1)) {
-            fprintf(stderr, "tad diff: incompatible input arrays\n");
-            err = TAD::ErrorInvalidData;
+            fprintf(stderr, "tgd diff: incompatible input arrays\n");
+            err = TGD::ErrorInvalidData;
             break;
         }
-        TAD::Array<float> floatArray0 = convert(array0, TAD::float32);
-        TAD::Array<float> floatArray1 = convert(array1, TAD::float32);
-        TAD::Array<float> floatResult = TAD::forEachComponent(floatArray0, floatArray1,
+        TGD::Array<float> floatArray0 = convert(array0, TGD::float32);
+        TGD::Array<float> floatArray1 = convert(array1, TGD::float32);
+        TGD::Array<float> floatResult = TGD::forEachComponent(floatArray0, floatArray1,
                 [] (float v0, float v1) -> float { return std::abs(v0 - v1); });
-        TAD::ArrayContainer result = convert(floatResult, array0.componentType());
+        TGD::ArrayContainer result = convert(floatResult, array0.componentType());
         removeValueRelatedTags(result);
         err = exporter.writeArray(result);
-        if (err != TAD::ErrorNone) {
-            fprintf(stderr, "tad diff: %s: %s\n", outFileName.c_str(), TAD::strerror(err));
+        if (err != TGD::ErrorNone) {
+            fprintf(stderr, "tgd diff: %s: %s\n", outFileName.c_str(), TGD::strerror(err));
             break;
         }
     }
 
-    return (err == TAD::ErrorNone ? 0 : 1);
+    return (err == TGD::ErrorNone ? 0 : 1);
 }
 
-void tad_info_print_taglist(const TAD::TagList& tl, bool space = true)
+void tgd_info_print_taglist(const TGD::TagList& tl, bool space = true)
 {
     for (auto it = tl.cbegin(); it != tl.cend(); it++) {
         printf("%s%s=%s\n", space ? "    " : "", it->first.c_str(), it->second.c_str());
     }
 }
 
-std::string tad_info_human_readable_memsize(unsigned long long size)
+std::string tgd_info_human_readable_memsize(unsigned long long size)
 {
     const double dsize = size;
     const unsigned long long u1024 = 1024;
@@ -1768,7 +1768,7 @@ std::string tad_info_human_readable_memsize(unsigned long long size)
     return s;
 }
 
-int tad_info(int argc, char* argv[])
+int tgd_info(int argc, char* argv[])
 {
     CmdLine cmdLine;
     cmdLine.addOptionWithArg("input", 'i');
@@ -1786,11 +1786,11 @@ int tad_info(int argc, char* argv[])
     cmdLine.addOrderedOptionWithArg("component-tags", 0, parseUInt);
     std::string errMsg;
     if (!cmdLine.parse(argc, argv, 1, -1, errMsg)) {
-        fprintf(stderr, "tad info: %s\n", errMsg.c_str());
+        fprintf(stderr, "tgd info: %s\n", errMsg.c_str());
         return 1;
     }
     if (cmdLine.isSet("help")) {
-        fprintf(stderr, "Usage: tad info [option]... <infile|->...\n"
+        fprintf(stderr, "Usage: tgd info [option]... <infile|->...\n"
                 "\n"
                 "Print information. Default output consists of an overview, all tags,\n"
                 "and optionally statistics (with -s) which are optionally restricted\n"
@@ -1816,8 +1816,8 @@ int tad_info(int argc, char* argv[])
         return 0;
     }
 
-    TAD::TagList importerHints = createTagList(cmdLine.valueList("input"));
-    TAD::Error err = TAD::ErrorNone;
+    TGD::TagList importerHints = createTagList(cmdLine.valueList("input"));
+    TGD::Error err = TGD::ErrorNone;
     size_t arrayCounter = 0;
     bool defaultOutput = !(
                cmdLine.isSet("dimensions")
@@ -1836,17 +1836,17 @@ int tad_info(int argc, char* argv[])
 
     for (size_t arg = 0; arg < cmdLine.arguments().size(); arg++) {
         const std::string& inFileName = cmdLine.arguments()[arg];
-        TAD::Importer importer(inFileName, importerHints);
+        TGD::Importer importer(inFileName, importerHints);
         for (;;) {
             if (!importer.hasMore(&err)) {
-                if (err != TAD::ErrorNone) {
-                    fprintf(stderr, "tad info: %s: %s\n", inFileName.c_str(), TAD::strerror(err));
+                if (err != TGD::ErrorNone) {
+                    fprintf(stderr, "tgd info: %s: %s\n", inFileName.c_str(), TGD::strerror(err));
                 }
                 break;
             }
-            TAD::ArrayContainer array = importer.readArray(&err);
-            if (err != TAD::ErrorNone) {
-                fprintf(stderr, "tad info: %s: %s\n", inFileName.c_str(), TAD::strerror(err));
+            TGD::ArrayContainer array = importer.readArray(&err);
+            if (err != TGD::ErrorNone) {
+                fprintf(stderr, "tgd info: %s: %s\n", inFileName.c_str(), TGD::strerror(err));
                 break;
             }
             for (size_t o = 0; o < cmdLine.orderedOptionNames().size(); o++) {
@@ -1857,73 +1857,73 @@ int tad_info(int argc, char* argv[])
                 } else if (optName == "dimension") {
                     size_t dim = getUInt(optVal);
                     if (dim >= array.dimensionCount()) {
-                        fprintf(stderr, "tad info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
-                        err = TAD::ErrorInvalidData;
+                        fprintf(stderr, "tgd info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
+                        err = TGD::ErrorInvalidData;
                         break;
                     }
                     printf("%zu\n", array.dimension(dim));
                 } else if (optName == "components") {
                     printf("%zu\n", array.componentCount());
                 } else if (optName == "type") {
-                    printf("%s\n", TAD::typeToString(getType(cmdLine.value("type"))));
+                    printf("%s\n", TGD::typeToString(getType(cmdLine.value("type"))));
                 } else if (optName == "global-tag") {
                     if (!array.globalTagList().contains(optVal)) {
-                        fprintf(stderr, "tad info: %s: no global tag %s\n", inFileName.c_str(), optVal.c_str());
-                        err = TAD::ErrorInvalidData;
+                        fprintf(stderr, "tgd info: %s: no global tag %s\n", inFileName.c_str(), optVal.c_str());
+                        err = TGD::ErrorInvalidData;
                         break;
                     }
                     printf("%s\n", array.globalTagList().value(optVal).c_str());
                 } else if (optName == "global-tags") {
-                    tad_info_print_taglist(array.globalTagList(), false);
+                    tgd_info_print_taglist(array.globalTagList(), false);
                 } else if (optName == "dimension-tag") {
                     size_t dim;
                     std::string name;
                     getUIntAndName(optVal, &dim, &name);
                     if (dim >= array.dimensionCount()) {
-                        fprintf(stderr, "tad info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
-                        err = TAD::ErrorInvalidData;
+                        fprintf(stderr, "tgd info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
+                        err = TGD::ErrorInvalidData;
                         break;
                     }
                     if (!array.dimensionTagList(dim).contains(name)) {
-                        fprintf(stderr, "tad info: %s: no tag %s for dimension %zu\n", inFileName.c_str(), name.c_str(), dim);
-                        err = TAD::ErrorInvalidData;
+                        fprintf(stderr, "tgd info: %s: no tag %s for dimension %zu\n", inFileName.c_str(), name.c_str(), dim);
+                        err = TGD::ErrorInvalidData;
                         break;
                     }
                     printf("%s\n", array.dimensionTagList(dim).value(name).c_str());
                 } else if (optName == "dimension-tags") {
                     size_t dim = getUInt(optVal);
                     if (dim >= array.dimensionCount()) {
-                        fprintf(stderr, "tad info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
-                        err = TAD::ErrorInvalidData;
+                        fprintf(stderr, "tgd info: %s: no such dimension %zu\n", inFileName.c_str(), dim);
+                        err = TGD::ErrorInvalidData;
                         break;
                     }
-                    tad_info_print_taglist(array.dimensionTagList(dim), false);
+                    tgd_info_print_taglist(array.dimensionTagList(dim), false);
                 } else if (optName == "component-tag") {
                     size_t comp;
                     std::string name;
                     getUIntAndName(optVal, &comp, &name);
                     if (comp >= array.componentCount()) {
-                        fprintf(stderr, "tad info: %s: no such component %zu\n", inFileName.c_str(), comp);
-                        err = TAD::ErrorInvalidData;
+                        fprintf(stderr, "tgd info: %s: no such component %zu\n", inFileName.c_str(), comp);
+                        err = TGD::ErrorInvalidData;
                         break;
                     }
                     if (!array.componentTagList(comp).contains(name)) {
-                        fprintf(stderr, "tad info: %s: no tag %s for component %zu\n", inFileName.c_str(), name.c_str(), comp);
-                        err = TAD::ErrorInvalidData;
+                        fprintf(stderr, "tgd info: %s: no tag %s for component %zu\n", inFileName.c_str(), name.c_str(), comp);
+                        err = TGD::ErrorInvalidData;
                         break;
                     }
                     printf("%s\n", array.componentTagList(comp).value(name).c_str());
                 } else if (optName == "component-tags") {
                     size_t comp = getUInt(optVal);
                     if (comp >= array.componentCount()) {
-                        fprintf(stderr, "tad info: %s: no such component %zu\n", inFileName.c_str(), comp);
-                        err = TAD::ErrorInvalidData;
+                        fprintf(stderr, "tgd info: %s: no such component %zu\n", inFileName.c_str(), comp);
+                        err = TGD::ErrorInvalidData;
                         break;
                     }
-                    tad_info_print_taglist(array.componentTagList(comp), false);
+                    tgd_info_print_taglist(array.componentTagList(comp), false);
                 }
             }
-            if (err != TAD::ErrorNone) {
+            if (err != TGD::ErrorNone) {
                 break;
             }
             if (defaultOutput) {
@@ -1939,22 +1939,22 @@ int tad_info(int argc, char* argv[])
                 }
                 printf("array %zu: %zu x %s, size %s (%s)\n",
                         arrayCounter, array.componentCount(),
-                        TAD::typeToString(array.componentType()),
-                        sizeString.c_str(), tad_info_human_readable_memsize(array.dataSize()).c_str());
+                        TGD::typeToString(array.componentType()),
+                        sizeString.c_str(), tgd_info_human_readable_memsize(array.dataSize()).c_str());
                 if (array.globalTagList().size() > 0) {
                     printf("  global:\n");
-                    tad_info_print_taglist(array.globalTagList());
+                    tgd_info_print_taglist(array.globalTagList());
                 }
                 for (size_t i = 0; i < array.dimensionCount(); i++) {
                     if (array.dimensionTagList(i).size() > 0) {
                         printf("  dimension %zu:\n", i);
-                        tad_info_print_taglist(array.dimensionTagList(i));
+                        tgd_info_print_taglist(array.dimensionTagList(i));
                     }
                 }
                 for (size_t i = 0; i < array.componentCount(); i++) {
                     if (array.componentTagList(i).size() > 0) {
                         printf("  component %zu:\n", i);
-                        tad_info_print_taglist(array.componentTagList(i));
+                        tgd_info_print_taglist(array.componentTagList(i));
                     }
                 }
                 if (cmdLine.isSet("statistics")) {
@@ -1962,15 +1962,15 @@ int tad_info(int argc, char* argv[])
                     std::vector<size_t> localBox;
                     if (box.size() > 0) {
                         if (box.size() != index.size() * 2) {
-                            fprintf(stderr, "tad info: %s: box does not match dimensions\n", inFileName.c_str());
-                            err = TAD::ErrorInvalidData;
+                            fprintf(stderr, "tgd info: %s: box does not match dimensions\n", inFileName.c_str());
+                            err = TGD::ErrorInvalidData;
                             break;
                         }
                         localBox = restrictBoxToArray(box, array);
                     } else {
                         localBox = getBoxFromArray(array);
                     }
-                    TAD::Array<float> floatArray = convert(array, TAD::float32);
+                    TGD::Array<float> floatArray = convert(array, TGD::float32);
                     std::vector<size_t> finiteValues(array.componentCount(), 0);
                     std::vector<float> tmpMinVals(array.componentCount(), 0.0f);
                     std::vector<float> tmpMaxVals(array.componentCount(), 0.0f);
@@ -2028,11 +2028,11 @@ int tad_info(int argc, char* argv[])
             }
             arrayCounter++;
         }
-        if (err != TAD::ErrorNone)
+        if (err != TGD::ErrorNone)
             break;
     }
 
-    return (err == TAD::ErrorNone ? 0 : 1);
+    return (err == TGD::ErrorNone ? 0 : 1);
 }
 
 
@@ -2047,24 +2047,24 @@ int main(int argc, char* argv[])
 
     int retval = 0;
     if (argc < 2) {
-        tad_help();
+        tgd_help();
         retval = 1;
     } else if (std::strcmp(argv[1], "help") == 0 || std::strcmp(argv[1], "--help") == 0) {
-        retval = tad_help();
+        retval = tgd_help();
     } else if (std::strcmp(argv[1], "version") == 0 || std::strcmp(argv[1], "--version") == 0) {
-        retval = tad_version();
+        retval = tgd_version();
     } else if (std::strcmp(argv[1], "create") == 0) {
-        retval = tad_create(argc - 1, &(argv[1]));
+        retval = tgd_create(argc - 1, &(argv[1]));
     } else if (std::strcmp(argv[1], "convert") == 0) {
-        retval = tad_convert(argc - 1, &(argv[1]));
+        retval = tgd_convert(argc - 1, &(argv[1]));
     } else if (std::strcmp(argv[1], "calc") == 0) {
-        retval = tad_calc(argc - 1, &(argv[1]));
+        retval = tgd_calc(argc - 1, &(argv[1]));
     } else if (std::strcmp(argv[1], "diff") == 0) {
-        retval = tad_diff(argc - 1, &(argv[1]));
+        retval = tgd_diff(argc - 1, &(argv[1]));
     } else if (std::strcmp(argv[1], "info") == 0) {
-        retval = tad_info(argc - 1, &(argv[1]));
+        retval = tgd_info(argc - 1, &(argv[1]));
     } else {
-        fprintf(stderr, "tad: invalid command %s\n", argv[1]);
+        fprintf(stderr, "tgd: invalid command %s\n", argv[1]);
         retval = 1;
     }
     return retval;

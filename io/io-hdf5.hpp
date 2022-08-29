@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019, 2020 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_IO_HDF5_HPP
-#define TAD_IO_HDF5_HPP
+#ifndef TGD_IO_HDF5_HPP
+#define TGD_IO_HDF5_HPP
 
 #include <vector>
 #include <string>
@@ -33,7 +34,7 @@ namespace H5 {
 
 #include "io.hpp"
 
-namespace TAD {
+namespace TGD {
 
 class FormatImportExportHDF5 : public FormatImportExport {
 private:

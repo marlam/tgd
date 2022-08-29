@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018, 2019, 2020, 2021
+ * Copyright (C) 2018, 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
@@ -31,7 +31,7 @@
 #include "io-exiv2.hpp"
 
 
-namespace TAD {
+namespace TGD {
 
 static void my_png_error(png_structp png_ptr, png_const_charp /* error_msg */)
 {

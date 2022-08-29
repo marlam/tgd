@@ -33,20 +33,20 @@
 # define colorSpaceType colorspaceType
 #endif
 
-namespace TAD {
+namespace TGD {
 
-class TADMagick
+class TGDMagick
 {
 public:
     std::vector<Magick::Image> imgs;
 
-    TADMagick()
+    TGDMagick()
     {
     }
 };
 
 FormatImportExportMagick::FormatImportExportMagick() :
-    _fileName(), _triedReading(false), _magick(new TADMagick), _lastArrayIndex(-1)
+    _fileName(), _triedReading(false), _magick(new TGDMagick), _lastArrayIndex(-1)
 {
     Magick::InitializeMagick(0);
 }
@@ -111,7 +111,7 @@ ArrayContainer FormatImportExportMagick::readArray(Error* error, int arrayIndex)
         return ArrayContainer();
     }
 
-    TAD::ArrayContainer array;
+    TGD::ArrayContainer array;
     ImageOriginLocation originLocation = OriginTopLeft;
     try {
         Magick::Image& img = _magick->imgs[arrayIndex];
@@ -124,7 +124,7 @@ ArrayContainer FormatImportExportMagick::readArray(Error* error, int arrayIndex)
         bool isGray = (img.colorSpaceType() == Magick::GRAYColorspace);
         unsigned int channels = (isGray ? 1 : 3) + (hasAlpha ? 1 : 0);
 
-        array = TAD::ArrayContainer({ width, height }, channels, type);
+        array = TGD::ArrayContainer({ width, height }, channels, type);
         if (isGray) {
             array.componentTagList(0).set("INTERPRETATION", "SRGB/GRAY");
         } else {

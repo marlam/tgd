@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019, 2020, 2021
+ * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_CMDLINE_H
-#define TAD_CMDLINE_H
+#ifndef TGD_CMDLINE_H
+#define TGD_CMDLINE_H
 
 #include <vector>
 #include <string>

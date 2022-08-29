@@ -38,7 +38,7 @@
 #include "../ext/stb_image_write.h"
 
 
-namespace TAD {
+namespace TGD {
 
 FormatImportExportSTB::FormatImportExportSTB() : _f(nullptr), _hasMore(true)
 {
@@ -100,14 +100,14 @@ ArrayContainer FormatImportExportSTB::readArray(Error* error, int arrayIndex)
     }
 
     int width, height, channels;
-    TAD::ArrayContainer r;
+    TGD::ArrayContainer r;
     if (stbi_is_16_bit_from_file(_f)) {
         stbi_us* data = stbi_load_from_file_16(_f, &width, &height, &channels, 0);
         if (!data) {
             *error = ErrorInvalidData;
             return ArrayContainer();
         }
-        r = TAD::ArrayContainer( { size_t(width), size_t(height) }, channels, uint16);
+        r = TGD::ArrayContainer( { size_t(width), size_t(height) }, channels, uint16);
         std::memcpy(r.data(), data, r.dataSize());
         stbi_image_free(data);
     } else {
@@ -116,7 +116,7 @@ ArrayContainer FormatImportExportSTB::readArray(Error* error, int arrayIndex)
             *error = ErrorInvalidData;
             return ArrayContainer();
         }
-        r = TAD::ArrayContainer( { size_t(width), size_t(height) }, channels, uint8);
+        r = TGD::ArrayContainer( { size_t(width), size_t(height) }, channels, uint8);
         std::memcpy(r.data(), data, r.dataSize());
         stbi_image_free(data);
     }

@@ -29,7 +29,7 @@
 #include "io.hpp"
 #include "io-utils.hpp"
 #include "dl.hpp"
-#include "io-tad.hpp"
+#include "io-tgd.hpp"
 #include "io-csv.hpp"
 #include "io-pnm.hpp"
 #include "io-raw.hpp"
@@ -52,7 +52,7 @@
 #include "io-magick.hpp"
 
 
-namespace TAD {
+namespace TGD {
 
 const char* strerror(Error e)
 {
@@ -138,8 +138,8 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
     for (size_t i = 0; !fie && i < fieNames.size(); i++) {
         const std::string& fieName = fieNames[i];
         // first builtin formats...
-        if (fieName == "tad") {
-            fie = new FormatImportExportTAD;
+        if (fieName == "tgd" || fieName == "tad") {
+            fie = new FormatImportExportTGD;
         } else if (fieName == "csv") {
             fie = new FormatImportExportCSV;
         } else if (fieName == "pnm") {
@@ -152,68 +152,68 @@ static FormatImportExport* openFormatImportExport(const std::string& format)
             fie = new FormatImportExportSTB;
         } else if (fieName == "tinyexr") {
             fie = new FormatImportExportTinyEXR;
-#ifdef TAD_STATIC
-#  ifdef TAD_WITH_DCMTK
+#ifdef TGD_STATIC
+#  ifdef TGD_WITH_DCMTK
         } else if (fieName == "dcmtk") {
             fie = new FormatImportExportDCMTK;
 #  endif
-#  ifdef TAD_WITH_OPENEXR
+#  ifdef TGD_WITH_OPENEXR
         } else if (fieName == "exr") {
             fie = new FormatImportExportEXR;
 #  endif
-#  ifdef TAD_WITH_CFITSIO
+#  ifdef TGD_WITH_CFITSIO
         } else if (fieName == "fits") {
             fie = new FormatImportExportFITS;
 #  endif
-#  ifdef TAD_WITH_FFMPEG
+#  ifdef TGD_WITH_FFMPEG
         } else if (fieName == "ffmpeg") {
             fie = new FormatImportExportFFMPEG;
 #  endif
-#  ifdef TAD_WITH_GDAL
+#  ifdef TGD_WITH_GDAL
         } else if (fieName == "gdal") {
             fie = new FormatImportExportGDAL;
 #  endif
-#  ifdef TAD_WITH_GTA
+#  ifdef TGD_WITH_GTA
         } else if (fieName == "gta") {
             fie = new FormatImportExportGTA;
 #  endif
-#  ifdef TAD_WITH_HDF5
+#  ifdef TGD_WITH_HDF5
         } else if (fieName == "hdf5") {
             fie = new FormatImportExportHDF5;
 #  endif
-#  ifdef TAD_WITH_JPEG
+#  ifdef TGD_WITH_JPEG
         } else if (fieName == "jpeg") {
             fie = new FormatImportExportJPEG;
 #  endif
-#  ifdef TAD_WITH_MATIO
+#  ifdef TGD_WITH_MATIO
         } else if (fieName == "mat") {
             fie = new FormatImportExportMAT;
 #  endif
-#  ifdef TAD_WITH_POPPLER
+#  ifdef TGD_WITH_POPPLER
         } else if (fieName == "pdf") {
             fie = new FormatImportExportPDF;
 #  endif
-#  ifdef TAD_WITH_PFS
+#  ifdef TGD_WITH_PFS
         } else if (fieName == "pfs") {
             fie = new FormatImportExportPFS;
 #  endif
-#  ifdef TAD_WITH_PNG
+#  ifdef TGD_WITH_PNG
         } else if (fieName == "png") {
             fie = new FormatImportExportPNG;
 #  endif
-#  ifdef TAD_WITH_TIFF
+#  ifdef TGD_WITH_TIFF
         } else if (fieName == "tiff") {
             fie = new FormatImportExportTIFF;
 #  endif
-#  ifdef TAD_WITH_MAGICK
+#  ifdef TGD_WITH_MAGICK
         } else if (fieName == "magick") {
             fie = new FormatImportExportMagick;
 #  endif
 #endif
         } else {
-#ifndef TAD_STATIC
+#ifndef TGD_STATIC
             // ... then plugin formats
-            std::string pluginName = std::string("libtadio-") + fieName + DOT_SO_STR;
+            std::string pluginName = std::string("libtgdio-") + fieName + DOT_SO_STR;
             void* plugin = dlopen(pluginName.c_str(), RTLD_NOW);
             if (plugin) {
                 std::string factoryName = std::string("FormatImportExportFactory_") + fieName;
@@ -243,7 +243,7 @@ void Importer::initialize(const std::string& fileName, const TagList& hints)
     _fileName = fileName;
     _hints = hints;
     _format = (hints.contains("FORMAT") ? hints.value("FORMAT")
-            : fileName == "-" ? "tad"
+            : fileName == "-" ? "tgd"
             : getExtension(_fileName));
     _fie = std::shared_ptr<FormatImportExport>(openFormatImportExport(_format));
     _fileIsOpened = false;
@@ -340,7 +340,7 @@ void Exporter::initialize(const std::string& fileName, bool append, const TagLis
     _append = append;
     _hints = hints;
     _format = (hints.contains("FORMAT") ? hints.value("FORMAT")
-            : fileName == "-" ? "tad"
+            : fileName == "-" ? "tgd"
             : getExtension(_fileName));
     _fie = std::shared_ptr<FormatImportExport>(openFormatImportExport(_format));
     _fileIsOpened = false;

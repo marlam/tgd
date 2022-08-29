@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2018, 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2018, 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,12 +22,12 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_TAGLIST_HPP
-#define TAD_TAGLIST_HPP
+#ifndef TGD_TAGLIST_HPP
+#define TGD_TAGLIST_HPP
 
 /**
  * \file taglist.hpp
- * \brief libtad metadata management via lists of tags
+ * \brief libtgd metadata management via lists of tags
  */
 
 #include <cstdlib>
@@ -36,7 +37,7 @@
 #include <map>
 #include <initializer_list>
 
-namespace TAD {
+namespace TGD {
 
 /*! \brief A tag list to store key/value pairs, where both key and value are strings. */
 class TagList

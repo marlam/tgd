@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018, 2019, 2020, 2021
+ * Copyright (C) 2018, 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
@@ -22,14 +22,14 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_IO_JPEG_HPP
-#define TAD_IO_JPEG_HPP
+#ifndef TGD_IO_JPEG_HPP
+#define TGD_IO_JPEG_HPP
 
 #include <cstdio>
 
 #include "io.hpp"
 
-namespace TAD {
+namespace TGD {
 
 class FormatImportExportJPEG : public FormatImportExport {
 private:

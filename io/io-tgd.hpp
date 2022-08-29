@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2018, 2019 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2018, 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,11 +22,11 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_IO_TAD_HPP
-#define TAD_IO_TAD_HPP
+#ifndef TGD_IO_TGD_HPP
+#define TGD_IO_TGD_HPP
 
 /* 
- * TAD file format specification
+ * TGD file format specification
  *
  * All multi-byte values are stored little-endian.
  * Integers are two's complement.
@@ -35,8 +36,8 @@
  * - 1 uint64: length of the following data in bytes (N)
  * - string pairs (key/value) until the N bytes are consumed
  *
- * TAD file:
- * - 3 bytes: 'T', 'A', 'D' (84, 65, 68)
+ * TGD file:
+ * - 3 bytes: 'T', 'G', 'D' (84, 71, 68)
  * - 1 byte: format version, must be 0
  * - 1 byte: component type:
  *   `int8` = 0, `uint8` = 1, `int16` = 2, `uint16` = 3, `int32` = 4, `uint32` =
@@ -54,17 +55,17 @@
 
 #include "io.hpp"
 
-namespace TAD {
+namespace TGD {
 
-class FormatImportExportTAD : public FormatImportExport {
+class FormatImportExportTGD : public FormatImportExport {
 private:
     FILE* _f;
     int _arrayCount;
     std::vector<off_t> _arrayOffsets;
 
 public:
-    FormatImportExportTAD();
-    ~FormatImportExportTAD();
+    FormatImportExportTGD();
+    ~FormatImportExportTGD();
 
     virtual Error openForReading(const std::string& fileName, const TagList& hints) override;
     virtual Error openForWriting(const std::string& fileName, bool append, const TagList& hints) override;

@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_IO_HPP
-#define TAD_IO_HPP
+#ifndef TGD_IO_HPP
+#define TGD_IO_HPP
 
 /**
  * \file io.hpp
@@ -36,7 +36,7 @@
 
 #include "array.hpp"
 
-namespace TAD {
+namespace TGD {
 
 /*! \brief Input/output errors. */
 enum Error {
@@ -150,9 +150,9 @@ public:
     bool hasMore(Error* error = nullptr);
 };
 
-/*! \brief Flag to be used for the append parameter of TAD::save() */
+/*! \brief Flag to be used for the append parameter of TGD::save() */
 const bool Append = true;
-/*! \brief Flag to be used for the append parameter of TAD::save() */
+/*! \brief Flag to be used for the append parameter of TGD::save() */
 const bool Overwrite = false;
 
 /*! \brief The exporter class exports arrays to files or streams. */

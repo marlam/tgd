@@ -21,16 +21,14 @@
  * SOFTWARE.
  */
 
-#ifndef TAD_IO_STB_HPP
-#define TAD_IO_STB_HPP
+#ifndef TGD_IO_STB_HPP
+#define TGD_IO_STB_HPP
 
 #include <cstdio>
 
 #include "io.hpp"
 
-namespace TAD {
-
-class TADSTB;
+namespace TGD {
 
 class FormatImportExportSTB : public FormatImportExport {
 private:

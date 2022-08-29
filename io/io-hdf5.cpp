@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019, 2020 Computer Graphics Group, University of Siegen
+ * Copyright (C) 2019, 2020, 2021, 2022
+ * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,7 +30,7 @@
 #include <H5Cpp.h>
 
 
-namespace TAD {
+namespace TGD {
 
 FormatImportExportHDF5::FormatImportExportHDF5() : _f(nullptr), _counter(0)
 {
@@ -224,7 +225,7 @@ ArrayContainer FormatImportExportHDF5::readArray(Error* error, int arrayIndex)
         std::string value;
         a.read(strType, value);
         bool tagConsumed = false;
-        if (name.substr(0, 7) == "TAD/DIM") {
+        if (name.substr(0, 7) == "TGD/DIM") {
             size_t i = 0;
             size_t j = std::stoul(name.substr(7), &i);
             if (j < r.dimensionCount() && name[7 + i] == '/' && name.size() > 7 + i + 1) {
@@ -232,7 +233,7 @@ ArrayContainer FormatImportExportHDF5::readArray(Error* error, int arrayIndex)
                 tagConsumed = true;
             }
         }
-        if (!tagConsumed && name.substr(0, 8) == "TAD/COMP") {
+        if (!tagConsumed && name.substr(0, 8) == "TGD/COMP") {
             size_t i = 0;
             size_t j = std::stoul(name.substr(8), &i);
             if (j < r.componentCount() && name[8 + i] == '/' && name.size() > 8 + i + 1) {
@@ -267,34 +268,34 @@ Error FormatImportExportHDF5::writeArray(const ArrayContainer& array)
     std::string datasetname = std::string("ARRAY_") + counterString;
     H5::DataType type;
     switch (array.componentType()) {
-    case TAD::int8:
+    case TGD::int8:
         type = H5::IntType(H5::PredType::NATIVE_INT8);
         break;
-    case TAD::uint8:
+    case TGD::uint8:
         type = H5::IntType(H5::PredType::NATIVE_UINT8);
         break;
-    case TAD::int16:
+    case TGD::int16:
         type = H5::IntType(H5::PredType::NATIVE_INT16);
         break;
-    case TAD::uint16:
+    case TGD::uint16:
         type = H5::IntType(H5::PredType::NATIVE_UINT16);
         break;
-    case TAD::int32:
+    case TGD::int32:
         type = H5::IntType(H5::PredType::NATIVE_INT32);
         break;
-    case TAD::uint32:
+    case TGD::uint32:
         type = H5::IntType(H5::PredType::NATIVE_UINT32);
         break;
-    case TAD::int64:
+    case TGD::int64:
         type = H5::IntType(H5::PredType::NATIVE_INT64);
         break;
-    case TAD::uint64:
+    case TGD::uint64:
         type = H5::IntType(H5::PredType::NATIVE_UINT64);
         break;
-    case TAD::float32:
+    case TGD::float32:
         type = H5::FloatType(H5::PredType::NATIVE_FLOAT);
         break;
-    case TAD::float64:
+    case TGD::float64:
         type = H5::FloatType(H5::PredType::NATIVE_DOUBLE);
         break;
     }
@@ -317,14 +318,14 @@ Error FormatImportExportHDF5::writeArray(const ArrayContainer& array)
         }
         for (size_t i = 0; i < array.dimensionCount(); i++) {
             for (auto it = array.dimensionTagList(i).cbegin(); it != array.dimensionTagList(i).cend(); it++) {
-                std::string name = std::string("TAD/DIM") + std::to_string(i) + '/' + it->first;
+                std::string name = std::string("TGD/DIM") + std::to_string(i) + '/' + it->first;
                 H5::Attribute att = dataset.createAttribute(name.c_str(), strType, attSpace);
                 att.write(strType, it->second);
             }
         }
         for (size_t i = 0; i < array.componentCount(); i++) {
             for (auto it = array.componentTagList(i).cbegin(); it != array.componentTagList(i).cend(); it++) {
-                std::string name = std::string("TAD/COMP") + std::to_string(i) + '/' + it->first;
+                std::string name = std::string("TGD/COMP") + std::to_string(i) + '/' + it->first;
                 H5::Attribute att = dataset.createAttribute(name.c_str(), strType, attSpace);
                 att.write(strType, it->second);
             }
