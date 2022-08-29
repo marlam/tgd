@@ -57,7 +57,7 @@ static std::string toString(const poppler::ustring& ustr)
     return std::string(charArray.data(), charArray.size());
 }
 
-static std::string toString(unsigned int time)
+static std::string toString(time_t time)
 {
     if (time == 0) {
         return std::string();
@@ -95,8 +95,8 @@ Error FormatImportExportPDF::openForReading(const std::string& fileName, const T
     _producer = toString(_doc->get_producer());
     _subject = toString(_doc->get_subject());
     _title = toString(_doc->get_title());
-    _creationDate = toString(_doc->get_creation_date());
-    _modificationDate = toString(_doc->get_modification_date());
+    _creationDate = toString(_doc->get_creation_date_t());
+    _modificationDate = toString(_doc->get_modification_date_t());
 
     _renderer = new poppler::page_renderer();
     _renderer->set_image_format(poppler::image::format_rgb24);
