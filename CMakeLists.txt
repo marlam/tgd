@@ -14,7 +14,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # Project
 project(tgd)
-set(TGD_VERSION 3.0)
+set(TGD_VERSION 4.0)
 set(TGD_LIBVERSION 2.0.0)
 set(TGD_SOVERSION 2)
 
