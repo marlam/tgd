@@ -246,17 +246,17 @@ Error FormatImportExportPDF::writeArray(const ArrayContainer& array)
     long long int currentArrayStuff0ObjIndex = perArrayObjIndexStart + 4 * _outArrayCount + 2;
     long long int currentArrayStuff1ObjIndex = perArrayObjIndexStart + 4 * _outArrayCount + 3;
 
-    // write header if necessary
     if (_outLengthWithoutFooter == 0) {
+        // write header
         fputs("%PDF-1.4\n", _outFile);
         _outLengthWithoutFooter = 9;
+    } else {
+        // remove any previous footer
+        if (ftruncate(fileno(_outFile), _outLengthWithoutFooter) != 0)
+            return ErrorSysErrno;
+        if (fseeko(_outFile, 0, SEEK_END) != 0)
+            return ErrorSysErrno;
     }
-
-    // remove any previous footer
-    if (ftruncate(fileno(_outFile), _outLengthWithoutFooter) != 0)
-        return ErrorSysErrno;
-    if (fseeko(_outFile, 0, SEEK_END) != 0)
-        return ErrorSysErrno;
 
     // write the four objects for this array
     int w = array.dimension(0);
