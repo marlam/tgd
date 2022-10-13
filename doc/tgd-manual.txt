@@ -519,8 +519,9 @@ magick  Many image     [magick]     r          unlimited       2          1-4   
 
 matio   .mat           [libmatio]   rw         unlimited       unlimited  unlimited    all                         Old Matlab file format.
 
-pdf     .pdf           [libpoppler] r          unlimited       2          3            uint8                       Rasterized PDF documents. Supports
-                                              (one per page)                                                       input tag DPI to set resolution.
+pdf     .pdf           [libpoppler] rw         unlimited       2          1 or 3       uint8, uint16               Rasterized PDF documents. Supports
+                                               (one per page)                                                      input tag DPI to set resolution.
+                                                                                                                   Writing is uncompressed.
 
 pfs     .pfs           [libpfs]     rw         unlimited       2          1-1024       float32                     Simple format for 2D floating point
                                                                                                                    data.

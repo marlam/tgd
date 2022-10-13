@@ -36,11 +36,22 @@ namespace TGD {
 
 class FormatImportExportPDF : public FormatImportExport {
 private:
+    // for reading and writing:
     float _dpi;
+    // for reading:
+    std::string _author, _creator, _producer, _subject, _title, _creationDate, _modificationDate;
     poppler::page_renderer* _renderer;
     poppler::document* _doc;
-    std::string _author, _creator, _producer, _subject, _title, _creationDate, _modificationDate;
     int _lastReadPage;
+    // for writing:
+    FILE* _outFile;
+    std::string _outCreationDate;
+    long long int _outArrayCount;
+    long long int _outLengthWithoutFooter;
+    std::vector<long long int> _arrayDataObjStart;
+    std::vector<long long int> _arrayPageObjStart;
+    std::vector<long long int> _arrayStuff0ObjStart;
+    std::vector<long long int> _arrayStuff1ObjStart;
 
 public:
     FormatImportExportPDF();

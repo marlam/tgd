@@ -129,4 +129,16 @@ for i in int8 uint8 int16 uint16 int32 uint32 int64 uint64 float32 float64; do
         ./tgd convert tmp-out.tif tmp-out.tgd
         cmp tmp-in.tgd tmp-out.tgd
     fi
+
+    if [[ $@ == *"WITH_POPPLER"* ]]; then
+        if [ $i = uint8 -o $i = uint16 ]; then
+            echo "Converting to/from pdf"
+            ./tgd convert tmp-in.tgd tmp-out.pdf
+            ./tgd convert tmp-out.pdf tmp-out.tgd
+            #we cannot compare the two because 1:1 reconstruction
+            #of the same array does not work via rasterization of
+            #a pdf.
+            #cmp tmp-in.tgd tmp-out.tgd
+        fi
+    fi
 done
