@@ -241,7 +241,7 @@ Error FormatImportExportTinyEXR::writeArray(const ArrayContainer& array)
 
     EXRHeader header;
     InitEXRHeader(&header);
-    header.compression_type = TINYEXR_COMPRESSIONTYPE_PIZ;
+    header.compression_type = TINYEXR_COMPRESSIONTYPE_ZIP;
 
     EXRImage image;
     InitEXRImage(&image);
