@@ -53,7 +53,7 @@ Error FormatImportExportRAW::openForReading(const std::string& fileName, const T
     Type type;
 
     // Dimensions:
-    size_t dims;
+    size_t dims = 0;
     size_t dim0, dim1, dim2;
     if (hints.value("DIMENSIONS", &dims)) {
         for (size_t i = 0; i < dims; i++) {
