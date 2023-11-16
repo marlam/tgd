@@ -44,7 +44,12 @@ inline ImageOriginLocation getImageOriginLocation(const std::string& fileName)
             Exiv2::ExifData& exifData = image->exifData();
             if (!exifData.empty()) {
                 Exiv2::Exifdatum& orientationTag = exifData["Exif.Image.Orientation"];
-                long orientation = orientationTag.toInt64();
+                int64_t orientation = 0;
+#if EXIV2_TEST_VERSION(0,28,0)
+                orientation = orientationTag.toInt64();
+#else
+                orientation = orientationTag.toLong();
+#endif
                 if (orientation >= 1 && orientation <= 8)
                     originLocation = static_cast<ImageOriginLocation>(orientation);
             }
