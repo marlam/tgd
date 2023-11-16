@@ -38,13 +38,13 @@ inline ImageOriginLocation getImageOriginLocation(const std::string& fileName)
     ImageOriginLocation originLocation = OriginTopLeft;
 #if TGD_WITH_EXIV2
     if (fileName.size() != 0) {
-        Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(fileName.c_str());
+        auto image = Exiv2::ImageFactory::open(fileName.c_str());
         if (image.get()) {
             image->readMetadata();
             Exiv2::ExifData& exifData = image->exifData();
             if (!exifData.empty()) {
                 Exiv2::Exifdatum& orientationTag = exifData["Exif.Image.Orientation"];
-                long orientation = orientationTag.toLong();
+                long orientation = orientationTag.toInt64();
                 if (orientation >= 1 && orientation <= 8)
                     originLocation = static_cast<ImageOriginLocation>(orientation);
             }
