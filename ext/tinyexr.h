@@ -386,7 +386,7 @@ extern int IsEXRFromMemory(const unsigned char *memory, size_t size);
 // error
 extern int SaveEXRToMemory(const float *data, const int width, const int height,
                    const int components, const int save_as_fp16,
-                   const unsigned char **buffer, const char **err);
+                   unsigned char **buffer, const char **err);
 
 // @deprecated { Not recommended, but handy to use. }
 // Saves single-frame OpenEXR image to a buffer. Assume EXR image contains RGB(A) channels.
@@ -780,7 +780,7 @@ static void cpy2(unsigned short *dst_val, const unsigned short *src_val) {
 }
 
 static void swap2(unsigned short *val) {
-#ifdef TINYEXR_LITTLE_ENDIAN
+#if TINYEXR_LITTLE_ENDIAN
   (void)val;
 #else
   unsigned short tmp = *val;
@@ -839,7 +839,7 @@ static void cpy4(float *dst_val, const float *src_val) {
 #endif
 
 static void swap4(unsigned int *val) {
-#ifdef TINYEXR_LITTLE_ENDIAN
+#if TINYEXR_LITTLE_ENDIAN
   (void)val;
 #else
   unsigned int tmp = *val;
@@ -854,7 +854,7 @@ static void swap4(unsigned int *val) {
 }
 
 static void swap4(int *val) {
-#ifdef TINYEXR_LITTLE_ENDIAN
+#if TINYEXR_LITTLE_ENDIAN
   (void)val;
 #else
   int tmp = *val;
@@ -869,7 +869,7 @@ static void swap4(int *val) {
 }
 
 static void swap4(float *val) {
-#ifdef TINYEXR_LITTLE_ENDIAN
+#if TINYEXR_LITTLE_ENDIAN
   (void)val;
 #else
   float tmp = *val;
@@ -900,7 +900,7 @@ static void cpy8(tinyexr::tinyexr_uint64 *dst_val, const tinyexr::tinyexr_uint64
 #endif
 
 static void swap8(tinyexr::tinyexr_uint64 *val) {
-#ifdef TINYEXR_LITTLE_ENDIAN
+#if TINYEXR_LITTLE_ENDIAN
   (void)val;
 #else
   tinyexr::tinyexr_uint64 tmp = (*val);
@@ -4923,7 +4923,7 @@ static int DecodeTiledLevel(EXRImage* exr_image, const EXRHeader* exr_header,
   }
 #endif
   exr_image->tiles = static_cast<EXRTile*>(
-    calloc(sizeof(EXRTile), static_cast<size_t>(num_tiles)));
+    calloc(static_cast<size_t>(num_tiles), sizeof(EXRTile)));
 
 #if TINYEXR_HAS_CXX11 && (TINYEXR_USE_THREAD > 0)
   std::vector<std::thread> workers;
@@ -5752,7 +5752,7 @@ static bool isValidTile(const EXRHeader* exr_header,
 
 static bool ReconstructTileOffsets(OffsetData& offset_data,
                                    const EXRHeader* exr_header,
-                                   const unsigned char* head, const unsigned char* marker, const size_t /*size*/,
+                                   const unsigned char* head, const unsigned char* marker, const size_t size,
                                    bool isMultiPartFile,
                                    bool isDeep) {
   int numXLevels = offset_data.num_x_levels;
@@ -5761,9 +5761,18 @@ static bool ReconstructTileOffsets(OffsetData& offset_data,
       for (unsigned int dx = 0; dx < offset_data.offsets[l][dy].size(); ++dx) {
         tinyexr::tinyexr_uint64 tileOffset = tinyexr::tinyexr_uint64(marker - head);
 
+
         if (isMultiPartFile) {
+          if ((marker + sizeof(int)) >= (head + size)) {
+            return false;
+          }
+
           //int partNumber;
           marker += sizeof(int);
+        }
+
+        if ((marker + 4 * sizeof(int)) >= (head + size)) {
+          return false;
         }
 
         int tileX;
@@ -5787,6 +5796,9 @@ static bool ReconstructTileOffsets(OffsetData& offset_data,
         marker += sizeof(int);
 
         if (isDeep) {
+          if ((marker + 2 * sizeof(tinyexr::tinyexr_int64)) >= (head + size)) {
+            return false;
+          }
           tinyexr::tinyexr_int64 packed_offset_table_size;
           memcpy(&packed_offset_table_size, marker, sizeof(tinyexr::tinyexr_int64));
           tinyexr::swap8(reinterpret_cast<tinyexr::tinyexr_uint64*>(&packed_offset_table_size));
@@ -5800,13 +5812,26 @@ static bool ReconstructTileOffsets(OffsetData& offset_data,
           // next Int64 is unpacked sample size - skip that too
           marker += packed_offset_table_size + packed_sample_size + 8;
 
+          if (marker >= (head + size)) {
+            return false;
+          }
+
         } else {
 
-          int dataSize;
-          memcpy(&dataSize, marker, sizeof(int));
+          if ((marker + sizeof(uint32_t)) >= (head + size)) {
+            return false;
+          }
+
+          uint32_t dataSize;
+          memcpy(&dataSize, marker, sizeof(uint32_t));
           tinyexr::swap4(&dataSize);
-          marker += sizeof(int);
+          marker += sizeof(uint32_t);
+
           marker += dataSize;
+
+          if (marker >= (head + size)) {
+            return false;
+          }
         }
 
         if (!isValidTile(exr_header, offset_data,
@@ -5818,6 +5843,19 @@ static bool ReconstructTileOffsets(OffsetData& offset_data,
         if (level_idx < 0) {
           return false;
         }
+
+        if (size_t(level_idx) >= offset_data.offsets.size()) {
+          return false;
+        }
+
+        if (size_t(tileY) >= offset_data.offsets[size_t(level_idx)].size()) {
+          return false;
+        }
+
+        if (size_t(tileX) >= offset_data.offsets[size_t(level_idx)][size_t(tileY)].size()) {
+          return false;
+        }
+        
         offset_data.offsets[size_t(level_idx)][size_t(tileY)][size_t(tileX)] = tileOffset;
       }
     }
@@ -8970,7 +9008,7 @@ int LoadEXRMultipartImageFromFile(EXRImage *exr_images,
 }
 
 int SaveEXRToMemory(const float *data, int width, int height, int components,
-            const int save_as_fp16, const unsigned char **outbuf, const char **err) {
+            const int save_as_fp16, unsigned char **outbuf, const char **err) {
 
   if ((components == 1) || components == 3 || components == 4) {
     // OK
@@ -9249,9 +9287,6 @@ int SaveEXR(const float *data, int width, int height, int components,
   }
 
   int ret = SaveEXRImageToFile(&image, &header, outfilename, err);
-  if (ret != TINYEXR_SUCCESS) {
-    return ret;
-  }
 
   free(header.channels);
   free(header.pixel_types);
