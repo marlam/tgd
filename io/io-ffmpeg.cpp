@@ -2,6 +2,7 @@
  * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2024 Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -480,7 +481,7 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
                 if (_frameDTSs.size() == 1 || dts < _minDTS) {
                     _minDTS = dts;
                 }
-                if (_ffmpeg->videoFrame->key_frame) {
+                if (_ffmpeg->videoFrame->flags & AV_FRAME_FLAG_KEY) {
                     _keyFrames.push_back(_frameDTSs.size() - 1);
                 }
             }
