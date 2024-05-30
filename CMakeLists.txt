@@ -1,6 +1,7 @@
 # Copyright (C) 2018, 2019, 2020, 2021, 2022
 # Computer Graphics Group, University of Siegen
 # Written by Martin Lambers <martin.lambers@uni-siegen.de>
+# Copyright (C) 2024  Martin Lambers <marlam@marlam.de>
 #
 # Copying and distribution of this file, with or without modification, are
 # permitted in any medium without royalty provided the copyright notice and this
@@ -203,7 +204,7 @@ if(TGD_STATIC)
     if(ImageMagick_FOUND)
 	add_definitions(-DTGD_WITH_MAGICK)
 	set(LIBTGD_STATIC_EXTRA_SOURCES ${LIBTGD_STATIC_EXTRA_SOURCES} io/io-magick.hpp io/io-magick.cpp)
-	set(LIBTGD_STATIC_EXTRA_LIBRARIES ${LIBTGD_STATIC_EXTRA_LIBRARIES} ${ImageMagick_LIBRARIES})
+	set(LIBTGD_STATIC_EXTRA_LIBRARIES ${LIBTGD_STATIC_EXTRA_LIBRARIES} ImageMagick::Magick++)
 	include_directories(${ImageMagick_INCLUDE_DIRS})
     endif()
     add_library(libtgd STATIC ${LIBTGD_SOURCES} ${LIBTGD_STATIC_EXTRA_SOURCES})
@@ -383,7 +384,7 @@ else()
 	set_target_properties(libtgdio-magick PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 	set_target_properties(libtgdio-magick PROPERTIES OUTPUT_NAME tgdio-magick)
 	include_directories(${ImageMagick_INCLUDE_DIRS})
-	target_link_libraries(libtgdio-magick ${ImageMagick_LIBRARIES})
+	target_link_libraries(libtgdio-magick ImageMagick::Magick++)
 	install(TARGETS libtgdio-magick
 	    RUNTIME DESTINATION bin
 	    LIBRARY DESTINATION lib${LIB_SUFFIX}
