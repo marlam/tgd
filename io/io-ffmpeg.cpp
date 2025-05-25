@@ -2,7 +2,8 @@
  * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
- * Copyright (C) 2024 Martin Lambers <marlam@marlam.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -339,7 +340,7 @@ int FormatImportExportFFMPEG::arrayCount()
     return -1;
 }
 
-ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     bool seeked = false;
     if (arrayIndex >= 0) {
@@ -451,7 +452,7 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
                         /* hardware acceleration failed late, signalled by getHwFormat()
                          * because FFmpeg won't let us know otherwise */
                         if (hardReset(true)) {
-                            return readArray(error, arrayIndex);
+                            return readArray(error, arrayIndex, alloc);
                         } else {
                             close();
                             *error = ErrorInvalidData;
@@ -615,7 +616,7 @@ ArrayContainer FormatImportExportFFMPEG::readArray(Error* error, int arrayIndex)
         return ArrayContainer();
     }
 
-    ArrayContainer r(_desc);
+    ArrayContainer r(_desc, alloc);
     uint8_t* dst[4] = { static_cast<uint8_t*>(r.data()), nullptr, nullptr, nullptr };
     int dstStride[4] = { int(r.dimension(0) * r.elementSize()), 0, 0, 0 };
     sws_scale(_ffmpeg->swsCtx, videoFramePtr->data, videoFramePtr->linesize, 0, videoFramePtr->height, dst, dstStride);

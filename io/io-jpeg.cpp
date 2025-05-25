@@ -2,6 +2,8 @@
  * Copyright (C) 2018, 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -99,7 +101,7 @@ int FormatImportExportJPEG::arrayCount()
     return (_f ? 1 : -1);
 }
 
-ArrayContainer FormatImportExportJPEG::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportJPEG::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     if (arrayIndex > 0) {
         *error = ErrorSeekingNotSupported;
@@ -121,7 +123,7 @@ ArrayContainer FormatImportExportJPEG::readArray(Error* error, int arrayIndex)
     jpeg_stdio_src(&cinfo, _f);
     jpeg_read_header(&cinfo, TRUE);
 
-    ArrayContainer r({cinfo.image_width, cinfo.image_height}, cinfo.num_components, uint8);
+    ArrayContainer r({cinfo.image_width, cinfo.image_height}, cinfo.num_components, uint8, alloc);
     if (cinfo.num_components == 1) {
         r.componentTagList(0).set("INTERPRETATION", "SRGB/GRAY");
     } else {

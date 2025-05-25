@@ -2,6 +2,8 @@
  * Copyright (C) 2018, 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -96,7 +98,7 @@ int FormatImportExportPNG::arrayCount()
     return (_f ? 1 : -1);
 }
 
-ArrayContainer FormatImportExportPNG::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportPNG::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     if (arrayIndex > 0) {
         *error = ErrorSeekingNotSupported;
@@ -147,7 +149,7 @@ ArrayContainer FormatImportExportPNG::readArray(Error* error, int arrayIndex)
     png_textp text_ptr;
     png_uint_32 num_text = png_get_text(png_ptr, info_ptr, &text_ptr, NULL);
 
-    ArrayContainer r({ width, height }, channels, bit_depth <= 8 ? uint8 : uint16);
+    ArrayContainer r({ width, height }, channels, bit_depth <= 8 ? uint8 : uint16, alloc);
     for (unsigned int i = 0; i < num_text; i++) {
         if (std::strncmp(text_ptr[i].text, "\nexif\n", 6) == 0) {
             // This is EXIF data encoded in a string with control characters.

@@ -15,9 +15,9 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # Project
 project(tgd LANGUAGES CXX)
-set(TGD_VERSION 4.3)
-set(TGD_LIBVERSION 2.0.0)
-set(TGD_SOVERSION 2)
+set(TGD_VERSION 5.0)
+set(TGD_LIBVERSION 3.0.0)
+set(TGD_SOVERSION 3)
 
 # Build options
 option(TGD_BUILD_TOOL "Build the tgd command line tool" ON)
@@ -43,6 +43,7 @@ endif()
 # The TGD library (headers only)
 install(FILES
 	core/taglist.hpp
+	core/alloc.hpp
 	core/array.hpp
 	core/foreach.hpp
 	core/operators.hpp
@@ -429,6 +430,7 @@ if(TGD_BUILD_DOCUMENTATION)
     COMMAND ${DOXYGEN_EXECUTABLE} "${CMAKE_BINARY_DIR}/Doxyfile"
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
     DEPENDS "${CMAKE_SOURCE_DIR}/Doxyfile.in"
+	    "${CMAKE_SOURCE_DIR}/core/alloc.hpp"
 	    "${CMAKE_SOURCE_DIR}/core/array.hpp"
 	    "${CMAKE_SOURCE_DIR}/core/io.hpp"
 	    "${CMAKE_SOURCE_DIR}/core/taglist.hpp"

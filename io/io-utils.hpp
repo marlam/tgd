@@ -80,7 +80,7 @@ inline void swapEndianness(ArrayContainer& array)
     }
 }
 
-inline ArrayContainer transpose(const ArrayContainer& a)
+inline ArrayContainer transpose(const ArrayContainer& a, const Allocator& alloc)
 {
     std::vector<size_t> vi = a.dimensions();
     for (size_t i = 0; i < vi.size() / 2; i++) {
@@ -88,7 +88,7 @@ inline ArrayContainer transpose(const ArrayContainer& a)
         vi[i] = vi[vi.size() - 1 - i];
         vi[vi.size() - 1 - i] = tmp;
     }
-    ArrayContainer r(vi, a.componentCount(), a.componentType());
+    ArrayContainer r(vi, a.componentCount(), a.componentType(), alloc);
     std::vector<size_t> original(a.dimensionCount());
     for (size_t i = 0; i < a.elementCount(); i++) {
         r.toVectorIndex(i, vi.data());
@@ -102,7 +102,7 @@ inline ArrayContainer transpose(const ArrayContainer& a)
     return r;
 }
 
-inline ArrayContainer reorderMatlabInputData(const std::vector<size_t>& dims, Type t, const void *data)
+inline ArrayContainer reorderMatlabInputData(const std::vector<size_t>& dims, Type t, const void *data, const Allocator& alloc)
 {
     ArrayContainer r;
     if (dims.size() > 2 && dims[dims.size() - 1] <= 4) {
@@ -112,7 +112,7 @@ inline ArrayContainer reorderMatlabInputData(const std::vector<size_t>& dims, Ty
         std::vector<size_t> rIndex(dims.size() - 1);
         for (size_t i = 0; i < rIndex.size(); i++)
             rIndex[i] = dims[dims.size() - 2 - i];
-        r = ArrayContainer(rIndex, dims[dims.size() - 1], t);
+        r = ArrayContainer(rIndex, dims[dims.size() - 1], t, alloc);
         for (size_t i = 0; i < r.elementCount(); i++) {
             r.toVectorIndex(i, rIndex.data());
             for (size_t d = 0; d < rIndex.size(); d++)
@@ -127,20 +127,20 @@ inline ArrayContainer reorderMatlabInputData(const std::vector<size_t>& dims, Ty
             }
         }
     } else {
-        r = ArrayContainer(dims, 1, t);
+        r = ArrayContainer(dims, 1, t, alloc);
         std::memcpy(r.data(), data, r.dataSize());
-        r = transpose(r);
+        r = transpose(r, alloc);
     }
     return r;
 }
 
-inline ArrayContainer reorderMatlabOutputData(const ArrayContainer& array)
+inline ArrayContainer reorderMatlabOutputData(const ArrayContainer& array, const Allocator& alloc)
 {
     std::vector<size_t> dataDims(array.dimensionCount() + 1);
     for (size_t i = 0; i < array.dimensionCount(); i++)
         dataDims[i] = array.dimension(array.dimensionCount() - 1 - i);
     dataDims[array.dimensionCount()] = array.componentCount();
-    ArrayContainer dataArray(dataDims, 1, array.componentType());
+    ArrayContainer dataArray(dataDims, 1, array.componentType(), alloc);
     std::vector<size_t> dataIndex(dataArray.dimensionCount());
     std::vector<size_t> arrayIndex(array.dimensionCount());
     for (size_t i = 0; i < dataArray.elementCount(); i++) {

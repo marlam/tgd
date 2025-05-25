@@ -2,6 +2,8 @@
  * Copyright (C) 2018, 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -158,7 +160,7 @@ static Error readTgdTagList(FILE* f, TagList& tl)
     return ErrorNone;
 }
 
-static Error readTgdHeader(FILE* f, ArrayContainer& array)
+static Error readTgdHeader(FILE* f, ArrayDescription& desc)
 {
     uint8_t start[5 + 2 * sizeof(uint64_t)];
     if (std::fread(start, 5 + 2 * sizeof(uint64_t), 1, f) != 1)
@@ -185,15 +187,15 @@ static Error readTgdHeader(FILE* f, ArrayContainer& array)
             dimensions[d] = origDimensions[d];
     }
 
-    array = ArrayContainer(dimensions, compCount, static_cast<Type>(start[4]));
+    desc = ArrayDescription(dimensions, compCount, static_cast<Type>(start[4]));
     Error e;
-    if ((e = readTgdTagList(f, array.globalTagList())) != ErrorNone)
+    if ((e = readTgdTagList(f, desc.globalTagList())) != ErrorNone)
         return e;
-    for (size_t c = 0; c < array.componentCount(); c++)
-        if ((e = readTgdTagList(f, array.componentTagList(c))) != ErrorNone)
+    for (size_t c = 0; c < desc.componentCount(); c++)
+        if ((e = readTgdTagList(f, desc.componentTagList(c))) != ErrorNone)
             return e;
-    for (size_t d = 0; d < array.dimensionCount(); d++)
-        if ((e = readTgdTagList(f, array.dimensionTagList(d))) != ErrorNone)
+    for (size_t d = 0; d < desc.dimensionCount(); d++)
+        if ((e = readTgdTagList(f, desc.dimensionTagList(d))) != ErrorNone)
             return e;
     return ErrorNone;
 }
@@ -203,9 +205,9 @@ static bool readTgdData(FILE *f, ArrayContainer& array)
     return (std::fread(array.data(), array.dataSize(), 1, f) == 1);
 }
 
-static bool skipTgdData(FILE *f, const ArrayContainer& array)
+static bool skipTgdData(FILE *f, const ArrayDescription& desc)
 {
-    return (fseeko(f, array.dataSize(), SEEK_CUR) == 0 ? true : false);
+    return (fseeko(f, desc.dataSize(), SEEK_CUR) == 0 ? true : false);
 }
 
 int FormatImportExportTGD::arrayCount()
@@ -230,9 +232,9 @@ int FormatImportExportTGD::arrayCount()
             _arrayCount = -1;
             return -1;
         }
-        ArrayContainer array;
-        Error e = readTgdHeader(_f, array);
-        if (e != ErrorNone || !skipTgdData(_f, array)) {
+        ArrayDescription desc;
+        Error e = readTgdHeader(_f, desc);
+        if (e != ErrorNone || !skipTgdData(_f, desc)) {
             _arrayOffsets.clear();
             _arrayCount = -1;
             return -1;
@@ -253,7 +255,7 @@ int FormatImportExportTGD::arrayCount()
     return _arrayCount;
 }
 
-ArrayContainer FormatImportExportTGD::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportTGD::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     // Seek if necessary
     if (arrayIndex >= 0) {
@@ -272,12 +274,15 @@ ArrayContainer FormatImportExportTGD::readArray(Error* error, int arrayIndex)
     }
 
     // Read the TGD header
-    ArrayContainer array;
-    Error e = readTgdHeader(_f, array);
+    ArrayDescription desc;
+    Error e = readTgdHeader(_f, desc);
     if (e != ErrorNone) {
         *error = e;
         return ArrayContainer();
     }
+
+    // Create the array
+    ArrayContainer array(desc, alloc);
 
     // Read the data
     if (!readTgdData(_f, array)) {

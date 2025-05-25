@@ -2,6 +2,8 @@
  * Copyright (C) 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -87,7 +89,7 @@ int FormatImportExportTinyEXR::arrayCount()
     return (_fileName.length() == 0 ? -1 : 1);
 }
 
-ArrayContainer FormatImportExportTinyEXR::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportTinyEXR::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     if (arrayIndex > 0) {
         *error = ErrorSeekingNotSupported;
@@ -190,7 +192,7 @@ ArrayContainer FormatImportExportTinyEXR::readArray(Error* error, int arrayIndex
             channelPermutation.push_back(c);
     }
 
-    TGD::Array<float> r({ w, h }, nc);
+    TGD::Array<float> r({ w, h }, nc, alloc);
     for (size_t c = 0; c < nc; c++) {
         std::string interpretation = exr_header.channels[channelPermutation[c]].name;
         if (interpretation == "R")

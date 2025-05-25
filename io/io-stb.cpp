@@ -1,6 +1,8 @@
 /*
  * Copyright (C) 2022 Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -92,7 +94,7 @@ int FormatImportExportSTB::arrayCount()
     return 1;
 }
 
-ArrayContainer FormatImportExportSTB::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportSTB::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     if (arrayIndex >= arrayCount()) {
         *error = ErrorInvalidData;
@@ -107,7 +109,7 @@ ArrayContainer FormatImportExportSTB::readArray(Error* error, int arrayIndex)
             *error = ErrorInvalidData;
             return ArrayContainer();
         }
-        r = TGD::ArrayContainer( { size_t(width), size_t(height) }, channels, uint16);
+        r = TGD::ArrayContainer( { size_t(width), size_t(height) }, channels, uint16, alloc);
         std::memcpy(r.data(), data, r.dataSize());
         stbi_image_free(data);
     } else {
@@ -116,7 +118,7 @@ ArrayContainer FormatImportExportSTB::readArray(Error* error, int arrayIndex)
             *error = ErrorInvalidData;
             return ArrayContainer();
         }
-        r = TGD::ArrayContainer( { size_t(width), size_t(height) }, channels, uint8);
+        r = TGD::ArrayContainer( { size_t(width), size_t(height) }, channels, uint8, alloc);
         std::memcpy(r.data(), data, r.dataSize());
         stbi_image_free(data);
     }

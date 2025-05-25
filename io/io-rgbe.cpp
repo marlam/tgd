@@ -2,6 +2,8 @@
  * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -193,7 +195,7 @@ Error FormatImportExportRGBE::readRGBEData(Array<float>& a, float exposure)
     return ErrorNone;
 }
 
-ArrayContainer FormatImportExportRGBE::readRGBE(Error& e)
+ArrayContainer FormatImportExportRGBE::readRGBE(Error& e, const Allocator& alloc)
 {
     int width, height;
     float exposure;
@@ -201,7 +203,7 @@ ArrayContainer FormatImportExportRGBE::readRGBE(Error& e)
     e = readRGBEHeader(width, height, exposure);
     if (e != ErrorNone)
         return ArrayContainer();
-    Array<float> a({ size_t(width), size_t(height) }, 3);
+    Array<float> a({ size_t(width), size_t(height) }, 3, alloc);
     a.componentTagList(0).set("INTERPRETATION", "RED");
     a.componentTagList(1).set("INTERPRETATION", "GREEN");
     a.componentTagList(2).set("INTERPRETATION", "BLUE");
@@ -234,7 +236,7 @@ int FormatImportExportRGBE::arrayCount()
             return -1;
         }
         Error e;
-        ArrayContainer a = readRGBE(e);
+        ArrayContainer a = readRGBE(e, Allocator()); // TODO XXX: Allow custom allocator here. How?
         if (e != ErrorNone) {
             _arrayOffsets.clear();
             _arrayCount = -1;
@@ -256,7 +258,7 @@ int FormatImportExportRGBE::arrayCount()
     return _arrayCount;
 }
 
-ArrayContainer FormatImportExportRGBE::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportRGBE::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     // Seek if necessary
     if (arrayIndex >= 0) {
@@ -275,7 +277,7 @@ ArrayContainer FormatImportExportRGBE::readArray(Error* error, int arrayIndex)
     }
 
     // Read the RGBE
-    return readRGBE(*error);
+    return readRGBE(*error, alloc);
 }
 
 bool FormatImportExportRGBE::hasMore()

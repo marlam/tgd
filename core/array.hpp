@@ -2,6 +2,8 @@
  * Copyright (C) 2018, 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +35,7 @@
 #include <memory>
 
 #include "taglist.hpp"
+#include "alloc.hpp"
 
 /**
  * \file array.hpp
@@ -654,28 +657,27 @@ public:
     /*@{*/
 
     /*! \brief Constructor for an empty array container. */
-    ArrayContainer() :
-        ArrayDescription(), _data(nullptr)
+    ArrayContainer() : ArrayDescription(), _data()
     {
     }
 
     /*! \brief Constructor for an array container. */
-    explicit ArrayContainer(const ArrayDescription& desc) :
-        ArrayDescription(desc), _data(new unsigned char[dataSize()])
+    ArrayContainer(const ArrayDescription& desc, const Allocator& alloc = Allocator()) :
+        ArrayDescription(desc), _data(alloc.allocate(dataSize()), alloc.getDeallocator(dataSize()))
     {
     }
 
     /*! \brief Constructor for an array container. */
-    ArrayContainer(const std::vector<size_t>& dimensions, size_t components, Type componentType) :
-        ArrayContainer(ArrayDescription(dimensions, components, componentType))
+    ArrayContainer(const std::vector<size_t>& dimensions, size_t components, Type componentType, const Allocator& alloc = Allocator()) :
+        ArrayContainer(ArrayDescription(dimensions, components, componentType), alloc)
     {
     }
 
     /*! \brief Construct an array and perform deep copy of data */
-    ArrayContainer deepCopy() const
+    ArrayContainer deepCopy(const Allocator& alloc = Allocator()) const
     {
         ArrayDescription rDescr(*this);
-        ArrayContainer r(rDescr);
+        ArrayContainer r(rDescr, alloc);
         std::memcpy(r._data.get(), this->_data.get(), this->dataSize());
         return r;
     }
@@ -687,22 +689,19 @@ public:
      */
     /*@{*/
 
-    /*! \brief Returns a pointer to the data. This will return a null pointer
-     * as long as the data was not allocated yet; see \a allocateData(). */
+    /*! \brief Returns a pointer to the data. */
     const void* data() const
     {
-        return static_cast<const void*>(_data.get());;
+        return static_cast<const void*>(_data.get());
     }
 
-    /*! \brief Returns a pointer to the data. This will return a null pointer
-     * as long as the data was not allocated yet; see \a allocateData(). */
+    /*! \brief Returns a pointer to the data. */
     void* data()
     {
         return static_cast<void*>(_data.get());
     }
 
-    /*! \brief Returns a pointer to the element with index \a elementIndex.
-     * Note that the data must be allocated, see \a createData(). */
+    /*! \brief Returns a pointer to the element with index \a elementIndex. */
     template<typename T>
     const T* get(size_t elementIndex) const
     {
@@ -716,8 +715,7 @@ public:
     }
     /*! \endcond */
 
-    /*! \brief Returns a pointer to the element with index \a elementIndex.
-     * Note that the data must be allocated, see \a createData(). */
+    /*! \brief Returns a pointer to the element with index \a elementIndex. */
     template<typename T>
     const T* get(const std::vector<size_t>& elementIndex) const
     {
@@ -730,8 +728,7 @@ public:
     }
     /*! \endcond */
 
-    /*! \brief Returns a pointer to the element with index \a elementIndex.
-     * Note that the data must be allocated, see \a createData(). */
+    /*! \brief Returns a pointer to the element with index \a elementIndex. */
     template<typename T>
     const T* get(const std::initializer_list<size_t>& elementIndex) const
     {
@@ -744,8 +741,7 @@ public:
     }
     /*! \endcond */
 
-    /*! \brief Returns a pointer to the element with index \a elementIndex.
-     * Note that the data must be allocated, see \a createData(). */
+    /*! \brief Returns a pointer to the element with index \a elementIndex. */
     template<typename T>
     T* get(size_t elementIndex)
     {
@@ -759,8 +755,7 @@ public:
     }
     /*! \endcond */
 
-    /*! \brief Returns a pointer to the element with index \a elementIndex.
-     * Note that the data must be allocated, see \a createData(). */
+    /*! \brief Returns a pointer to the element with index \a elementIndex. */
     template<typename T>
     T* get(const std::vector<size_t>& elementIndex)
     {
@@ -773,8 +768,7 @@ public:
     }
     /*! \endcond */
 
-    /*! \brief Returns a pointer to the element with index \a elementIndex.
-     * Note that the data must be allocated, see \a createData(). */
+    /*! \brief Returns a pointer to the element with index \a elementIndex. */
     template<typename T>
     T* get(const std::initializer_list<size_t>& elementIndex)
     {
@@ -899,28 +893,28 @@ public:
     }
 
     /*! \brief Constructor for an array. */
-    explicit Array(const std::vector<size_t>& dimensions, size_t components)
-        : ArrayContainer(dimensions, components, typeFromTemplate<T>())
+    explicit Array(const std::vector<size_t>& dimensions, size_t components, const Allocator& alloc = Allocator())
+        : ArrayContainer(dimensions, components, typeFromTemplate<T>(), alloc)
     {
     }
 
     /*! \brief Constructor for an array. */
-    explicit Array(const ArrayDescription& desc) :
-        ArrayContainer(desc)
+    explicit Array(const ArrayDescription& desc, const Allocator& alloc = Allocator()) :
+        ArrayContainer(desc, alloc)
     {
         assert(typeMatchesTemplate<T>());
     }
 
     /*! \brief Constructor for an array. */
-    Array(const ArrayContainer& container) :
-        ArrayContainer(convert(container, typeFromTemplate<T>()))
+    Array(const ArrayContainer& container, const Allocator& alloc = Allocator()) :
+        ArrayContainer(convert(container, typeFromTemplate<T>(), alloc))
     {
     }
 
     /*! \brief Construct an array and perform deep copy of data */
-    Array deepCopy() const
+    Array deepCopy(const Allocator& alloc = Allocator()) const
     {
-        return ArrayContainer::deepCopy();
+        return ArrayContainer::deepCopy(alloc);
     }
 
     /*@}*/
@@ -1171,13 +1165,13 @@ void convertData(TO* dst, const FROM* src, size_t n)
  * If conversion is not actually necessary because the new type is the same
  * as the old, the returned array will simply share its data with the 
  * original array. */
-inline ArrayContainer convert(const ArrayContainer& a, Type newType)
+inline ArrayContainer convert(const ArrayContainer& a, Type newType, const Allocator& alloc = Allocator())
 {
     if (a.componentType() == newType) {
         return a;
     } else {
         ArrayDescription rDescr(a, newType);
-        ArrayContainer r(rDescr);
+        ArrayContainer r(rDescr, alloc);
         void* dst = r.data();
         const void* src = a.data();
         size_t n = r.elementCount() * r.componentCount();

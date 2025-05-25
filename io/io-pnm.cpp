@@ -2,6 +2,8 @@
  * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -397,7 +399,7 @@ int FormatImportExportPNM::arrayCount()
     return _arrayCount;
 }
 
-ArrayContainer FormatImportExportPNM::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportPNM::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     // Seek if necessary
     if (arrayIndex >= 0) {
@@ -425,7 +427,7 @@ ArrayContainer FormatImportExportPNM::readArray(Error* error, int arrayIndex)
             : pnminfo.maxval <= 255 ? uint8
             : uint16);
     ArrayContainer r({ size_t(pnminfo.width), size_t(pnminfo.height) },
-            size_t(pnminfo.depth), type);
+            size_t(pnminfo.depth), type, alloc);
     if (pnminfo.depth <= 2) {
         if (pnminfo.maxval < 0)
             r.componentTagList(0).set("INTERPRETATION", "GRAY");

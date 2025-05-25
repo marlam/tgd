@@ -2,6 +2,8 @@
  * Copyright (C) 2018, 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -210,7 +212,7 @@ static gta::type typeToGtaType(Type t)
     return gtat;
 }
 
-ArrayContainer FormatImportExportGTA::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportGTA::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     // Seek if necessary
     if (arrayIndex >= 0) {
@@ -283,7 +285,7 @@ ArrayContainer FormatImportExportGTA::readArray(Error* error, int arrayIndex)
     Type t = uint8;
     if (hdr.components() > 0)
         t = typeFromGtaType(hdr.component_type(0));
-    ArrayContainer r(dimensions, hdr.components(), t);
+    ArrayContainer r(dimensions, hdr.components(), t, alloc);
 
     // Read the data
     try {

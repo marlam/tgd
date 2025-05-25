@@ -2,6 +2,8 @@
  * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -94,7 +96,7 @@ int FormatImportExportEXR::arrayCount()
 using namespace Imf;
 using namespace Imath;
 
-ArrayContainer FormatImportExportEXR::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportEXR::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     if (arrayIndex > 0) {
         *error = ErrorSeekingNotSupported;
@@ -120,7 +122,7 @@ ArrayContainer FormatImportExportEXR::readArray(Error* error, int arrayIndex)
             return ArrayContainer();
         }
 
-        ArrayContainer r({ size_t(width), size_t(height) }, channelCount, float32);
+        ArrayContainer r({ size_t(width), size_t(height) }, channelCount, float32, alloc);
         for (auto it = file.header().begin(); it != file.header().end(); it++) {
             if (std::string(it.attribute().typeName()) == std::string("string")) {
                 r.globalTagList().set(it.name(),

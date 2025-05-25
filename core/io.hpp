@@ -2,6 +2,8 @@
  * Copyright (C) 2018, 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -76,7 +78,7 @@ public:
 
     // for reading: (it is guaranteed that the file is opened for reading when one of these is called)
     virtual int arrayCount() = 0;
-    virtual ArrayContainer readArray(Error* error, int arrayIndex = -1 /* -1 means next */) = 0;
+    virtual ArrayContainer readArray(Error* error, int arrayIndex, const Allocator& alloc) = 0;
     virtual bool hasMore() = 0;
 
     // for writing / appending: (it is guaranteed that the file is opened for writing when one of these is called)
@@ -142,7 +144,7 @@ public:
      * give an index to chose the array you want (this only works reliably if \a arrayCount() returns something
      * other than -1).
      */
-    ArrayContainer readArray(Error* error = nullptr, int arrayIndex = -1 /* -1 means next */);
+    ArrayContainer readArray(Error* error = nullptr, int arrayIndex = -1 /* -1 means next */, const Allocator& alloc = Allocator());
 
     /*! \brief Returns whether there are more arrays in the file, i.e. whether you can read the next array
      * with \a readArray(). This information is always available, for all file formats and also for streams.
@@ -199,9 +201,9 @@ public:
 };
 
 /*! \brief Shortcut to read a single array from a file in a single line of code. */
-inline ArrayContainer load(const std::string& fileName, const TagList& hints = TagList(), Error* error = nullptr)
+inline ArrayContainer load(const std::string& fileName, const TagList& hints = TagList(), Error* error = nullptr, const Allocator& alloc = Allocator())
 {
-    return Importer(fileName, hints).readArray(error, -1);
+    return Importer(fileName, hints).readArray(error, -1, alloc);
 }
 
 /*! \brief Shortcut to write a single array to a file in a single line of code. */

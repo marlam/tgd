@@ -2,6 +2,8 @@
  * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -102,7 +104,7 @@ int FormatImportExportMAT::arrayCount()
     return _varNames.size();
 }
 
-ArrayContainer FormatImportExportMAT::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportMAT::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     matvar_t* matvar;
     if (arrayIndex >= 0) {
@@ -156,7 +158,7 @@ ArrayContainer FormatImportExportMAT::readArray(Error* error, int arrayIndex)
             return ArrayContainer();
         }
     }
-    ArrayContainer r = reorderMatlabInputData(dimensions, type, matvar->data);
+    ArrayContainer r = reorderMatlabInputData(dimensions, type, matvar->data, alloc);
     if (matvar->name && matvar->name[0] != '\0') {
         r.globalTagList().set("NAME", matvar->name);
     }
@@ -219,7 +221,7 @@ Error FormatImportExportMAT::writeArray(const ArrayContainer& array)
     if (name.size() == 0)
         name = std::string("TGD") + std::to_string(_counter);
     _counter++;
-    ArrayContainer dataArray = reorderMatlabOutputData(array);
+    ArrayContainer dataArray = reorderMatlabOutputData(array, Allocator());
     matvar_t* matvar = Mat_VarCreate(name.c_str(), classType, dataType,
             dataArray.dimensionCount(), const_cast<size_t*>(dataArray.dimensions().data()),
             dataArray.data(), MAT_F_DONT_COPY_DATA);

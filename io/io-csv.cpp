@@ -2,6 +2,8 @@
  * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -90,7 +92,7 @@ int FormatImportExportCSV::arrayCount()
             return -1;
         }
         Error err = ErrorNone;
-        ArrayContainer tmp = readArray(&err, -1);
+        ArrayContainer tmp = readArray(&err, -1, Allocator()); // TODO XXX: Allow a custom Allocator here. How?
         if (err != ErrorNone) {
             _arrayOffsets.clear();
             _arrayCount = -1;
@@ -127,7 +129,7 @@ static float readFloat(const char* s, char** nextChar = nullptr)
     }
 }
 
-ArrayContainer FormatImportExportCSV::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportCSV::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     // Seek if necessary
     if (arrayIndex >= 0) {
@@ -279,7 +281,7 @@ ArrayContainer FormatImportExportCSV::readArray(Error* error, int arrayIndex)
     if (values.size() == 0 || maxElementsInLine == 0 || maxComponentsInElement == 0) {
         // do nothing
     } else if (values.size() == 1) {
-        Array<float> rf({ maxElementsInLine }, maxComponentsInElement);
+        Array<float> rf({ maxElementsInLine }, maxComponentsInElement, alloc);
         for (size_t e = 0; e < maxElementsInLine; e++) {
             std::memcpy(rf.get(e), values[0][e].data(), values[0][e].size() * sizeof(float));
             if (values[0][e].size() < maxComponentsInElement)
@@ -292,7 +294,7 @@ ArrayContainer FormatImportExportCSV::readArray(Error* error, int arrayIndex)
         size_t height = values.size();
         size_t width = maxElementsInLine;
         size_t comps = maxComponentsInElement;
-        Array<float> rf({ width, height }, comps);
+        Array<float> rf({ width, height }, comps, alloc);
         for (size_t y = 0; y < height; y++) {
             size_t ry = height - 1 - y;
             for (size_t x = 0; x < values[ry].size(); x++) {
@@ -316,15 +318,15 @@ ArrayContainer FormatImportExportCSV::readArray(Error* error, int arrayIndex)
     if (allValuesAreFinite && allValuesAreInteger) {
         if (minValue >= 0) {
             if (maxValue <= std::numeric_limits<uint8_t>::max()) {
-                r = convert(r, uint8);
+                r = convert(r, uint8, alloc);
             } else if (maxValue <= std::numeric_limits<uint16_t>::max()) {
-                r = convert(r, uint16);
+                r = convert(r, uint16, alloc);
             }
         } else {
             if (minValue >= std::numeric_limits<int8_t>::min() && maxValue <= std::numeric_limits<int8_t>::max()) {
-                r = convert(r, int8);
+                r = convert(r, int8, alloc);
             } else if (minValue >= std::numeric_limits<int16_t>::min() && maxValue <= std::numeric_limits<int16_t>::max()) {
-                r = convert(r, int16);
+                r = convert(r, int16, alloc);
             }
         }
     }

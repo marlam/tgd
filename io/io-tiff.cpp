@@ -2,6 +2,8 @@
  * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -97,7 +99,7 @@ int FormatImportExportTIFF::arrayCount()
     return _dirCount;
 }
 
-ArrayContainer FormatImportExportTIFF::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportTIFF::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     if (arrayIndex >= arrayCount()) {
         *error = ErrorInvalidData;
@@ -224,7 +226,7 @@ ArrayContainer FormatImportExportTIFF::readArray(Error* error, int arrayIndex)
         }
     }
 
-    ArrayContainer r({ width, height }, nSamples, type);
+    ArrayContainer r({ width, height }, nSamples, type, alloc);
     if (r.dimension(0) * r.elementSize() != size_t(TIFFScanlineSize(_tiff))) {
         *error = ErrorLibrary;
         return ArrayContainer();

@@ -2,6 +2,8 @@
  * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -123,7 +125,7 @@ int FormatImportExportPFS::arrayCount()
     return _arrayCount;
 }
 
-ArrayContainer FormatImportExportPFS::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportPFS::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     // Seek if necessary
     if (arrayIndex >= 0) {
@@ -165,7 +167,7 @@ ArrayContainer FormatImportExportPFS::readArray(Error* error, int arrayIndex)
     }
     size_t width = frame->getWidth();
     size_t height = frame->getHeight();
-    ArrayContainer r({ width, height }, componentCount, float32);
+    ArrayContainer r({ width, height }, componentCount, float32, alloc);
     pfs::TagIteratorPtr tit(frame->getTags()->getIterator());
     while (tit->hasNext()) {
         const char *tag_name = tit->getNext();

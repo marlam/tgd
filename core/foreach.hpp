@@ -2,6 +2,8 @@
  * Copyright (C) 2018, 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,10 +38,10 @@ namespace TGD {
 
 /*! \brief Apply \a func to all components in array \a a. */
 template <typename T, typename FUNC>
-Array<T> forEachComponent(const Array<T>& a, FUNC func)
+Array<T> forEachComponent(const Array<T>& a, FUNC func, const Allocator& alloc = Allocator())
 {
     ArrayDescription rd(a);
-    Array<T> r(rd);
+    Array<T> r(rd, alloc);
     auto itr = r.componentBegin();
     for (auto ita = a.constComponentBegin(); ita != a.constComponentEnd(); ++ita, ++itr)
         *itr = func(*ita);
@@ -57,10 +59,10 @@ Array<T>& forEachComponentInplace(Array<T>& a, FUNC func)
 
 /*! \brief Apply \a func to all components in array \a a using value \a b. */
 template <typename T, typename FUNC>
-Array<T> forEachComponent(const Array<T>& a, T b, FUNC func)
+Array<T> forEachComponent(const Array<T>& a, T b, FUNC func, const Allocator& alloc = Allocator())
 {
     ArrayDescription rd(a);
-    Array<T> r(rd);
+    Array<T> r(rd, alloc);
     auto itr = r.componentBegin();
     for (auto ita = a.constComponentBegin(); ita != a.constComponentEnd(); ++ita, ++itr)
         *itr = func(*ita, b);
@@ -78,11 +80,11 @@ Array<T>& forEachComponentInplace(Array<T>& a, T b, FUNC func)
 
 /*! \brief Apply \a func to all components in arrays \a a and \a b. */
 template <typename T, typename FUNC>
-Array<T> forEachComponent(const Array<T>& a, const Array<T>& b, FUNC func)
+Array<T> forEachComponent(const Array<T>& a, const Array<T>& b, FUNC func, const Allocator& alloc = Allocator())
 {
     assert(a.isCompatible(b));
     ArrayDescription rd(a);
-    Array<T> r(rd);
+    Array<T> r(rd, alloc);
     auto itb = b.constComponentBegin();
     auto itr = r.componentBegin();
     for (auto ita = a.constComponentBegin(); ita != a.constComponentEnd(); ++ita, ++itb, ++itr)
@@ -103,10 +105,10 @@ Array<T>& forEachComponentInplace(Array<T>& a, const Array<T>& b, FUNC func)
 
 /*! \brief Apply \a func to all elements in array \a a. */
 template <typename T, typename FUNC>
-Array<T> forEachElement(const Array<T>& a, FUNC func)
+Array<T> forEachElement(const Array<T>& a, FUNC func, const Allocator& alloc = Allocator())
 {
     ArrayDescription rd(a);
-    Array<T> r(rd);
+    Array<T> r(rd, alloc);
     auto itr = r.elementBegin();
     for (auto ita = a.constElementBegin(); ita != a.constElementEnd(); ++ita, ++itr)
         func(*itr, *ita);
@@ -124,10 +126,10 @@ Array<T>& forEachElementInplace(Array<T>& a, FUNC func)
 
 /*! \brief Apply \a func to all elements in array \a a using element \a b. */
 template <typename T, typename FUNC>
-Array<T> forEachElement(const Array<T>& a, const T* b, FUNC func)
+Array<T> forEachElement(const Array<T>& a, const T* b, FUNC func, const Allocator& alloc = Allocator())
 {
     ArrayDescription rd(a);
-    Array<T> r(rd);
+    Array<T> r(rd, alloc);
     auto itr = r.elementBegin();
     for (auto ita = a.constElementBegin(); ita != a.constElementEnd(); ++ita, ++itr)
         func(*itr, *ita, b);
@@ -145,11 +147,11 @@ Array<T>& forEachElementInplace(Array<T>& a, const T* b, FUNC func)
 
 /*! \brief Apply \a func to all elements in arrays \a a and \a b. */
 template <typename T, typename FUNC>
-Array<T> forEachElement(const Array<T>& a, const Array<T>& b, FUNC func)
+Array<T> forEachElement(const Array<T>& a, const Array<T>& b, FUNC func, const Allocator& alloc = Allocator())
 {
     assert(a.isCompatible(b));
     ArrayDescription rd(a);
-    Array<T> r(rd);
+    Array<T> r(rd, alloc);
     auto itb = b.constElementBegin();
     auto itr = r.elementBegin();
     for (auto ita = a.constElementBegin(); ita != a.constElementEnd(); ++ita, ++itb, ++itr)

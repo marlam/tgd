@@ -2,6 +2,8 @@
  * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -121,7 +123,7 @@ int FormatImportExportHDF5::arrayCount()
     return _datasetNames.size();
 }
 
-ArrayContainer FormatImportExportHDF5::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportHDF5::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     int datasetIndex;
     if (arrayIndex >= 0) {
@@ -208,7 +210,7 @@ ArrayContainer FormatImportExportHDF5::readArray(Error* error, int arrayIndex)
     std::vector<size_t> dims(dimCount);
     for (size_t i = 0; i < dims.size(); i++)
         dims[i] = hdims[dims.size() - 1 - i];
-    ArrayContainer dataArray(dims, 1, rType);
+    ArrayContainer dataArray(dims, 1, rType, alloc);
     try {
         dataset.read(dataArray.data(), type, dataspace, dataspace);
     }
@@ -216,7 +218,7 @@ ArrayContainer FormatImportExportHDF5::readArray(Error* error, int arrayIndex)
         *error = ErrorLibrary;
         return ArrayContainer();
     }
-    ArrayContainer r = reorderMatlabInputData(dims, rType, dataArray.data());
+    ArrayContainer r = reorderMatlabInputData(dims, rType, dataArray.data(), alloc);
     // read attributes
     H5::StrType strType(H5::PredType::C_S1, H5T_VARIABLE);
     for (int i = 0; i < dataset.getNumAttrs(); i++) {

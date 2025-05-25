@@ -2,6 +2,8 @@
  * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -225,13 +227,13 @@ int FormatImportExportGDAL::arrayCount()
     return 1;
 }
 
-ArrayContainer FormatImportExportGDAL::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportGDAL::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     if (arrayIndex >= arrayCount()) {
         *error = ErrorInvalidData;
         return ArrayContainer();
     }
-    ArrayContainer r(_desc);
+    ArrayContainer r(_desc, alloc);
     CPLErr err = GDALDatasetRasterIO(_dataset, GF_Read,
             0, 0, r.dimension(0), r.dimension(1),
             r.data(), r.dimension(0), r.dimension(1),

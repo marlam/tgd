@@ -2,6 +2,8 @@
  * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -129,7 +131,7 @@ int FormatImportExportDCMTK::arrayCount()
     return _di->getFrameCount();
 }
 
-ArrayContainer FormatImportExportDCMTK::readArray(Error* error, int arrayIndex)
+ArrayContainer FormatImportExportDCMTK::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     if (arrayIndex >= arrayCount()) {
         *error = ErrorInvalidData;
@@ -138,7 +140,7 @@ ArrayContainer FormatImportExportDCMTK::readArray(Error* error, int arrayIndex)
     int index = _indexOfLastReadFrame + 1;
     if (arrayIndex >= 0)
         index = arrayIndex;
-    ArrayContainer r(_desc);
+    ArrayContainer r(_desc, alloc);
     if (!_di->getOutputData(r.data(), r.dataSize(), r.componentSize() * 8, index, 0)) {
         *error = ErrorLibrary;
         return ArrayContainer();

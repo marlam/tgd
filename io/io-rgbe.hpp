@@ -2,6 +2,8 @@
  * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
+ * Copyright (C) 2023, 2024, 2025
+ * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +41,7 @@ private:
 
     Error readRGBEHeader(int& width, int& height, float& exposure);
     Error readRGBEData(Array<float>& a, float exposure);
-    ArrayContainer readRGBE(Error& e);
+    ArrayContainer readRGBE(Error& e, const Allocator& alloc);
 
 public:
     FormatImportExportRGBE();
@@ -51,7 +53,7 @@ public:
 
     // for reading:
     virtual int arrayCount() override;
-    virtual ArrayContainer readArray(Error* error, int arrayIndex = -1 /* -1 means next */) override;
+    virtual ArrayContainer readArray(Error* error, int arrayIndex, const Allocator& alloc) override;
     virtual bool hasMore() override;
 
     // for writing / appending:
