@@ -992,6 +992,7 @@ WARN_LOGFILE           =
 # Note: If this tag is empty the current directory is searched.
 
 INPUT                  = @CMAKE_SOURCE_DIR@/core/array.hpp \
+                         @CMAKE_SOURCE_DIR@/core/alloc.hpp \
                          @CMAKE_SOURCE_DIR@/core/taglist.hpp \
                          @CMAKE_SOURCE_DIR@/core/foreach.hpp \
                          @CMAKE_SOURCE_DIR@/core/operators.hpp \

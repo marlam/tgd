@@ -33,6 +33,10 @@
 # include <system_error>
 #endif
 
+/**
+ * \file alloc.hpp
+ * \brief Custom allocators for array data.
+ */
 
 namespace TGD {
 
@@ -41,24 +45,29 @@ class Allocator
 {
 public:
 
+    /*! \brief Constructor. */
     Allocator()
     {
     }
 
+    /*! \brief Destructor. */
     virtual ~Allocator()
     {
     }
 
+    /*! \brief Allocates \a n bytes via new[]. */
     virtual unsigned char* allocate(std::size_t n) const
     {
         return new unsigned char[n];
     }
 
+    /*! \brief Returns a function that deallocates memory via delete[]. */
     virtual std::function<void (unsigned char* p)> getDeallocator(std::size_t /* n */) const
     {
         return [](unsigned char* p) { delete[] p; };
     }
 
+    /*! \brief Returns whether this allocator clears allocated memory. */
     virtual bool clearsMemory() const
     {
         return false;
@@ -70,15 +79,17 @@ class MmapAllocator final : public Allocator
 {
 public:
     enum Type {
-        Private,
-        NewFile,
-        ExistingFileReadOnly,
-        ExistingFileReadWrite
+        Private,                /**< Allocation in a specific directory, without a visible file name. */
+        NewFile,                /**< Shared allocation in a newly created file with a given name. */
+        ExistingFileReadOnly,   /**< Shared allocation in an existing file, read only. */
+        ExistingFileReadWrite   /**< Shared allocation in an existing file, read and write. */
     };
 
-    const std::string name;
-    const Type type;
+private:
+    const std::string _name;
+    const Type _type;
 
+public:
     /*! \brief Constructor for a private mmap allocator.
      *
      * \param dirName   Directory in which the private file is created.
@@ -89,7 +100,7 @@ public:
      * available.
      */
     MmapAllocator(const std::string& dirName = ".") :
-        name(dirName), type(Private)
+        _name(dirName), _type(Private)
     {
     }
 
@@ -105,14 +116,16 @@ public:
      * open the specified file in read-write mode.
      */
     MmapAllocator(const std::string& fileName, Type type) :
-        name(fileName), type(type)
+        _name(fileName), _type(type)
     {
     }
 
+    /*! \brief Destructor. */
     virtual ~MmapAllocator()
     {
     }
 
+    /*! \brief Returns whether this allocator works on this system (it does when mmap is available). */
     constexpr static bool isAvailableOnThisSystem()
     {
 #if __has_include (<sys/mman.h>)
@@ -127,31 +140,31 @@ public:
     {
 #if __has_include (<sys/mman.h>)
         int fd = -1;
-        switch (type) {
+        switch (_type) {
         case Private:
-            fd = open(name.c_str(), O_TMPFILE | O_RDWR, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR | S_IWGRP | S_IWOTH);
+            fd = open(_name.c_str(), O_TMPFILE | O_RDWR, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR | S_IWGRP | S_IWOTH);
             break;
         case NewFile:
-            fd = open(name.c_str(), O_CREAT | O_TRUNC | O_RDWR, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR | S_IWGRP | S_IWOTH);
+            fd = open(_name.c_str(), O_CREAT | O_TRUNC | O_RDWR, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR | S_IWGRP | S_IWOTH);
             break;
         case ExistingFileReadOnly:
-            fd = open(name.c_str(), O_RDONLY);
+            fd = open(_name.c_str(), O_RDONLY);
             break;
         case ExistingFileReadWrite:
-            fd = open(name.c_str(), O_RDWR);
+            fd = open(_name.c_str(), O_RDWR);
             break;
         }
         if (fd < 0) {
             throw std::system_error(std::error_code(errno, std::system_category()), "cannot open tgd data file");
         }
-        if (type == Private || type == NewFile) {
+        if (_type == Private || _type == NewFile) {
             if (ftruncate(fd, n) != 0) {
                 (void)close(fd);
                 throw std::system_error(std::error_code(errno, std::system_category()), "cannot set size of tgd data file");
             }
         }
         int mmapProt = PROT_READ;
-        if (type != ExistingFileReadOnly)
+        if (_type != ExistingFileReadOnly)
             mmapProt |= PROT_WRITE;
         // For type Private, the obvious idea would be to mmap() with MAP_PRIVATE.
         // However, this does not seem to support mapping regions that are larger
@@ -182,9 +195,10 @@ public:
 #endif
     }
 
+    /*! \brief Returns whether this allocator clears allocated memory. */
     virtual bool clearsMemory() const override
     {
-        return (type == Private || type == NewFile);
+        return (_type == Private || _type == NewFile);
     }
 };
 
