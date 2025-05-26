@@ -30,7 +30,7 @@
 # include <sys/mman.h>
 # include <fcntl.h>
 # include <unistd.h>
-# include <system_error>
+# include <filesystem>
 #endif
 
 /**
@@ -155,12 +155,19 @@ public:
             break;
         }
         if (fd < 0) {
-            throw std::system_error(std::error_code(errno, std::system_category()), "cannot open tgd data file");
+            throw std::filesystem::filesystem_error(
+                    (  _type == Private ? "Cannot create temporary tgd data file in directory"
+                     : _type == NewFile ? "Cannot create tgd data file"
+                     : "Cannot open tgd data file"), _name.c_str(),
+                    std::error_code(errno, std::system_category()));
         }
         if (_type == Private || _type == NewFile) {
             if (ftruncate(fd, n) != 0) {
                 (void)close(fd);
-                throw std::system_error(std::error_code(errno, std::system_category()), "cannot set size of tgd data file");
+                throw std::filesystem::filesystem_error(
+                        (_type == Private ? "Cannot set size of temporary tgd data file in directory"
+                         : "Cannot set size of tgd data file"), _name.c_str(),
+                        std::error_code(errno, std::system_category()));
             }
         }
         int mmapProt = PROT_READ;
@@ -173,15 +180,21 @@ public:
         void* ptr = mmap(nullptr, n, mmapProt, MAP_SHARED, fd, 0);
         if (ptr == MAP_FAILED) {
             (void)close(fd);
-            throw std::system_error(std::error_code(errno, std::system_category()), "cannot mmap tgd data file");
+            throw std::filesystem::filesystem_error(
+                    (_type == Private ? "Cannot mmap temporary tgd data file in directory"
+                     : "Cannot mmap tgd data file"), _name.c_str(),
+                    std::error_code(errno, std::system_category()));
         }
         if (close(fd) != 0) {
             (void)munmap(ptr, n);
-            throw std::system_error(std::error_code(errno, std::system_category()), "cannot close tgd data file");
+            throw std::filesystem::filesystem_error(
+                    (_type == Private ? "Cannot close temporary tgd data file in directory"
+                     : "Cannot close tgd data file"), _name.c_str(),
+                    std::error_code(errno, std::system_category()));
         }
         return static_cast<unsigned char*>(ptr);
 #else
-        throw std::system_error(std::error_code(EINVAL, std::system_category()), "mmap is not available on this system");
+        throw std::exception("This system does not support mmap()");
 #endif
     }
 
