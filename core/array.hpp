@@ -1166,7 +1166,7 @@ void convertData(TO* dst, const FROM* src, size_t n)
  * with the source array. */
 inline void convert(ArrayContainer& dstArray, const ArrayContainer& srcArray)
 {
-    assert(dstArray.dataSize() == srcArray.dataSize());
+    assert(dstArray.elementCount() * dstArray.componentCount() == srcArray.elementCount() * srcArray.componentCount());
 
     void* dst = dstArray.data();
     const void* src = srcArray.data();
