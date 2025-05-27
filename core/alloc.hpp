@@ -25,6 +25,7 @@
 #include <string>
 #include <memory>
 #include <functional>
+#include <cstdio>
 
 #if __has_include (<sys/mman.h>)
 # include <sys/mman.h>
@@ -185,7 +186,22 @@ public:
         return static_cast<unsigned char*>(ptr);
 #else
         // fall back to new[]
-        return new unsigned char[n];
+        unsigned char* ptr = new unsigned char[n];
+        if (_type == Private || _type == NewFile) {
+            // clear memory, as mmap would do on a new file
+            std::memset(ptr, 0, n);
+        } else {
+            // read the file into the array
+            FILE* f = fopen(_name.c_str(), "rb");
+            if (!f || fread(ptr, n, 1, f) != 1) {
+                delete[] ptr;
+                throw std::filesystem::filesystem_error(
+                        "Cannot read tgd data file", _name.c_str(),
+                        std::error_code((!f || ferror(f) ? errno : EINVAL), std::system_category()));
+            }
+            fclose(f);
+        }
+        return ptr;
 #endif
     }
 
@@ -203,11 +219,7 @@ public:
     /*! \brief Returns whether this allocator clears allocated memory. */
     virtual bool clearsMemory() const override
     {
-#if __has_include (<sys/mman.h>)
         return (_type == Private || _type == NewFile);
-#else
-        return false;
-#endif
     }
 };
 
