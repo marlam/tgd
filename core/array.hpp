@@ -1161,23 +1161,22 @@ void convertData(TO* dst, const FROM* src, size_t n)
 }
 /*! \endcond */
 
-/*! \brief Convert the given array to the given new component type.
- * If conversion is not actually necessary because the new type is the same
- * as the old, the returned array will simply share its data with the 
- * original array. */
-inline ArrayContainer convert(const ArrayContainer& a, Type newType, const Allocator& alloc = Allocator())
+/*! \brief Convert an array to a new component type.
+ * All other properties of the destination array must be compatible
+ * with the source array. */
+inline void convert(ArrayContainer& dstArray, const ArrayContainer& srcArray)
 {
-    if (a.componentType() == newType) {
-        return a;
+    assert(dstArray.dataSize() == srcArray.dataSize());
+
+    void* dst = dstArray.data();
+    const void* src = srcArray.data();
+    if (dstArray.componentType() == srcArray.componentType()) {
+        std::memcpy(dst, src, dstArray.dataSize());
     } else {
-        ArrayDescription rDescr(a, newType);
-        ArrayContainer r(rDescr, alloc);
-        void* dst = r.data();
-        const void* src = a.data();
-        size_t n = r.elementCount() * r.componentCount();
-        switch (newType) {
+        size_t n = dstArray.elementCount() * dstArray.componentCount();
+        switch (dstArray.componentType()) {
         case int8:
-            switch (a.componentType()) {
+            switch (srcArray.componentType()) {
             case int8:
                 convertData(static_cast<int8_t*>(dst), static_cast<const int8_t*>(src), n);
                 break;
@@ -1211,7 +1210,7 @@ inline ArrayContainer convert(const ArrayContainer& a, Type newType, const Alloc
             }
             break;
         case uint8:
-            switch (a.componentType()) {
+            switch (srcArray.componentType()) {
             case int8:
                 convertData(static_cast<uint8_t*>(dst), static_cast<const int8_t*>(src), n);
                 break;
@@ -1245,7 +1244,7 @@ inline ArrayContainer convert(const ArrayContainer& a, Type newType, const Alloc
             }
             break;
         case int16:
-            switch (a.componentType()) {
+            switch (srcArray.componentType()) {
             case int8:
                 convertData(static_cast<int16_t*>(dst), static_cast<const int8_t*>(src), n);
                 break;
@@ -1279,7 +1278,7 @@ inline ArrayContainer convert(const ArrayContainer& a, Type newType, const Alloc
             }
             break;
         case uint16:
-            switch (a.componentType()) {
+            switch (srcArray.componentType()) {
             case int8:
                 convertData(static_cast<uint16_t*>(dst), static_cast<const int8_t*>(src), n);
                 break;
@@ -1313,7 +1312,7 @@ inline ArrayContainer convert(const ArrayContainer& a, Type newType, const Alloc
             }
             break;
         case int32:
-            switch (a.componentType()) {
+            switch (srcArray.componentType()) {
             case int8:
                 convertData(static_cast<int32_t*>(dst), static_cast<const int8_t*>(src), n);
                 break;
@@ -1347,7 +1346,7 @@ inline ArrayContainer convert(const ArrayContainer& a, Type newType, const Alloc
             }
             break;
         case uint32:
-            switch (a.componentType()) {
+            switch (srcArray.componentType()) {
             case int8:
                 convertData(static_cast<uint32_t*>(dst), static_cast<const int8_t*>(src), n);
                 break;
@@ -1381,7 +1380,7 @@ inline ArrayContainer convert(const ArrayContainer& a, Type newType, const Alloc
             }
             break;
         case int64:
-            switch (a.componentType()) {
+            switch (srcArray.componentType()) {
             case int8:
                 convertData(static_cast<int64_t*>(dst), static_cast<const int8_t*>(src), n);
                 break;
@@ -1415,7 +1414,7 @@ inline ArrayContainer convert(const ArrayContainer& a, Type newType, const Alloc
             }
             break;
         case uint64:
-            switch (a.componentType()) {
+            switch (srcArray.componentType()) {
             case int8:
                 convertData(static_cast<uint64_t*>(dst), static_cast<const int8_t*>(src), n);
                 break;
@@ -1449,7 +1448,7 @@ inline ArrayContainer convert(const ArrayContainer& a, Type newType, const Alloc
             }
             break;
         case float32:
-            switch (a.componentType()) {
+            switch (srcArray.componentType()) {
             case int8:
                 convertData(static_cast<float*>(dst), static_cast<const int8_t*>(src), n);
                 break;
@@ -1483,7 +1482,7 @@ inline ArrayContainer convert(const ArrayContainer& a, Type newType, const Alloc
             }
             break;
         case float64:
-            switch (a.componentType()) {
+            switch (srcArray.componentType()) {
             case int8:
                 convertData(static_cast<double*>(dst), static_cast<const int8_t*>(src), n);
                 break;
@@ -1517,6 +1516,21 @@ inline ArrayContainer convert(const ArrayContainer& a, Type newType, const Alloc
             }
             break;
         }
+    }
+}
+
+/*! \brief Convert the given array to the given new component type.
+ * If conversion is not actually necessary because the new type is the same
+ * as the old, the returned array will simply share its data with the
+ * original array. */
+inline ArrayContainer convert(const ArrayContainer& a, Type newType, const Allocator& alloc = Allocator())
+{
+    if (a.componentType() == newType) {
+        return a;
+    } else {
+        ArrayDescription rDescr(a, newType);
+        ArrayContainer r(rDescr, alloc);
+        convert(r, a);
         return r;
     }
 }
