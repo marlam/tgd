@@ -26,6 +26,7 @@
 #include <memory>
 #include <functional>
 #include <cstdio>
+#include <cstring>
 
 #if __has_include (<sys/mman.h>)
 # include <sys/mman.h>
