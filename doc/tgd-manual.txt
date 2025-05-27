@@ -572,9 +572,11 @@ lists for the components. Each tag lists starts with 8 bytes storing the number 
 in the file (excluding these first 8 bytes). The NAME and VALUE pairs in the tag list follow, each
 pair as two zero-terminated UTF-8 strings. 
 
-After that, the array data follows using the data type described above. The size of the data can be
-calculated as the number of array elements (the product over all dimensions) times the
-number of element components times the size of the data type.
+The array data uses the data type described above, and is stored in one of two ways:
+If the global tag list contains the tag DATAFILE, then the data is stored in an external file with
+the name that is specified by the value of this tag. Otherwise, the array data follows in the same file.
+The size of the data can be calculated as the number of array elements (the product over all dimensions)
+times the number of element components times the size of the data type.
 
 Directly after the array data, another TGD may follow, again starting with the four bytes `T`,
 `A`, `D`, and 0. A file can store any number of TGDs.
@@ -596,6 +598,11 @@ For example, an application FooBar might use tag names such as `FOOBAR/AUDIO/BAS
 and `FOOBAR/COLOR/BACKGROUND`.
 
 The following global tags are common:
+
+- `DATAFILE`
+
+  Specifies the name of an external file that holds the array data. If not present, the array data
+  is stored in this file directly after the meta data.
 
 - `CREATOR`
 

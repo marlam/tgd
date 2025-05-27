@@ -111,8 +111,10 @@ static bool writeTgd(FILE* f, const ArrayContainer& array)
         if (!writeTgdTagList(f, array.dimensionTagList(d)))
             return false;
     }
-    if (std::fwrite(array.data(), array.dataSize(), 1, f) != 1 || std::fflush(f) != 0) {
-        return false;
+    if (!array.globalTagList().contains("DATAFILE")) {
+        if (std::fwrite(array.data(), array.dataSize(), 1, f) != 1 || std::fflush(f) != 0) {
+            return false;
+        }
     }
     return true;
 }
@@ -200,16 +202,6 @@ static Error readTgdHeader(FILE* f, ArrayDescription& desc)
     return ErrorNone;
 }
 
-static bool readTgdData(FILE *f, ArrayContainer& array)
-{
-    return (std::fread(array.data(), array.dataSize(), 1, f) == 1);
-}
-
-static bool skipTgdData(FILE *f, const ArrayDescription& desc)
-{
-    return (fseeko(f, desc.dataSize(), SEEK_CUR) == 0 ? true : false);
-}
-
 int FormatImportExportTGD::arrayCount()
 {
     if (_arrayCount >= -1)
@@ -234,10 +226,18 @@ int FormatImportExportTGD::arrayCount()
         }
         ArrayDescription desc;
         Error e = readTgdHeader(_f, desc);
-        if (e != ErrorNone || !skipTgdData(_f, desc)) {
+        if (e != ErrorNone) {
             _arrayOffsets.clear();
             _arrayCount = -1;
             return -1;
+        }
+        if (!desc.globalTagList().contains("DATAFILE")) {
+            // skip data
+            if (fseeko(_f, desc.dataSize(), SEEK_CUR) != 0) {
+                _arrayOffsets.clear();
+                _arrayCount = -1;
+                return -1;
+            }
         }
         _arrayOffsets.push_back(arrayPos);
         if (_arrayOffsets.size() == size_t(std::numeric_limits<int>::max()) && hasMore()) {
@@ -282,11 +282,18 @@ ArrayContainer FormatImportExportTGD::readArray(Error* error, int arrayIndex, co
     }
 
     // Create the array
-    ArrayContainer array(desc, alloc);
-
-    // Read the data
-    if (!readTgdData(_f, array)) {
-        e = (std::ferror(_f) ? ErrorSysErrno : ErrorInvalidData);
+    ArrayContainer array;
+    if (desc.globalTagList().contains("DATAFILE")) {
+        array = ArrayContainer(desc, MmapAllocator(
+                    desc.globalTagList().value("DATAFILE"),
+                    MmapAllocator::ExistingFileReadWrite));
+        // No need to read the data: the array mmaps the datafile
+    } else {
+        array = ArrayContainer(desc, alloc);
+        // Read the data
+        if (fread(array.data(), array.dataSize(), 1, _f) != 1) {
+            e = (std::ferror(_f) ? ErrorSysErrno : ErrorInvalidData);
+        }
     }
     if (e != ErrorNone) {
         *error = e;

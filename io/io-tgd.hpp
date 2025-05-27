@@ -38,7 +38,7 @@
  * - 1 uint64: length of the following data in bytes (N)
  * - string pairs (key/value) until the N bytes are consumed
  *
- * TGD file:
+ * TGD file header:
  * - 3 bytes: 'T', 'G', 'D' (84, 71, 68)
  * - 1 byte: format version, must be 0
  * - 1 byte: component type:
@@ -50,7 +50,12 @@
  * - 1 global tag list
  * - C component tag lists
  * - D dimension tag lists
- * - the data, packed (no fill bytes)
+ *
+ * TGD file data:
+ * If the global tag list contains the tag "DATAFILE", then the data is assumed to
+ * be stored in a file with the file name specified by the value of this tag.
+ * Otherwise, the data follows directly after the header.
+ * In both cases, the data is packed (no fill bytes).
  */
 
 #include <cstdio>
