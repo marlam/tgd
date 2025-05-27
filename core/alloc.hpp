@@ -125,16 +125,6 @@ public:
     {
     }
 
-    /*! \brief Returns whether this allocator works on this system (it does when mmap is available). */
-    constexpr static bool isAvailableOnThisSystem()
-    {
-#if __has_include (<sys/mman.h>)
-        return true;
-#else
-        return false;
-#endif
-    }
-
     /*! \brief Allocates n bytes. */
     virtual unsigned char *allocate(std::size_t n) const override
     {
@@ -194,7 +184,8 @@ public:
         }
         return static_cast<unsigned char*>(ptr);
 #else
-        throw std::exception("This system does not support mmap()");
+        // fall back to new[]
+        return new unsigned char[n];
 #endif
     }
 
@@ -204,14 +195,19 @@ public:
 #if __has_include (<sys/mman.h>)
         return [=](unsigned char* p) { (void)munmap(p, n); };
 #else
-        return [](unsigned char*) { };
+        // fall back to delete[]
+        return [](unsigned char* p) { delete[] p; };
 #endif
     }
 
     /*! \brief Returns whether this allocator clears allocated memory. */
     virtual bool clearsMemory() const override
     {
+#if __has_include (<sys/mman.h>)
         return (_type == Private || _type == NewFile);
+#else
+        return false;
+#endif
     }
 };
 

@@ -358,9 +358,8 @@ bool incBoxIndex(const std::vector<size_t>& box, std::vector<size_t>& index, siz
 
 const TGD::Allocator& defaultAllocator()
 {
-    static TGD::Allocator alloc;
-    static TGD::MmapAllocator mmapAlloc;
-    return (TGD::MmapAllocator::isAvailableOnThisSystem() ? mmapAlloc : alloc);
+    static TGD::MmapAllocator alloc(getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp");
+    return alloc;
 }
 
 /* tgd commands */
