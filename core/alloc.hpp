@@ -26,6 +26,7 @@
 #include <memory>
 #include <functional>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 #if __has_include (<sys/mman.h>)
@@ -134,7 +135,24 @@ public:
         int fd = -1;
         switch (_type) {
         case Private:
-            fd = open(_name.c_str(), O_TMPFILE | O_RDWR, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR | S_IWGRP | S_IWOTH);
+            {
+                bool oTmpfileSupported = true;
+# ifdef O_TMPFILE
+                fd = open(_name.c_str(), O_TMPFILE | O_RDWR, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR | S_IWGRP | S_IWOTH);
+                if (fd < 0 && errno == EOPNOTSUPP)
+                    oTmpfileSupported = false;
+# else
+                oTmpfileSupported = false;
+# endif
+                if (!oTmpfileSupported) {
+                    std::vector<char> tmpl(_name.length() + 11 + 1);
+                    strcpy(tmpl.data(), _name.c_str());
+                    strcat(tmpl.data(), "/TGD-XXXXXX");
+                    fd = mkstemp(tmpl.data());
+                    if (fd != -1)
+                        unlink(tmpl.data());
+                }
+            }
             break;
         case NewFile:
             fd = open(_name.c_str(), O_CREAT | O_TRUNC | O_RDWR, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR | S_IWGRP | S_IWOTH);
