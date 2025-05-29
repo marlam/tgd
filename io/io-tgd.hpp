@@ -66,6 +66,7 @@ namespace TGD {
 
 class FormatImportExportTGD : public FormatImportExport {
 private:
+    std::string _directory;
     FILE* _f;
     int _arrayCount;
     std::vector<off_t> _arrayOffsets;

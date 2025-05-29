@@ -42,12 +42,24 @@ FormatImportExportTGD::~FormatImportExportTGD()
     close();
 }
 
+static std::string getDirectory(const std::string& fileName)
+{
+    std::string dir;
+    size_t i = fileName.find_last_of('/');
+    if (i < std::string::npos) {
+        dir = fileName.substr(i + 1);
+    }
+    return dir;
+}
+
 Error FormatImportExportTGD::openForReading(const std::string& fileName, const TagList&)
 {
     if (fileName == "-")
         _f = stdin;
     else
         _f = fopen(fileName.c_str(), "rb");
+    if (_f)
+        _directory = getDirectory(fileName);
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
@@ -57,6 +69,8 @@ Error FormatImportExportTGD::openForWriting(const std::string& fileName, bool ap
         _f = stdout;
     else
         _f = fopen(fileName.c_str(), append ? "ab" : "wb");
+    if (_f)
+        _directory = getDirectory(fileName);
     return _f ? ErrorNone : ErrorSysErrno;
 }
 
@@ -255,6 +269,25 @@ int FormatImportExportTGD::arrayCount()
     return _arrayCount;
 }
 
+static bool datafileIsValid(const std::string& datafile)
+{
+    // Datafile names must conform to the POSIX
+    // Portable Filename Character Set, see
+    // https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_282
+    // Additionally, the first character must not be minus ('-').
+    for (size_t i = 0; i < datafile.size(); i++) {
+        if (!(
+                    (datafile[i] >= 'a' && datafile[i] <= 'z')
+                    || (datafile[i] >= 'A' && datafile[i] <= 'Z')
+                    || (datafile[i] >= '0' && datafile[i] <= '9')
+                    || (datafile[i] == '.' || datafile[i] == '_')
+                    || (i > 0 && datafile[i] == '-'))) {
+            return false;
+        }
+    }
+    return true;
+}
+
 ArrayContainer FormatImportExportTGD::readArray(Error* error, int arrayIndex, const Allocator& alloc)
 {
     // Seek if necessary
@@ -284,10 +317,19 @@ ArrayContainer FormatImportExportTGD::readArray(Error* error, int arrayIndex, co
     // Create the array
     ArrayContainer array;
     if (desc.globalTagList().contains("DATAFILE")) {
-        array = ArrayContainer(desc, MmapAllocator(
-                    desc.globalTagList().value("DATAFILE"),
+        std::string datafile = desc.globalTagList().value("DATAFILE");
+        // Make sure the file name is safe and valid
+        if (!datafileIsValid(datafile)) {
+            *error = ErrorInvalidData;
+            return ArrayContainer();
+        }
+        // Interpret the file name relative to the directory in which the .tgd file lives
+        if (_directory.length() > 0) {
+            datafile = _directory + '/' + datafile;
+        }
+        // Map the array data (no need to read it)
+        array = ArrayContainer(desc, MmapAllocator(datafile,
                     MmapAllocator::ExistingFileReadWrite));
-        // No need to read the data: the array mmaps the datafile
     } else {
         array = ArrayContainer(desc, alloc);
         // Read the data

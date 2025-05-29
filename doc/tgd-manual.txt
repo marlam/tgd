@@ -606,8 +606,10 @@ The following global tags are common:
 
 - `DATAFILE`
 
-  Specifies the name of an external file that holds the array data. If not present, the array data
-  is stored in this file directly after the meta data.
+  Specifies the name of an external file that holds the array data. To prevent
+  misuse, the value of this tag must only contain characters from the POSIX
+  [Portable Filename Character Set](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_282).
+  The external file must always reside in the same directory as the TGD file.
 
 - `CREATOR`
 
