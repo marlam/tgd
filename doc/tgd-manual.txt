@@ -1,6 +1,6 @@
 ---
 title: tgd
-date: August 29, 2022
+date: May 28, 2025
 section: 1
 ---
 
@@ -44,6 +44,11 @@ Common options accepted by all commands are
 - `--help`
 
   Print help for this command.
+
+- `-C`, `--cache-dir` *DIRECTORY*
+
+  Set the directory for temporary cache files. The default is $HOME,
+  or $TMPDIR if that is unset, or /tmp if both are unset.
 
 - `-i`, `--input` *NAME=VALUE*
 
@@ -127,7 +132,7 @@ Common options accepted by all commands are
       dimension _ will create a new dimension, e.g. to merge 2D images into
       a 3D volume.
 
-    - `-C`, `--merge-components`
+    - `-M`, `--merge-components` *C*
 
       Merge input arrays at the component level, e.g. to combine an RGB image
       and an alpha mask into an RGBA image. The components of all input arrays

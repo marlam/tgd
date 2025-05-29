@@ -354,12 +354,28 @@ bool incBoxIndex(const std::vector<size_t>& box, std::vector<size_t>& index, siz
     return true;
 }
 
-/* Helper function for getting the right allocator for array data */
+/* Helper for getting the right allocator for array data */
 
-const TGD::Allocator& defaultAllocator()
+TGD::MmapAllocator* tgdAllocator;
+
+void initAllocator(const CmdLine& cmdLine)
 {
-    static TGD::MmapAllocator alloc(getenv("HOME") ? getenv("HOME") : "/tmp");
-    return alloc;
+    std::string cacheDir;
+    if (cmdLine.isSet("cache-dir")) {
+        cacheDir = cmdLine.value("cache-dir");
+    } else if (getenv("HOME")) {
+        cacheDir = getenv("HOME");
+    } else if (getenv("TMPDIR")) {
+        cacheDir = getenv("TMPDIR");
+    } else {
+        cacheDir = "/tmp";
+    }
+    tgdAllocator = new TGD::MmapAllocator(cacheDir);
+}
+
+const TGD::Allocator& allocator()
+{
+    return *tgdAllocator;
 }
 
 /* tgd commands */
@@ -387,6 +403,7 @@ int tgd_version(void)
 int tgd_create(int argc, char* argv[])
 {
     CmdLine cmdLine;
+    cmdLine.addOptionWithArg("cache-dir", 'C');
     cmdLine.addOptionWithArg("output", 'o');
     cmdLine.addOptionWithArg("dimensions", 'd', parseUIntLargerThanZeroList);
     cmdLine.addOptionWithArg("components", 'c', parseUIntLargerThanZero);
@@ -403,6 +420,7 @@ int tgd_create(int argc, char* argv[])
                 "Create zero-filled arrays.\n"
                 "\n"
                 "Options:\n"
+                "  -C|--cache-dir=DIRECTORY   Set directory for temporary cache files.\n"
                 "  -o|--output=TAG            set output hints such as FORMAT=gdal etc.\n"
                 "  -d|--dimensions=D0[,D1,...]  set dimensions, e.g. W,H for 2D\n"
                 "  -c|--components=C          set number of components per element\n"
@@ -424,6 +442,7 @@ int tgd_create(int argc, char* argv[])
         return 1;
     }
 
+    initAllocator(cmdLine);
     const std::string& outFileName = cmdLine.arguments()[0];
     TGD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
     TGD::Exporter exporter(outFileName, TGD::Overwrite, exporterHints);
@@ -432,8 +451,8 @@ int tgd_create(int argc, char* argv[])
     size_t components = getUInt(cmdLine.value("components"));
     TGD::Type type = getType(cmdLine.value("type"));
     size_t n = getUInt(cmdLine.value("n"));
-    TGD::ArrayContainer array(dimensions, components, type, defaultAllocator());
-    if (!defaultAllocator().clearsMemory()) {
+    TGD::ArrayContainer array(dimensions, components, type, allocator());
+    if (!allocator().clearsMemory()) {
         std::memset(array.data(), 0, array.dataSize());
     }
     for (size_t i = 0; i < n; i++) {
@@ -502,6 +521,7 @@ void tgd_convert_normalize_helper_from_float(TGD::Array<T>& array, TGD::Type new
 int tgd_convert(int argc, char* argv[])
 {
     CmdLine cmdLine;
+    cmdLine.addOptionWithArg("cache-dir", 'C');
     cmdLine.addOptionWithArg("input", 'i');
     cmdLine.addOptionWithArg("output", 'o');
     cmdLine.addOptionWithArg("keep", 'k', parseRange);
@@ -509,7 +529,7 @@ int tgd_convert(int argc, char* argv[])
     cmdLine.addOptionWithoutArg("split", 's');
     cmdLine.addOptionWithoutArg("append", 'a');
     cmdLine.addOptionWithArg("merge-dimension", 'D', parseUIntUnderscore);
-    cmdLine.addOptionWithoutArg("merge-components", 'C');
+    cmdLine.addOptionWithoutArg("merge-components", 'M');
     cmdLine.addOptionWithArg("box", 'b', parseUIntList);
     cmdLine.addOptionWithArg("dimensions", 'd', parseUIntUnderscoreList);
     cmdLine.addOptionWithArg("components", 'c', parseUIntUnderscoreList);
@@ -536,6 +556,7 @@ int tgd_convert(int argc, char* argv[])
                 "Convert input(s) and write to a new output.\n"
                 "\n"
                 "Options:\n"
+                "  -C|--cache-dir=DIRECTORY   Set directory for temporary cache files.\n"
                 "  -i|--input=TAG             set input hints such as FORMAT=gdal, DPI=300 etc.\n"
                 "  -o|--output=TAG            set output hints such as FORMAT=gdal etc.\n"
                 "  -k|--keep=A-B[,S]          keep the specified arrays, drop others\n"
@@ -548,7 +569,7 @@ int tgd_convert(int argc, char* argv[])
                 "                             -D0 to arrange images left to right); the special\n"
                 "                             value _ will create a new dimension (e.g. to\n"
                 "                             combine images into a 3D volume)\n"
-                "  -C|--merge-components      merge input arrays at the component level, e.g. to\n"
+                "  -M|--merge-components      merge input arrays at the component level, e.g. to\n"
                 "                             combine an RGB image and an alpha mask into an RGBA\n"
                 "                             image file\n"
                 "  -b|--box=INDEX,SIZE        set box to operate on, e.g. X,Y,WIDTH,HEIGHT for 2D\n"
@@ -579,6 +600,7 @@ int tgd_convert(int argc, char* argv[])
         return 1;
     }
 
+    initAllocator(cmdLine);
     TGD::TagList exporterHints = createTagList(cmdLine.valueList("output"));
     TGD::TagList importerHints = createTagList(cmdLine.valueList("input"));
     TGD::Type type = getType(cmdLine.value("type"));
@@ -677,7 +699,7 @@ int tgd_convert(int argc, char* argv[])
             TGD::ArrayContainer array;
             std::string inputName;
             if (!mergeComponents && !mergeDimension) {
-                array = importers[i].readArray(&err, -1, defaultAllocator());
+                array = importers[i].readArray(&err, -1, allocator());
                 if (err != TGD::ErrorNone) {
                     fprintf(stderr, "tgd convert: %s: %s\n", importers[i].fileName().c_str(), TGD::strerror(err));
                     break;
@@ -686,7 +708,7 @@ int tgd_convert(int argc, char* argv[])
             } else {
                 std::vector<TGD::ArrayContainer> arrays(importers.size());
                 for (size_t j = 0; j < importers.size(); j++) {
-                    arrays[j] = importers[j].readArray(&err, -1, defaultAllocator());
+                    arrays[j] = importers[j].readArray(&err, -1, allocator());
                     if (err != TGD::ErrorNone) {
                         fprintf(stderr, "tgd convert: %s: %s\n", importers[j].fileName().c_str(), TGD::strerror(err));
                         break;
@@ -719,7 +741,7 @@ int tgd_convert(int argc, char* argv[])
                         err = TGD::ErrorInvalidData;
                         break;
                     }
-                    array = TGD::ArrayContainer(arrays[0].dimensions(), componentCount, arrays[0].componentType(), defaultAllocator());
+                    array = TGD::ArrayContainer(arrays[0].dimensions(), componentCount, arrays[0].componentType(), allocator());
                     for (size_t e = 0; e < array.elementCount(); e++) {
                         unsigned char* dst = static_cast<unsigned char*>(array.get(e));
                         for (size_t j = 0; j < arrays.size(); j++) {
@@ -772,7 +794,7 @@ int tgd_convert(int argc, char* argv[])
                         for (size_t j = 1; j < arrays.size(); j++)
                             dimensions[mergeDimensionArg] += arrays[j].dimension(mergeDimensionArg);
                     }
-                    array = TGD::ArrayContainer(dimensions, arrays[0].componentCount(), arrays[0].componentType(), defaultAllocator());
+                    array = TGD::ArrayContainer(dimensions, arrays[0].componentCount(), arrays[0].componentType(), allocator());
 
                     std::vector<size_t> blockSizes(arrays.size(), 0);
                     size_t blockSizeSum = 0;
@@ -835,7 +857,7 @@ int tgd_convert(int argc, char* argv[])
                     }
                     TGD::ArrayContainer arrayBox(
                             std::vector<size_t>(localBox.begin() + array.dimensionCount(), localBox.end()),
-                            array.componentCount(), array.componentType(), defaultAllocator());
+                            array.componentCount(), array.componentType(), allocator());
                     std::vector<size_t> arrayIndex(array.dimensionCount());
                     std::vector<size_t> boxIndex(array.dimensionCount());
                     initBoxIndex(localBox, arrayIndex);
@@ -877,7 +899,7 @@ int tgd_convert(int argc, char* argv[])
                             srcIndexMap[dimensions[i]] = i;
                         }
                     }
-                    TGD::ArrayContainer arrayNew(dimensionsNew, array.componentCount(), array.componentType(), defaultAllocator());
+                    TGD::ArrayContainer arrayNew(dimensionsNew, array.componentCount(), array.componentType(), allocator());
                     std::vector<size_t> srcIndex(array.dimensionCount());
                     std::vector<size_t> dstIndex(arrayNew.dimensionCount());
                     for (size_t e = 0; e < arrayNew.elementCount(); e++) {
@@ -908,7 +930,7 @@ int tgd_convert(int argc, char* argv[])
                     }
                     if (!valid)
                         break;
-                    TGD::ArrayContainer arrayNew(array.dimensions(), components.size(), array.componentType(), defaultAllocator());
+                    TGD::ArrayContainer arrayNew(array.dimensions(), components.size(), array.componentType(), allocator());
                     for (size_t i = 0; i < components.size(); i++) {
                         for (size_t e = 0; e < array.elementCount(); e++) {
                             unsigned char* dst = reinterpret_cast<unsigned char*>(arrayNew.get(e));
@@ -935,11 +957,11 @@ int tgd_convert(int argc, char* argv[])
                     TGD::Type oldType = array.componentType();
                     if (cmdLine.isSet("normalize")) {
                         if (type == TGD::float32) {
-                            array = convert(array, type, defaultAllocator());
+                            array = convert(array, type, allocator());
                             TGD::Array<float> floatArray(array);
                             tgd_convert_normalize_helper_to_float<float>(floatArray, oldType);
                         } else if (type == TGD::float64) {
-                            array = convert(array, type, defaultAllocator());
+                            array = convert(array, type, allocator());
                             TGD::Array<double> doubleArray(array);
                             tgd_convert_normalize_helper_to_float<double>(doubleArray, oldType);
                         } else if (oldType == TGD::float32) {
@@ -947,16 +969,16 @@ int tgd_convert(int argc, char* argv[])
                                 TGD::Array<float> floatArray(array);
                                 tgd_convert_normalize_helper_from_float<float>(floatArray, type);
                             }
-                            array = convert(array, type, defaultAllocator());
+                            array = convert(array, type, allocator());
                         } else if (oldType == TGD::float64) {
                             if (type == TGD::int8 || type == TGD::uint8 || type == TGD::int16 || type == TGD::uint16) {
                                 TGD::Array<double> doubleArray(array);
                                 tgd_convert_normalize_helper_from_float<double>(doubleArray, type);
                             }
-                            array = convert(array, type, defaultAllocator());
+                            array = convert(array, type, allocator());
                         }
                     } else {
-                        array = convert(array, type, defaultAllocator());
+                        array = convert(array, type, allocator());
                     }
                 }
                 for (size_t o = 0; o < cmdLine.orderedOptionNames().size(); o++) {
@@ -1470,6 +1492,7 @@ public:
 int tgd_calc(int argc, char* argv[])
 {
     CmdLine cmdLine;
+    cmdLine.addOptionWithArg("cache-dir", 'C');
     cmdLine.addOptionWithArg("input", 'i');
     cmdLine.addOptionWithArg("output", 'o');
     cmdLine.addOptionWithArg("box", 'b', parseUIntList);
@@ -1547,6 +1570,7 @@ int tgd_calc(int argc, char* argv[])
                 "        + v(0,i0+1,i1,2) + v(0,i0,i1+1,2)) / 6\n"
                 "\n"
                 "Options:\n"
+                "  -C|--cache-dir=DIRECTORY   Set directory for temporary cache files.\n"
                 "  -i|--input=TAG             set input hints such as FORMAT=gdal, DPI=300 etc.\n"
                 "  -o|--output=TAG            set output hints such as FORMAT=gdal etc.\n"
                 "  -b|--box=INDEX,SIZE        set box to operate on, e.g. X,Y,WIDTH,HEIGHT for 2D\n"
@@ -1562,6 +1586,7 @@ int tgd_calc(int argc, char* argv[])
     fprintf(stderr, "tgd calc: command not available (libmuparser is missing)\n");
     return 1;
 #else
+    initAllocator(cmdLine);
     size_t inputCount = cmdLine.arguments().size() - 1;
     const std::vector<std::string>& inFileNames = cmdLine.arguments();
     const std::string& outFileName = cmdLine.arguments().back();
@@ -1589,7 +1614,7 @@ int tgd_calc(int argc, char* argv[])
             }
             break;
         }
-        calc.input_arrays[0] = importers[0].readArray(&err, -1, defaultAllocator());
+        calc.input_arrays[0] = importers[0].readArray(&err, -1, allocator());
         if (err != TGD::ErrorNone) {
             fprintf(stderr, "tgd calc: %s: %s\n", inFileNames[0].c_str(), TGD::strerror(err));
             break;
@@ -1610,7 +1635,7 @@ int tgd_calc(int argc, char* argv[])
                 }
                 break;
             }
-            calc.input_arrays[i] = importers[i].readArray(&err, -1, defaultAllocator());
+            calc.input_arrays[i] = importers[i].readArray(&err, -1, allocator());
             if (err != TGD::ErrorNone) {
                 fprintf(stderr, "tgd calc: %s: %s\n", inFileNames[i].c_str(), TGD::strerror(err));
                 break;
@@ -1621,7 +1646,7 @@ int tgd_calc(int argc, char* argv[])
         }
 
         /* set up output array */
-        TGD::ArrayContainer array = calc.input_arrays[0].deepCopy(defaultAllocator());
+        TGD::ArrayContainer array = calc.input_arrays[0].deepCopy(allocator());
 
         /* set up box to operate on */
         std::vector<size_t> index(array.dimensionCount());
@@ -1680,6 +1705,7 @@ int tgd_calc(int argc, char* argv[])
 int tgd_diff(int argc, char* argv[])
 {
     CmdLine cmdLine;
+    cmdLine.addOptionWithArg("cache-dir", 'C');
     cmdLine.addOptionWithArg("input", 'i');
     cmdLine.addOptionWithArg("output", 'o');
     std::string errMsg;
@@ -1693,11 +1719,13 @@ int tgd_diff(int argc, char* argv[])
                 "Compute the absolute difference.\n"
                 "\n"
                 "Options:\n"
+                "  -C|--cache-dir=DIRECTORY   Set directory for temporary cache files.\n"
                 "  -i|--input=TAG             set input hints such as FORMAT=gdal, DPI=300 etc.\n"
                 "  -o|--output=TAG            set output hints such as FORMAT=gdal etc.\n");
         return 0;
     }
 
+    initAllocator(cmdLine);
     const std::string& inFileName0 = cmdLine.arguments()[0];
     const std::string& inFileName1 = cmdLine.arguments()[1];
     const std::string& outFileName = cmdLine.arguments()[2];
@@ -1720,12 +1748,12 @@ int tgd_diff(int argc, char* argv[])
             }
             break;
         }
-        TGD::ArrayContainer array0 = importer0.readArray(&err, -1, defaultAllocator());
+        TGD::ArrayContainer array0 = importer0.readArray(&err, -1, allocator());
         if (err != TGD::ErrorNone) {
             fprintf(stderr, "tgd diff: %s: %s\n", inFileName0.c_str(), TGD::strerror(err));
             break;
         }
-        TGD::ArrayContainer array1 = importer1.readArray(&err, -1, defaultAllocator());
+        TGD::ArrayContainer array1 = importer1.readArray(&err, -1, allocator());
         if (err != TGD::ErrorNone) {
             fprintf(stderr, "tgd diff: %s: %s\n", inFileName1.c_str(), TGD::strerror(err));
             break;
@@ -1735,11 +1763,11 @@ int tgd_diff(int argc, char* argv[])
             err = TGD::ErrorInvalidData;
             break;
         }
-        TGD::Array<float> floatArray0 = convert(array0, TGD::float32, defaultAllocator());
-        TGD::Array<float> floatArray1 = convert(array1, TGD::float32, defaultAllocator());
+        TGD::Array<float> floatArray0 = convert(array0, TGD::float32, allocator());
+        TGD::Array<float> floatArray1 = convert(array1, TGD::float32, allocator());
         TGD::Array<float> floatResult = TGD::forEachComponent(floatArray0, floatArray1,
-                [] (float v0, float v1) -> float { return std::abs(v0 - v1); }, defaultAllocator());
-        TGD::ArrayContainer result = convert(floatResult, array0.componentType(), defaultAllocator());
+                [] (float v0, float v1) -> float { return std::abs(v0 - v1); }, allocator());
+        TGD::ArrayContainer result = convert(floatResult, array0.componentType(), allocator());
         removeValueRelatedTags(result);
         err = exporter.writeArray(result);
         if (err != TGD::ErrorNone) {
@@ -1783,6 +1811,7 @@ std::string tgd_info_human_readable_memsize(unsigned long long size)
 int tgd_info(int argc, char* argv[])
 {
     CmdLine cmdLine;
+    cmdLine.addOptionWithArg("cache-dir", 'C');
     cmdLine.addOptionWithArg("input", 'i');
     cmdLine.addOptionWithoutArg("statistics", 's');
     cmdLine.addOptionWithArg("box", 'b', parseUIntList);
@@ -1809,6 +1838,7 @@ int tgd_info(int argc, char* argv[])
                 "to a box of interest.\n"
                 "\n"
                 "Options:\n"
+                "  -C|--cache-dir=DIRECTORY   Set directory for temporary cache files.\n"
                 "  -i|--input=TAG             set input hints such as FORMAT=gdal, DPI=300 etc\n"
                 "  -s|--statistics            print statistics\n"
                 "  -b|--box=INDEX,SIZE        set box to operate on, e.g. X,Y,WIDTH,HEIGHT for 2D\n"
@@ -1828,6 +1858,7 @@ int tgd_info(int argc, char* argv[])
         return 0;
     }
 
+    initAllocator(cmdLine);
     TGD::TagList importerHints = createTagList(cmdLine.valueList("input"));
     TGD::Error err = TGD::ErrorNone;
     size_t arrayCounter = 0;
@@ -1856,7 +1887,7 @@ int tgd_info(int argc, char* argv[])
                 }
                 break;
             }
-            TGD::ArrayContainer array = importer.readArray(&err, -1, defaultAllocator());
+            TGD::ArrayContainer array = importer.readArray(&err, -1, allocator());
             if (err != TGD::ErrorNone) {
                 fprintf(stderr, "tgd info: %s: %s\n", inFileName.c_str(), TGD::strerror(err));
                 break;
@@ -1982,7 +2013,7 @@ int tgd_info(int argc, char* argv[])
                     } else {
                         localBox = getBoxFromArray(array);
                     }
-                    TGD::Array<float> floatArray = convert(array, TGD::float32, defaultAllocator());
+                    TGD::Array<float> floatArray = convert(array, TGD::float32, allocator());
                     std::vector<size_t> finiteValues(array.componentCount(), 0);
                     std::vector<float> tmpMinVals(array.componentCount(), 0.0f);
                     std::vector<float> tmpMaxVals(array.componentCount(), 0.0f);
@@ -2079,5 +2110,8 @@ int main(int argc, char* argv[])
         fprintf(stderr, "tgd: invalid command %s\n", argv[1]);
         retval = 1;
     }
+
+    if (tgdAllocator)
+        delete tgdAllocator;
     return retval;
 }
