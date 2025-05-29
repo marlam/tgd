@@ -12,10 +12,6 @@ image[{ x, y }][2] = blueValue;
 TGD::save(image, "image.png");
 ```
 
-Iterators are provided, so you can use STL algorithms on TGD arrays, e.g.
-`std::for_each`, `std::sort` etc. You can also apply custom functions, functors,
-or lamba expressions to array contents in a single line of code.
-
 The core TGD library is header-only; you just include `<tgd/array.hpp>`.
 
 For input and output you can optionally link against libtgd. This library has
