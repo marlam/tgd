@@ -2089,25 +2089,31 @@ int main(int argc, char* argv[])
 #endif
 
     int retval = 0;
-    if (argc < 2) {
-        tgd_help();
-        retval = 1;
-    } else if (std::strcmp(argv[1], "help") == 0 || std::strcmp(argv[1], "--help") == 0) {
-        retval = tgd_help();
-    } else if (std::strcmp(argv[1], "version") == 0 || std::strcmp(argv[1], "--version") == 0) {
-        retval = tgd_version();
-    } else if (std::strcmp(argv[1], "create") == 0) {
-        retval = tgd_create(argc - 1, &(argv[1]));
-    } else if (std::strcmp(argv[1], "convert") == 0) {
-        retval = tgd_convert(argc - 1, &(argv[1]));
-    } else if (std::strcmp(argv[1], "calc") == 0) {
-        retval = tgd_calc(argc - 1, &(argv[1]));
-    } else if (std::strcmp(argv[1], "diff") == 0) {
-        retval = tgd_diff(argc - 1, &(argv[1]));
-    } else if (std::strcmp(argv[1], "info") == 0) {
-        retval = tgd_info(argc - 1, &(argv[1]));
-    } else {
-        fprintf(stderr, "tgd: invalid command %s\n", argv[1]);
+    try {
+        if (argc < 2) {
+            tgd_help();
+            retval = 1;
+        } else if (std::strcmp(argv[1], "help") == 0 || std::strcmp(argv[1], "--help") == 0) {
+            retval = tgd_help();
+        } else if (std::strcmp(argv[1], "version") == 0 || std::strcmp(argv[1], "--version") == 0) {
+            retval = tgd_version();
+        } else if (std::strcmp(argv[1], "create") == 0) {
+            retval = tgd_create(argc - 1, &(argv[1]));
+        } else if (std::strcmp(argv[1], "convert") == 0) {
+            retval = tgd_convert(argc - 1, &(argv[1]));
+        } else if (std::strcmp(argv[1], "calc") == 0) {
+            retval = tgd_calc(argc - 1, &(argv[1]));
+        } else if (std::strcmp(argv[1], "diff") == 0) {
+            retval = tgd_diff(argc - 1, &(argv[1]));
+        } else if (std::strcmp(argv[1], "info") == 0) {
+            retval = tgd_info(argc - 1, &(argv[1]));
+        } else {
+            fprintf(stderr, "tgd: invalid command %s\n", argv[1]);
+            retval = 1;
+        }
+    }
+    catch (std::exception& e) {
+        fprintf(stderr, "%s\n", e.what());
         retval = 1;
     }
 
