@@ -2,7 +2,7 @@
  * Copyright (C) 2019, 2020, 2021, 2022
  * Computer Graphics Group, University of Siegen
  * Written by Martin Lambers <martin.lambers@uni-siegen.de>
- * Copyright (C) 2023, 2024, 2025
+ * Copyright (C) 2023, 2024, 2025, 2026
  * Martin Lambers <marlam@marlam.de>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -301,7 +301,7 @@ Error FormatImportExportHDF5::writeArray(const ArrayContainer& array)
         type = H5::FloatType(H5::PredType::NATIVE_DOUBLE);
         break;
     }
-    ArrayContainer dataArray = reorderMatlabOutputData(array);
+    ArrayContainer dataArray = reorderMatlabOutputData(array, Allocator());
     std::vector<hsize_t> dims(dataArray.dimensionCount());
     dims[0] = dataArray.dimension(dataArray.dimensionCount() - 1);
     for (size_t i = 1; i < dataArray.dimensionCount(); i++) {
