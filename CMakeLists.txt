@@ -1,7 +1,7 @@
 # Copyright (C) 2018, 2019, 2020, 2021, 2022
 # Computer Graphics Group, University of Siegen
 # Written by Martin Lambers <martin.lambers@uni-siegen.de>
-# Copyright (C) 2024, 2025  Martin Lambers <marlam@marlam.de>
+# Copyright (C) 2024, 2025, 2026  Martin Lambers <marlam@marlam.de>
 #
 # Copying and distribution of this file, with or without modification, are
 # permitted in any medium without royalty provided the copyright notice and this
@@ -15,7 +15,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # Project
 project(tgd LANGUAGES CXX)
-set(TGD_VERSION 5.0)
+set(TGD_VERSION 5.1)
 set(TGD_LIBVERSION 3.0.0)
 set(TGD_SOVERSION 3)
 
